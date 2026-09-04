@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MD Viewer — Fast Outline Reader</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<style>
+  :root{
+    --bg:#1a1b26; --bg2:#1f2335; --fg:#c0caf5; --muted:#565f89;
+    --accent:#7aa2f7; --border:#292e42; --h:#c0caf5;
+    --line-h:22px; --font-size:13px;
+    --md-bold:#e0af68; --md-italic:#bb9af7; --md-code:#9ece6a;
+    --md-code-bg:rgba(158,206,106,0.10); --md-quote:#565f89; --md-bullet:#7aa2f7;
+    --h1:#7aa2f7; --h2:#7dcfff; --h3:#bb9af7; --h456:#c0caf5;
+    --panel-font-size:12px; --panel-line-h:20px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+  #app{display:flex;flex-direction:column;height:100vh;}
+
+  /* Toolbar */
+  #toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;
+    background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  #toolbar button, #toolbar label.filebtn{
+    background:#242737;color:var(--fg);border:1px solid var(--border);
+    padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;}
+  #toolbar button:hover, #toolbar label.filebtn:hover{background:#2c3040;}
+  #toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
+  #toolbar .lvlgroup button{padding:6px 9px;}
+  #fileInput{display:none;}
+  #fname{color:var(--muted);font-size:12px;margin-left:auto;padding-right:4px;}
+  #stats{color:var(--muted);font-size:11px;}
+  #zoomGroup{display:flex;align-items:center;gap:4px;}
+  #zoomLevel{color:var(--muted);font-size:11px;width:38px;text-align:center;display:inline-block;}
+
+  /* Scroll area */
+  #scroller{flex:1;overflow:auto;position:relative;background:var(--bg);}
+  #dropzone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:14px;pointer-events:none;}
+  #dropzone.hidden{display:none;}
+
+  #spacer{position:relative;width:100%;}
+  #rows{position:absolute;left:0;right:0;top:0;will-change:transform;}
+
+  .row{
+    height:var(--line-h);line-height:var(--line-h);
+    white-space:pre;overflow:hidden;padding:0 12px;
+    display:flex;align-items:center;cursor:default;font-size:var(--font-size);
+  }
+  .row .arrow{
+    display:inline-block;width:14px;text-align:center;flex:0 0 14px;
+    color:var(--muted);font-size:0.8em;user-select:none;cursor:pointer;
+  }
+  .row .arrow.none{visibility:hidden;}
+  .row .txt{white-space:pre;overflow:hidden;text-overflow:ellipsis;}
+  .row.h1 .txt{color:var(--h1);font-weight:700;font-size:1.25em;}
+  .row.h2 .txt{color:var(--h2);font-weight:700;font-size:1.15em;}
+  .row.h3 .txt{color:var(--h3);font-weight:600;font-size:1.05em;}
+  .row.h4 .txt, .row.h5 .txt, .row.h6 .txt{color:var(--h456);font-weight:600;opacity:.85;}
+  .row.heading{background:rgba(122,162,247,0.07);cursor:pointer;}
+  .row.heading:hover{background:rgba(122,162,247,0.16);}
+  .row.plain .txt{color:var(--fg);}
+  .row .lnum{color:#3b4261;font-size:0.78em;width:56px;flex:0 0 56px;text-align:right;
+    margin-right:10px;user-select:none;}
+  .md-bold{color:var(--md-bold);font-weight:700;}
+  .md-italic{color:var(--md-italic);font-style:italic;}
+  .md-code{color:var(--md-code);background:var(--md-code-bg);padding:0 4px;border-radius:3px;}
+  .md-link{color:var(--accent);text-decoration:underline;}
+  .md-quote{color:var(--md-quote);font-style:italic;}
+  .md-bullet{color:var(--md-bullet);margin-right:4px;}
+  .md-hr{color:var(--border);}
+
+  /* Hover outline panel */
+  #panel{
+    position:fixed;z-index:50;width:340px;height:320px;
+    min-width:220px;min-height:120px;max-width:90vw;max-height:90vh;
+    background:#1f2335;border:1px solid var(--accent);border-radius:8px;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;
+    flex-direction:column;overflow:hidden;resize:both;
+  }
+  #panelHeader{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:6px 10px;border-bottom:1px solid var(--border);
+    background:#191b29;cursor:default;user-select:none;
+  }
+  #panelHeader .panelTitle{color:var(--muted);font-size:11px;letter-spacing:.03em;text-transform:uppercase;}
+  #panelHeader .panelZoom{display:flex;align-items:center;gap:4px;}
+  #panelHeader button{
+    background:#242737;color:var(--fg);border:1px solid var(--border);
+    border-radius:4px;font-size:11px;padding:1px 6px;cursor:pointer;line-height:1.6;
+  }
+  #panelHeader button:hover{background:#2c3040;}
+  #panelZoomLevel{color:var(--muted);font-size:10px;width:30px;text-align:center;display:inline-block;}
+  #panelBody{position:relative;flex:1 1 auto;overflow:auto;}
+  .prow-line{
+    height:var(--panel-line-h);line-height:var(--panel-line-h);
+    white-space:pre;overflow:hidden;padding:0 12px;font-size:var(--panel-font-size);
+    display:flex;align-items:center;
+  }
+  .prow-line .txt{white-space:pre;overflow:hidden;text-overflow:ellipsis;}
+  .prow-line.h1 .txt{color:var(--h1);font-weight:700;font-size:1.2em;}
+  .prow-line.h2 .txt{color:var(--h2);font-weight:700;font-size:1.12em;}
+  .prow-line.h3 .txt{color:var(--h3);font-weight:600;font-size:1.05em;}
+  .prow-line.h4 .txt, .prow-line.h5 .txt, .prow-line.h6 .txt{color:var(--h456);font-weight:600;opacity:.85;}
+  .prow-line.heading{background:rgba(122,162,247,0.07);}
+  .prow-line.plain .txt{color:var(--fg);}
+
+  /* Sidebar file explorer */
+  #app{flex-direction:row;}
+  #sidebar{
+    flex:0 0 260px;width:260px;background:var(--bg2);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;overflow:hidden;transition:width .15s ease, flex-basis .15s ease;
+  }
+  #sidebar.collapsed{flex:0 0 0;width:0;border-right:none;}
+  #mainPane{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;height:100%;}
+  #sidebarHeader{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px;border-bottom:1px solid var(--border);gap:6px;
+  }
+  #sidebarHeader .sbTitle{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  #sidebarHeader button{
+    background:#242737;color:var(--fg);border:1px solid var(--border);border-radius:5px;
+    padding:4px 8px;font-size:11px;cursor:pointer;white-space:nowrap;
+  }
+  #sidebarHeader button:hover{background:#2c3040;}
+  #sidebarNote{padding:8px 10px;color:var(--muted);font-size:11px;line-height:1.5;}
+  #fileTree{flex:1 1 auto;overflow:auto;padding:4px 0;}
+  .tree-row{
+    display:flex;align-items:center;gap:5px;padding:3px 8px 3px 4px;font-size:12px;
+    color:var(--fg);cursor:pointer;white-space:nowrap;user-select:none;border-radius:4px;margin:0 4px;
+  }
+  .tree-row:hover{background:rgba(122,162,247,0.10);}
+  .tree-row.active{background:rgba(122,162,247,0.22);color:var(--h);}
+  .tree-arrow{flex:0 0 10px;font-size:9px;color:var(--muted);text-align:center;}
+  .tree-arrow.leaf{visibility:hidden;}
+  .tree-icon{flex:0 0 auto;font-size:12px;opacity:.85;}
+  .tree-label{overflow:hidden;text-overflow:ellipsis;}
+  #sidebarToggleBtn{margin-right:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <span class="sbTitle">Explorer</span>
+      <button id="openFolderBtn">Open Folder…</button>
+    </div>
+    <div id="sidebarNote"></div>
+    <div id="fileTree"></div>
+  </div>
+  <div id="mainPane">
+  <div id="toolbar">
+    <button id="sidebarToggleBtn" title="Show/hide file explorer">☰</button>
+    <label class="filebtn" for="fileInput">Open .md file</label>
+    <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+    <div class="sep"></div>
+    <button id="collapseAll">Collapse All</button>
+    <button id="expandAll">Expand All</button>
+    <div class="sep"></div>
+    <span style="color:var(--muted);font-size:12px;">Expand to level:</span>
+    <div class="lvlgroup" id="lvlGroup">
+      <button data-lvl="1">H1</button>
+      <button data-lvl="2">H2</button>
+      <button data-lvl="3">H3</button>
+      <button data-lvl="4">H4</button>
+      <button data-lvl="5">H5</button>
+      <button data-lvl="6">H6</button>
+    </div>
+    <div class="sep"></div>
+    <div id="zoomGroup">
+      <button id="zoomOut" title="Decrease text size">A−</button>
+      <span id="zoomLevel">100%</span>
+      <button id="zoomIn" title="Increase text size">A+</button>
+      <button id="zoomReset" title="Reset zoom">Reset</button>
+    </div>
+    <span id="stats"></span>
+    <span id="fname"></span>
+  </div>
+  <div id="scroller">
+    <div id="dropzone">Drop a Markdown file here, or click "Open .md file"</div>
+    <div id="spacer">
+      <div id="rows"></div>
+    </div>
+  </div>
+  </div>
+</div>
+<div id="panel">
+  <div id="panelHeader">
+    <span class="panelTitle">Outline preview</span>
+    <div class="panelZoom">
+      <button id="panelZoomOut" title="Decrease preview text size">A−</button>
+      <span id="panelZoomLevel">100%</span>
+      <button id="panelZoomIn" title="Increase preview text size">A+</button>
+    </div>
+  </div>
+  <div id="panelBody"></div>
+</div>
+
+<script>
+(function(){
+  const BASE_LINE_H = 22, BASE_FONT = 13;
+  let LINE_H = BASE_LINE_H; // px, kept in sync with --line-h via applyZoom()
+  const BUFFER = 10; // extra rows above/below viewport
+
+  let lines = [];              // all raw lines
+  let headings = [];           // {line, level, text, id, parent, children[], end, collapsed}
+  let lineToHeadingIdx = new Map();
+  let segments = [];           // visible [start,end] line ranges (line indices, inclusive)
+  let prefix = [0];            // prefix sum of segment lengths
+  let totalVisible = 0;
+
+  const scroller = document.getElementById('scroller');
+  const spacer = document.getElementById('spacer');
+  const rowsEl = document.getElementById('rows');
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fname = document.getElementById('fname');
+  const stats = document.getElementById('stats');
+  const panel = document.getElementById('panel');
+  const panelBody = document.getElementById('panelBody');
+
+  const HRE = /^(#{1,6})\s+(.*)$/;
+
+  // ---- persistent config (localStorage) ----
+  const CONFIG_KEY = 'mdViewerConfig_v1';
+  function loadConfig(){
+    try{ return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveConfig(patch){
+    try{
+      const next = Object.assign({}, loadConfig(), patch);
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
+    }catch(e){ /* localStorage unavailable (e.g. some restricted file:// contexts) — fail silently */ }
+  }
+  const savedConfig = loadConfig();
+
+  function parse(text){
+    // normalize newlines, split fast
+    lines = text.split(/\r\n|\r|\n/);
+    headings = [];
+    lineToHeadingIdx = new Map();
+    for(let i=0;i<lines.length;i++){
+      const m = HRE.exec(lines[i]);
+      if(m){
+        const idx = headings.length;
+        headings.push({
+          line:i, level:m[1].length, text:m[2].trim(),
+          id:idx, parent:-1, children:[], end:lines.length-1, collapsed:false
+        });
+        lineToHeadingIdx.set(i, idx);
+      }
+    }
+    // build tree + end ranges via stack
+    const stack = [];
+    for(let i=0;i<headings.length;i++){
+      const h = headings[i];
+      while(stack.length && stack[stack.length-1].level >= h.level){
+        const top = stack.pop();
+        top.end = h.line - 1;
+      }
+      if(stack.length){
+        h.parent = stack[stack.length-1].id;
+        stack[stack.length-1].children.push(h.id);
+      }
+      stack.push(h);
+    }
+    computeSegments();
+    stats.textContent = lines.length.toLocaleString()+' lines, '+headings.length.toLocaleString()+' headings';
+  }
+
+  function computeSegments(){
+    let hidden = [];
+    for(const h of headings){
+      if(h.collapsed && h.end >= h.line+1) hidden.push([h.line+1, h.end]);
+    }
+    hidden.sort((a,b)=>a[0]-b[0]);
+    const merged = [];
+    for(const r of hidden){
+      if(merged.length && r[0] <= merged[merged.length-1][1] + 1){
+        if(r[1] > merged[merged.length-1][1]) merged[merged.length-1][1] = r[1];
+      } else merged.push([r[0], r[1]]);
+    }
+    segments = [];
+    let cur = 0;
+    for(const [s,e] of merged){
+      if(s > cur) segments.push([cur, s-1]);
+      cur = Math.max(cur, e+1);
+    }
+    if(cur <= lines.length-1) segments.push([cur, lines.length-1]);
+    prefix = [0];
+    for(const seg of segments) prefix.push(prefix[prefix.length-1] + (seg[1]-seg[0]+1));
+    totalVisible = prefix[prefix.length-1];
+    spacer.style.height = (totalVisible * LINE_H) + 'px';
+  }
+
+  // binary search: largest seg index where prefix[idx] <= v
+  function visibleIdxToLine(v){
+    let lo=0, hi=segments.length-1, ans=0;
+    while(lo<=hi){
+      const mid=(lo+hi)>>1;
+      if(prefix[mid] <= v){ ans=mid; lo=mid+1; } else hi=mid-1;
+    }
+    return segments[ans][0] + (v - prefix[ans]);
+  }
+
+  // reverse: given absolute line number, find its visible index (or nearest visible)
+  function lineToVisibleIdx(line){
+    let lo=0, hi=segments.length-1, ans=0;
+    for(let i=0;i<segments.length;i++){
+      if(segments[i][0] <= line && line <= segments[i][1]){
+        return prefix[i] + (line - segments[i][0]);
+      }
+      if(segments[i][0] > line){ ans=i; break; }
+      ans = i+1;
+    }
+    return prefix[Math.min(ans, prefix.length-1)];
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Applied only to the handful of rows in the current viewport -> O(viewport), not O(file).
+  function mdInline(escaped){
+    let t = escaped.replace(/`([^`]+)`/g, '<span class="md-code">$1</span>');
+    t = t.replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, (m,a,b)=>`<span class="md-bold">${a||b}</span>`);
+    t = t.replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, (m,pre,inner)=>`${pre}<span class="md-italic">${inner}</span>`);
+    t = t.replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, (m,pre,inner)=>`${pre}<span class="md-italic">${inner}</span>`);
+    t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '<span class="md-link">$1</span>');
+    return t;
+  }
+
+  function renderPlainLine(rawText){
+    if(/^\s*([-*_])\1\1[\1\-*_\s]*$/.test(rawText) && rawText.trim().length >= 3){
+      return `<span class="md-hr">────────────────────────</span>`;
+    }
+    const bq = /^(\s*)>\s?(.*)$/.exec(rawText);
+    if(bq){
+      return `<span class="md-quote">▏ ${mdInline(escapeHtml(bq[2]))}</span>`;
+    }
+    const li = /^(\s*)([-*+])\s+(.*)$/.exec(rawText);
+    if(li){
+      return `${escapeHtml(li[1])}<span class="md-bullet">•</span>${mdInline(escapeHtml(li[3]))}`;
+    }
+    return mdInline(escapeHtml(rawText));
+  }
+
+  function rowHtmlFor(lineNo){
+    const hIdx = lineToHeadingIdx.get(lineNo);
+    const text = lines[lineNo] ?? '';
+    if(hIdx !== undefined){
+      const h = headings[hIdx];
+      const hasChildContent = h.end >= h.line+1;
+      const arrow = hasChildContent ? (h.collapsed ? '\u25B6' : '\u25BC') : '';
+      const arrowClass = hasChildContent ? '' : 'none';
+      return `<div class="row heading h${h.level}" data-line="${lineNo}" data-heading="${hIdx}">`+
+        `<span class="lnum">${lineNo+1}</span>`+
+        `<span class="arrow ${arrowClass}" data-toggle="${hIdx}">${arrow}</span>`+
+        `<span class="txt">${escapeHtml('#'.repeat(h.level)+' '+h.text)}</span></div>`;
+    }
+    return `<div class="row plain" data-line="${lineNo}">`+
+      `<span class="lnum">${lineNo+1}</span>`+
+      `<span class="arrow none"></span>`+
+      `<span class="txt">${renderPlainLine(text)}</span></div>`;
+  }
+
+  let rafPending = false;
+  function render(){
+    if(rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(()=>{
+      rafPending = false;
+      const scrollTop = scroller.scrollTop;
+      const viewportH = scroller.clientHeight;
+      const firstVisible = Math.max(0, Math.floor(scrollTop / LINE_H) - BUFFER);
+      const rowCount = Math.ceil(viewportH / LINE_H) + BUFFER*2;
+      const lastVisible = Math.min(totalVisible - 1, firstVisible + rowCount);
+
+      if(totalVisible === 0){ rowsEl.innerHTML = ''; return; }
+
+      let html = '';
+      for(let v = firstVisible; v <= lastVisible; v++){
+        const lineNo = visibleIdxToLine(v);
+        html += rowHtmlFor(lineNo);
+      }
+      rowsEl.innerHTML = html;
+      rowsEl.style.transform = `translateY(${firstVisible * LINE_H}px)`;
+    });
+  }
+
+  scroller.addEventListener('scroll', render, {passive:true});
+  window.addEventListener('resize', render);
+
+  // ---- collapse / expand actions ----
+  function toggleHeading(hIdx){
+    const h = headings[hIdx];
+    h.collapsed = !h.collapsed;
+    computeSegments();
+    render();
+  }
+  function collapseAll(){
+    for(const h of headings) h.collapsed = h.end >= h.line+1;
+    computeSegments(); render();
+  }
+  function expandAll(){
+    for(const h of headings) h.collapsed = false;
+    computeSegments(); render();
+  }
+  function expandToLevel(L){
+    for(const h of headings) h.collapsed = (h.level >= L) && (h.end >= h.line+1);
+    computeSegments(); render();
+  }
+
+  document.getElementById('collapseAll').addEventListener('click', collapseAll);
+  document.getElementById('expandAll').addEventListener('click', expandAll);
+  document.getElementById('lvlGroup').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-lvl]');
+    if(btn) expandToLevel(parseInt(btn.dataset.lvl,10));
+  });
+
+  // ---- zoom ----
+  const ZOOM_LEVELS = [0.7,0.8,0.9,1,1.15,1.3,1.5,1.75,2];
+  let zoomIdx = typeof savedConfig.zoomIdx === 'number' ? savedConfig.zoomIdx : 3;
+  function applyZoom(){
+    const mult = ZOOM_LEVELS[zoomIdx];
+    LINE_H = Math.round(BASE_LINE_H * mult);
+    const fontSize = (BASE_FONT * mult).toFixed(1) + 'px';
+    document.documentElement.style.setProperty('--line-h', LINE_H + 'px');
+    document.documentElement.style.setProperty('--font-size', fontSize);
+    document.getElementById('zoomLevel').textContent = Math.round(mult * 100) + '%';
+    saveConfig({zoomIdx});
+    const scrollFrac = totalVisible ? scroller.scrollTop / (totalVisible * LINE_H || 1) : 0;
+    computeSegments();
+    scroller.scrollTop = scrollFrac * totalVisible * LINE_H;
+    render();
+  }
+  document.getElementById('zoomIn').addEventListener('click', ()=>{
+    zoomIdx = Math.min(ZOOM_LEVELS.length - 1, zoomIdx + 1); applyZoom();
+  });
+  document.getElementById('zoomOut').addEventListener('click', ()=>{
+    zoomIdx = Math.max(0, zoomIdx - 1); applyZoom();
+  });
+  document.getElementById('zoomReset').addEventListener('click', ()=>{
+    zoomIdx = 3; applyZoom();
+  });
+  scroller.addEventListener('wheel', (e)=>{
+    if(e.ctrlKey){
+      e.preventDefault();
+      if(e.deltaY < 0) zoomIdx = Math.min(ZOOM_LEVELS.length - 1, zoomIdx + 1);
+      else zoomIdx = Math.max(0, zoomIdx - 1);
+      applyZoom();
+    }
+  }, {passive:false});
+
+  rowsEl.addEventListener('click', (e)=>{
+    const arrow = e.target.closest('[data-toggle]');
+    if(arrow){ toggleHeading(parseInt(arrow.dataset.toggle,10)); return; }
+    const row = e.target.closest('.row.heading');
+    if(row){ toggleHeading(parseInt(row.dataset.heading,10)); }
+  });
+
+  // ---- hover outline panel: fully virtualized, shows the ENTIRE section ----
+  // A section's body is just the contiguous line range [h.line, h.end] in document
+  // order (sub-headings + their content all live inside that same range), so we can
+  // reuse the exact same "render only visible rows" trick as the main viewer.
+  let hoverTimer = null, hideTimer = null;
+  let previewRange = null;      // {start, end} absolute line numbers currently shown
+  let panelRafPending = false;
+  const PANEL_BUFFER = 8;
+  const PANEL_BASE_LINE_H = 20;
+  let PANEL_LINE_H = PANEL_BASE_LINE_H;
+
+  const panelSpacer = document.createElement('div');
+  const panelRowsEl = document.createElement('div');
+  panelSpacer.style.position = 'relative';
+  panelSpacer.style.width = '100%';
+  panelRowsEl.style.position = 'absolute';
+  panelRowsEl.style.left = '0'; panelRowsEl.style.right = '0'; panelRowsEl.style.top = '0';
+  panelRowsEl.style.willChange = 'transform';
+  panelSpacer.appendChild(panelRowsEl);
+  panelBody.appendChild(panelSpacer);
+
+  function findHeadingAtOrBefore(lineNo){
+    let lo=0, hi=headings.length-1, ans=-1;
+    while(lo<=hi){
+      const mid=(lo+hi)>>1;
+      if(headings[mid].line<=lineNo){ ans=mid; lo=mid+1; } else hi=mid-1;
+    }
+    return ans>=0 ? headings[ans] : null;
+  }
+
+  function panelRowHtml(lineNo){
+    const hIdx = lineToHeadingIdx.get(lineNo);
+    const ctx = findHeadingAtOrBefore(lineNo);
+    const indent = ctx ? Math.max(0,(ctx.level-1))*14 : 0;
+    if(hIdx !== undefined){
+      const h = headings[hIdx];
+      return `<div class="prow-line heading h${h.level}" style="padding-left:${indent}px">`+
+        `<span class="txt">${escapeHtml('#'.repeat(h.level)+' '+h.text)}</span></div>`;
+    }
+    const text = lines[lineNo] ?? '';
+    return `<div class="prow-line plain" style="padding-left:${indent}px">`+
+      `<span class="txt">${renderPlainLine(text)}</span></div>`;
+  }
+
+  function renderPanel(){
+    if(!previewRange || panelRafPending) return;
+    panelRafPending = true;
+    requestAnimationFrame(()=>{
+      panelRafPending = false;
+      if(!previewRange) return;
+      const total = previewRange.end - previewRange.start + 1;
+      const scrollTop = panelBody.scrollTop;
+      const viewportH = panelBody.clientHeight || 260;
+      const firstVis = Math.max(0, Math.floor(scrollTop / PANEL_LINE_H) - PANEL_BUFFER);
+      const rowCount = Math.ceil(viewportH / PANEL_LINE_H) + PANEL_BUFFER*2;
+      const lastVis = Math.min(total - 1, firstVis + rowCount);
+      let html = '';
+      for(let i = firstVis; i <= lastVis; i++){
+        html += panelRowHtml(previewRange.start + i);
+      }
+      panelRowsEl.innerHTML = html;
+      panelRowsEl.style.transform = `translateY(${firstVis * PANEL_LINE_H}px)`;
+    });
+  }
+  panelBody.addEventListener('scroll', renderPanel, {passive:true});
+
+  function showPanel(hIdx, x, y){
+    const h = headings[hIdx];
+    previewRange = {start: h.line, end: h.end};
+    const total = previewRange.end - previewRange.start + 1;
+    panelSpacer.style.height = (total * PANEL_LINE_H) + 'px';
+    panelBody.scrollTop = 0;
+    renderPanel();
+    panel.style.display = 'flex';
+    // Position near cursor; keep whatever width/height the user has resized to.
+    const rect = panel.getBoundingClientRect();
+    const pw = rect.width || 340, ph = rect.height || 320;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = x + 16, top = y + 8;
+    if(left + pw > vw) left = Math.max(4, x - pw - 16);
+    if(top + ph > vh) top = Math.max(4, vh - ph - 8);
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
+  function hidePanelSoon(){
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(()=>{ panel.style.display = 'none'; previewRange = null; }, 180);
+  }
+  function cancelHide(){ clearTimeout(hideTimer); }
+
+  rowsEl.addEventListener('mouseover', (e)=>{
+    const txtEl = e.target.closest('.txt');
+    if(!txtEl) { clearTimeout(hoverTimer); return; }
+    const row = txtEl.closest('.row.heading');
+    if(!row) { clearTimeout(hoverTimer); return; }
+    const hIdx = parseInt(row.dataset.heading,10);
+    clearTimeout(hoverTimer);
+    const x = e.clientX, y = e.clientY;
+    hoverTimer = setTimeout(()=>{ cancelHide(); showPanel(hIdx, x, y); }, 120);
+  });
+  rowsEl.addEventListener('mouseout', (e)=>{
+    if(e.relatedTarget && panel.contains(e.relatedTarget)) return;
+    clearTimeout(hoverTimer);
+    hidePanelSoon();
+  });
+  panel.addEventListener('mouseenter', cancelHide);
+  panel.addEventListener('mouseleave', hidePanelSoon);
+
+  // ---- panel (hover preview) zoom — independent of main viewer zoom ----
+  const PANEL_ZOOM_LEVELS = [10,11,12,13,14,16,18,20,22];
+  let panelZoomIdx = typeof savedConfig.panelZoomIdx === 'number' ? savedConfig.panelZoomIdx : 2;
+  function applyPanelZoom(){
+    const px = PANEL_ZOOM_LEVELS[panelZoomIdx];
+    PANEL_LINE_H = Math.round(PANEL_BASE_LINE_H * (px/12));
+    document.documentElement.style.setProperty('--panel-font-size', px + 'px');
+    document.documentElement.style.setProperty('--panel-line-h', PANEL_LINE_H + 'px');
+    document.getElementById('panelZoomLevel').textContent = Math.round((px/12)*100) + '%';
+    saveConfig({panelZoomIdx});
+    if(previewRange){
+      const total = previewRange.end - previewRange.start + 1;
+      panelSpacer.style.height = (total * PANEL_LINE_H) + 'px';
+      renderPanel();
+    }
+  }
+  document.getElementById('panelZoomIn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    panelZoomIdx = Math.min(PANEL_ZOOM_LEVELS.length - 1, panelZoomIdx + 1);
+    applyPanelZoom();
+  });
+  document.getElementById('panelZoomOut').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    panelZoomIdx = Math.max(0, panelZoomIdx - 1);
+    applyPanelZoom();
+  });
+  panel.addEventListener('wheel', (e)=>{
+    if(e.ctrlKey){
+      e.preventDefault();
+      if(e.deltaY < 0) panelZoomIdx = Math.min(PANEL_ZOOM_LEVELS.length - 1, panelZoomIdx + 1);
+      else panelZoomIdx = Math.max(0, panelZoomIdx - 1);
+      applyPanelZoom();
+    }
+  }, {passive:false});
+  applyPanelZoom();
+
+  // ---- restore saved panel size, and persist future resizes ----
+  if(savedConfig.panelWidth)  panel.style.width  = savedConfig.panelWidth + 'px';
+  if(savedConfig.panelHeight) panel.style.height = savedConfig.panelHeight + 'px';
+  let resizeSaveTimer = null;
+  if('ResizeObserver' in window){
+    new ResizeObserver(()=>{
+      clearTimeout(resizeSaveTimer);
+      resizeSaveTimer = setTimeout(()=>{
+        saveConfig({panelWidth: panel.offsetWidth, panelHeight: panel.offsetHeight});
+      }, 400);
+    }).observe(panel);
+  }
+
+  // ---- file loading ----
+  function loadText(text, name){
+    dropzone.classList.add('hidden');
+    fname.textContent = name || '';
+    parse(text);
+    scroller.scrollTop = 0;
+    render();
+  }
+  function loadFile(file){
+    const reader = new FileReader();
+    reader.onload = () => loadText(reader.result, file.name);
+    reader.readAsText(file);
+  }
+  fileInput.addEventListener('change', (e)=>{
+    if(e.target.files[0]) loadFile(e.target.files[0]);
+  });
+  ['dragover','dragenter'].forEach(ev=>{
+    scroller.addEventListener(ev, (e)=>{ e.preventDefault(); });
+  });
+  scroller.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) loadFile(f);
+  });
+
+  // ---- sidebar: recursive folder explorer via API ----
+  const sidebar = document.getElementById('sidebar');
+  const sidebarNote = document.getElementById('sidebarNote');
+  const fileTree = document.getElementById('fileTree');
+  const openFolderBtn = document.getElementById('openFolderBtn');
+  const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  let activeRow = null;
+
+  openFolderBtn.style.display = 'none'; // hide it since we auto-load current directory
+
+  function setSidebarCollapsed(collapsed){
+    sidebar.classList.toggle('collapsed', collapsed);
+    saveConfig({sidebarCollapsed: collapsed});
+  }
+  sidebarToggleBtn.addEventListener('click', ()=>{
+    setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+  });
+  setSidebarCollapsed(!!savedConfig.sidebarCollapsed);
+
+  async function loadChildren(node){
+    if(node.childrenLoaded) return node.children;
+    try {
+      const res = await fetch('/api/tree?path=' + encodeURIComponent(node.path));
+      if(!res.ok) throw new Error('API error');
+      const data = await res.json();
+      data.sort((a,b)=>{
+        if(a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+        return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
+      });
+      node.children = data.map(item => ({
+        name: item.name, kind: item.kind,
+        path: node.path ? node.path + '/' + item.name : item.name,
+        depth: node.depth + 1,
+        expanded: false, childrenLoaded: false, children: []
+      }));
+      node.childrenLoaded = true;
+      return node.children;
+    } catch(err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  function createRow(node){
+    const row = document.createElement('div');
+    row.className = 'tree-row' + (node.kind === 'directory' ? ' dir' : ' file');
+    row.style.paddingLeft = (node.depth * 14 + 6) + 'px';
+    row.dataset.path = node.path;
+    const arrow = document.createElement('span');
+    arrow.className = 'tree-arrow' + (node.kind === 'directory' ? '' : ' leaf');
+    arrow.textContent = node.kind === 'directory' ? (node.expanded ? '▾' : '▸') : '';
+    const icon = document.createElement('span');
+    icon.className = 'tree-icon';
+    icon.textContent = node.kind === 'directory' ? '📁' : '📄';
+    const label = document.createElement('span');
+    label.className = 'tree-label';
+    label.textContent = node.name;
+    row.append(arrow, icon, label);
+    return row;
+  }
+
+  function buildNodeDOM(node){
+    const wrapper = document.createElement('div');
+    const row = createRow(node);
+    wrapper.appendChild(row);
+    if(node.kind === 'directory'){
+      const childContainer = document.createElement('div');
+      childContainer.style.display = node.expanded ? 'block' : 'none';
+      wrapper.appendChild(childContainer);
+      row.addEventListener('click', async ()=>{
+        node.expanded = !node.expanded;
+        row.querySelector('.tree-arrow').textContent = node.expanded ? '▾' : '▸';
+        if(node.expanded){
+          if(!node.childrenLoaded) await loadChildren(node);
+          childContainer.innerHTML = '';
+          for(const child of node.children) childContainer.appendChild(buildNodeDOM(child));
+          childContainer.style.display = 'block';
+        } else {
+          childContainer.style.display = 'none';
+        }
+      });
+    } else {
+      row.addEventListener('click', async ()=>{
+        try{
+          const res = await fetch('/api/file?path=' + encodeURIComponent(node.path));
+          if(!res.ok) throw new Error('File not found');
+          const text = await res.text();
+          loadText(text, node.name);
+          if(activeRow) activeRow.classList.remove('active');
+          row.classList.add('active');
+          activeRow = row;
+        }catch(err){
+          console.error(err);
+          alert('Could not read file: ' + node.name);
+        }
+      });
+    }
+    return wrapper;
+  }
+
+  async function initSidebar() {
+    const root = {
+      name: 'Workspace', kind: 'directory',
+      path: '', depth: 0, expanded: true, childrenLoaded: false, children: []
+    };
+    await loadChildren(root);
+    fileTree.innerHTML = '';
+    sidebarNote.textContent = '';
+    const childContainer = document.createElement('div');
+    fileTree.appendChild(childContainer);
+    for(const child of root.children) childContainer.appendChild(buildNodeDOM(child));
+  }
+  
+  initSidebar();
+
+  applyZoom();
+  render();
+})();
+</script>
+</body>
+</html>
