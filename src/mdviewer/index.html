@@ -11,13 +11,20 @@
     --line-h:22px; --font-size:13px;
     --md-bold:#e0af68; --md-italic:#bb9af7; --md-code:#9ece6a;
     --md-code-bg:rgba(158,206,106,0.10); --md-quote:#565f89; --md-bullet:#7aa2f7;
-    --h1:#7aa2f7; --h2:#7dcfff; --h3:#bb9af7; --h456:#c0caf5;
+    --h1:#7aa2f7; --h2:#7dcfff; --h3:#bb9af7; --h4:#9ece6a; --h5:#e0af68; --h6:#ff9e64;
     --panel-font-size:12px; --panel-line-h:20px;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
   #app{display:flex;flex-direction:column;height:100vh;}
+  
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 14px; height: 14px; }
+  ::-webkit-scrollbar-track { background: var(--bg); border-left: 1px solid var(--border); }
+  ::-webkit-scrollbar-thumb { background: #3b4261; border: 3px solid var(--bg); border-radius: 7px; }
+  ::-webkit-scrollbar-thumb:hover { background: #565f89; }
+  ::-webkit-scrollbar-corner { background: var(--bg); }
 
   /* Toolbar */
   #toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;
@@ -29,10 +36,10 @@
   #toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
   #toolbar .lvlgroup button{padding:6px 9px;}
   #fileInput{display:none;}
-  #fname{color:var(--muted);font-size:12px;margin-left:auto;padding-right:4px;}
-  #stats{color:var(--muted);font-size:11px;}
+  #fname{color:var(--accent);font-size:13px;font-weight:600;margin-left:auto;padding-right:8px;}
+  #stats{color:#a9b1d6;font-size:12px;opacity:0.9;}
   #zoomGroup{display:flex;align-items:center;gap:4px;}
-  #zoomLevel{color:var(--muted);font-size:11px;width:38px;text-align:center;display:inline-block;}
+  #zoomLevel{color:#a9b1d6;font-size:12px;font-weight:500;width:38px;text-align:center;display:inline-block;}
 
   /* Scroll area */
   #scroller{flex:1;overflow:auto;position:relative;background:var(--bg);}
@@ -57,7 +64,9 @@
   .row.h1 .txt{color:var(--h1);font-weight:700;font-size:1.25em;}
   .row.h2 .txt{color:var(--h2);font-weight:700;font-size:1.15em;}
   .row.h3 .txt{color:var(--h3);font-weight:600;font-size:1.05em;}
-  .row.h4 .txt, .row.h5 .txt, .row.h6 .txt{color:var(--h456);font-weight:600;opacity:.85;}
+  .row.h4 .txt{color:var(--h4);font-weight:600;}
+  .row.h5 .txt{color:var(--h5);font-weight:600;font-size:0.95em;opacity:0.9;}
+  .row.h6 .txt{color:var(--h6);font-weight:600;font-size:0.9em;opacity:0.8;}
   .row.heading{background:rgba(122,162,247,0.07);cursor:pointer;}
   .row.heading:hover{background:rgba(122,162,247,0.16);}
   .row.plain .txt{color:var(--fg);}
@@ -84,25 +93,31 @@
     padding:6px 10px;border-bottom:1px solid var(--border);
     background:#191b29;cursor:default;user-select:none;
   }
-  #panelHeader .panelTitle{color:var(--muted);font-size:11px;letter-spacing:.03em;text-transform:uppercase;}
+  #panelHeader .panelTitle{font-size:var(--panel-font-size);font-weight:700;letter-spacing:0;}
   #panelHeader .panelZoom{display:flex;align-items:center;gap:4px;}
   #panelHeader button{
     background:#242737;color:var(--fg);border:1px solid var(--border);
     border-radius:4px;font-size:11px;padding:1px 6px;cursor:pointer;line-height:1.6;
   }
   #panelHeader button:hover{background:#2c3040;}
-  #panelZoomLevel{color:var(--muted);font-size:10px;width:30px;text-align:center;display:inline-block;}
+  #panelZoomLevel{color:#a9b1d6;font-size:11px;font-weight:500;width:30px;text-align:center;display:inline-block;}
   #panelBody{position:relative;flex:1 1 auto;overflow:auto;}
+  #panelBody::-webkit-scrollbar-track { background: #1f2335; border-left: none; }
+  #panelBody::-webkit-scrollbar-thumb { border-color: #1f2335; }
   .prow-line{
-    height:var(--panel-line-h);line-height:var(--panel-line-h);
-    white-space:pre;overflow:hidden;padding:0 12px;font-size:var(--panel-font-size);
-    display:flex;align-items:center;
+    line-height:1.4;
+    white-space:pre-wrap;
+    word-break:break-word;
+    padding:4px 12px;
+    font-size:var(--panel-font-size);
   }
-  .prow-line .txt{white-space:pre;overflow:hidden;text-overflow:ellipsis;}
+  .prow-line .txt{white-space:pre-wrap;text-overflow:unset;}
   .prow-line.h1 .txt{color:var(--h1);font-weight:700;font-size:1.2em;}
   .prow-line.h2 .txt{color:var(--h2);font-weight:700;font-size:1.12em;}
   .prow-line.h3 .txt{color:var(--h3);font-weight:600;font-size:1.05em;}
-  .prow-line.h4 .txt, .prow-line.h5 .txt, .prow-line.h6 .txt{color:var(--h456);font-weight:600;opacity:.85;}
+  .prow-line.h4 .txt{color:var(--h4);font-weight:600;}
+  .prow-line.h5 .txt{color:var(--h5);font-weight:600;font-size:0.95em;opacity:0.9;}
+  .prow-line.h6 .txt{color:var(--h6);font-weight:600;font-size:0.9em;opacity:0.8;}
   .prow-line.heading{background:rgba(122,162,247,0.07);}
   .prow-line.plain .txt{color:var(--fg);}
 
@@ -118,13 +133,13 @@
     flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
     padding:8px 10px;border-bottom:1px solid var(--border);gap:6px;
   }
-  #sidebarHeader .sbTitle{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  #sidebarHeader .sbTitle{color:#a9b1d6;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
   #sidebarHeader button{
     background:#242737;color:var(--fg);border:1px solid var(--border);border-radius:5px;
     padding:4px 8px;font-size:11px;cursor:pointer;white-space:nowrap;
   }
   #sidebarHeader button:hover{background:#2c3040;}
-  #sidebarNote{padding:8px 10px;color:var(--muted);font-size:11px;line-height:1.5;}
+  #sidebarNote{padding:8px 10px;color:#a9b1d6;font-size:12px;line-height:1.5;}
   #fileTree{flex:1 1 auto;overflow:auto;padding:4px 0;}
   .tree-row{
     display:flex;align-items:center;gap:5px;padding:3px 8px 3px 4px;font-size:12px;
@@ -137,6 +152,16 @@
   .tree-icon{flex:0 0 auto;font-size:12px;opacity:.85;}
   .tree-label{overflow:hidden;text-overflow:ellipsis;}
   #sidebarToggleBtn{margin-right:2px;}
+  
+  /* Search Results */
+  .search-result{
+    padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;
+  }
+  .search-result:hover{background:rgba(122,162,247,0.1);}
+  .search-result .s-file{color:var(--accent);font-weight:bold;font-size:11px;}
+  .search-result .s-line{color:var(--muted);font-size:10px;margin-left:6px;}
+  .search-result .s-text{font-size:11px;margin-top:4px;white-space:pre-wrap;word-break:break-word;color:var(--fg);}
+  .search-loading{padding:12px;color:var(--muted);font-size:12px;text-align:center;}
 </style>
 </head>
 <body>
@@ -144,7 +169,7 @@
   <div id="sidebar">
     <div id="sidebarHeader">
       <span class="sbTitle">Explorer</span>
-      <button id="openFolderBtn">Open Folder…</button>
+      <button id="explorerCollapseAll" title="Collapse All Folders">Collapse</button>
     </div>
     <div id="sidebarNote"></div>
     <div id="fileTree"></div>
@@ -158,7 +183,7 @@
     <button id="collapseAll">Collapse All</button>
     <button id="expandAll">Expand All</button>
     <div class="sep"></div>
-    <span style="color:var(--muted);font-size:12px;">Expand to level:</span>
+    <span style="color:#a9b1d6;font-size:12px;font-weight:500;">Expand to level:</span>
     <div class="lvlgroup" id="lvlGroup">
       <button data-lvl="1">H1</button>
       <button data-lvl="2">H2</button>
@@ -174,8 +199,13 @@
       <button id="zoomIn" title="Increase text size">A+</button>
       <button id="zoomReset" title="Reset zoom">Reset</button>
     </div>
-    <span id="stats"></span>
-    <span id="fname"></span>
+    <div class="sep"></div>
+    <div id="searchBox" style="display:flex;align-items:center;position:relative;">
+      <input type="text" id="searchInput" placeholder="Search workspace..." style="background:#191b29;color:var(--fg);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;width:150px;outline:none;" />
+      <div id="searchResults" style="position:absolute;top:100%;right:0;width:350px;max-height:400px;background:#1f2335;border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:100;overflow-y:auto;display:none;margin-top:4px;"></div>
+    </div>
+    <div id="fname"></div>
+    <div id="stats"></div>
   </div>
   <div id="scroller">
     <div id="dropzone">Drop a Markdown file here, or click "Open .md file"</div>
@@ -198,7 +228,7 @@
 </div>
 
 <script>
-(function(){
+(async function(){
   const BASE_LINE_H = 22, BASE_FONT = 13;
   let LINE_H = BASE_LINE_H; // px, kept in sync with --line-h via applyZoom()
   const BUFFER = 10; // extra rows above/below viewport
@@ -222,19 +252,26 @@
 
   const HRE = /^(#{1,6})\s+(.*)$/;
 
-  // ---- persistent config (localStorage) ----
-  const CONFIG_KEY = 'mdViewerConfig_v1';
-  function loadConfig(){
-    try{ return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; }
-    catch(e){ return {}; }
+  let savedConfig = {};
+  try {
+    const r = await fetch('/api/config');
+    if (r.ok) {
+      savedConfig = await r.json();
+    }
+  } catch(e) {
+    console.error('Could not load config', e);
   }
+  
   function saveConfig(patch){
     try{
-      const next = Object.assign({}, loadConfig(), patch);
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
-    }catch(e){ /* localStorage unavailable (e.g. some restricted file:// contexts) — fail silently */ }
+      Object.assign(savedConfig, patch);
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+      }).catch(e => console.error(e));
+    }catch(e){ }
   }
-  const savedConfig = loadConfig();
 
   function parse(text){
     // normalize newlines, split fast
@@ -505,49 +542,91 @@
       `<span class="txt">${renderPlainLine(text)}</span></div>`;
   }
 
-  function renderPanel(){
-    if(!previewRange || panelRafPending) return;
-    panelRafPending = true;
-    requestAnimationFrame(()=>{
-      panelRafPending = false;
-      if(!previewRange) return;
-      const total = previewRange.end - previewRange.start + 1;
-      const scrollTop = panelBody.scrollTop;
-      const viewportH = panelBody.clientHeight || 260;
-      const firstVis = Math.max(0, Math.floor(scrollTop / PANEL_LINE_H) - PANEL_BUFFER);
-      const rowCount = Math.ceil(viewportH / PANEL_LINE_H) + PANEL_BUFFER*2;
-      const lastVis = Math.min(total - 1, firstVis + rowCount);
-      let html = '';
-      for(let i = firstVis; i <= lastVis; i++){
-        html += panelRowHtml(previewRange.start + i);
-      }
-      panelRowsEl.innerHTML = html;
-      panelRowsEl.style.transform = `translateY(${firstVis * PANEL_LINE_H}px)`;
-    });
+  function renderPanel() {
+    // Virtualization disabled to allow wrapping
   }
-  panelBody.addEventListener('scroll', renderPanel, {passive:true});
-
-  function showPanel(hIdx, x, y){
+  
+  function showPanel(hIdx, rowEl){
     const h = headings[hIdx];
-    previewRange = {start: h.line, end: h.end};
-    const total = previewRange.end - previewRange.start + 1;
-    panelSpacer.style.height = (total * PANEL_LINE_H) + 'px';
+    
+    // Set the panel title to the chosen word/heading
+    const titleEl = document.querySelector('#panelHeader .panelTitle');
+    if (titleEl) {
+       titleEl.textContent = '#'.repeat(h.level) + ' ' + h.text;
+       titleEl.style.color = `var(--h${h.level})`;
+       // We can style it slightly to truncate if too long
+       titleEl.style.whiteSpace = 'nowrap';
+       titleEl.style.overflow = 'hidden';
+       titleEl.style.textOverflow = 'ellipsis';
+       titleEl.style.maxWidth = '250px';
+    }
+
+    const MAX_PREVIEW = 500;
+    // Start preview from the line AFTER the heading
+    previewRange = {start: h.line + 1, end: Math.min(h.end, h.line + MAX_PREVIEW)};
+    
+    let html = '';
+    // If the heading has no content (end === line), we can just show a placeholder
+    if (previewRange.start > h.end) {
+       html = `<div class="prow-line plain" style="padding-left:0; font-style:italic; opacity:0.5;"><span class="txt">Empty section</span></div>`;
+    } else {
+      for(let i = previewRange.start; i <= previewRange.end; i++){
+        html += panelRowHtml(i);
+      }
+    }
+    if (h.end > previewRange.end) {
+      html += `<div class="prow-line plain" style="padding-left:0; font-style:italic; opacity:0.7;"><span class="txt">(Section continues... open to read more)</span></div>`;
+    }
+    panelRowsEl.innerHTML = html;
+    panelRowsEl.style.transform = `none`;
+    panelSpacer.style.height = 'auto';
     panelBody.scrollTop = 0;
-    renderPanel();
+    
+    // restore base dimensions
+    if(savedConfig.panelWidth) panel.style.width = savedConfig.panelWidth + 'px';
+    if(savedConfig.panelHeight) panel.style.height = savedConfig.panelHeight + 'px';
+    panel.style.maxHeight = 'none';
+    
     panel.style.display = 'flex';
-    // Position near cursor; keep whatever width/height the user has resized to.
+    
+    const txtEl = rowEl.querySelector('.txt');
+    const txtRect = txtEl ? txtEl.getBoundingClientRect() : rowEl.getBoundingClientRect();
+    const rowRect = rowEl.getBoundingClientRect();
+    
     const rect = panel.getBoundingClientRect();
-    const pw = rect.width || 340, ph = rect.height || 320;
+    const pw = rect.width || 340;
+    let ph = rect.height || 320;
+    
     const vw = window.innerWidth, vh = window.innerHeight;
-    let left = x + 16, top = y + 8;
-    if(left + pw > vw) left = Math.max(4, x - pw - 16);
-    if(top + ph > vh) top = Math.max(4, vh - ph - 8);
+    const spaceAbove = rowRect.top;
+    const spaceBelow = vh - rowRect.bottom;
+    
+    let direction = 'up';
+    if (spaceAbove >= ph + 16) {
+        direction = 'up';
+    } else if (spaceBelow >= ph + 16) {
+        direction = 'down';
+    } else {
+        direction = spaceAbove >= spaceBelow ? 'up' : 'down';
+    }
+    
+    let maxH = direction === 'up' ? spaceAbove : spaceBelow;
+    if (ph > maxH) {
+       panel.style.maxHeight = maxH + 'px';
+       ph = maxH;
+    }
+    
+    let left = txtRect.left;
+    if (left + pw > vw - 16) left = Math.max(8, vw - pw - 16);
+    
+    let top = direction === 'up' ? rowRect.top - ph : rowRect.bottom;
+    
     panel.style.left = left + 'px';
     panel.style.top = top + 'px';
   }
   function hidePanelSoon(){
     clearTimeout(hideTimer);
-    hideTimer = setTimeout(()=>{ panel.style.display = 'none'; previewRange = null; }, 180);
+    hideTimer = setTimeout(()=>{ panel.style.display = 'none'; previewRange = null; }, 150);
   }
   function cancelHide(){ clearTimeout(hideTimer); }
 
@@ -558,8 +637,7 @@
     if(!row) { clearTimeout(hoverTimer); return; }
     const hIdx = parseInt(row.dataset.heading,10);
     clearTimeout(hoverTimer);
-    const x = e.clientX, y = e.clientY;
-    hoverTimer = setTimeout(()=>{ cancelHide(); showPanel(hIdx, x, y); }, 120);
+    hoverTimer = setTimeout(()=>{ cancelHide(); showPanel(hIdx, row); }, 0);
   });
   rowsEl.addEventListener('mouseout', (e)=>{
     if(e.relatedTarget && panel.contains(e.relatedTarget)) return;
@@ -579,11 +657,6 @@
     document.documentElement.style.setProperty('--panel-line-h', PANEL_LINE_H + 'px');
     document.getElementById('panelZoomLevel').textContent = Math.round((px/12)*100) + '%';
     saveConfig({panelZoomIdx});
-    if(previewRange){
-      const total = previewRange.end - previewRange.start + 1;
-      panelSpacer.style.height = (total * PANEL_LINE_H) + 'px';
-      renderPanel();
-    }
   }
   document.getElementById('panelZoomIn').addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -613,7 +686,11 @@
     new ResizeObserver(()=>{
       clearTimeout(resizeSaveTimer);
       resizeSaveTimer = setTimeout(()=>{
-        saveConfig({panelWidth: panel.offsetWidth, panelHeight: panel.offsetHeight});
+        if (panel.offsetWidth > 0 && panel.offsetHeight > 0) {
+          const maxH = parseInt(panel.style.maxHeight);
+          if (maxH && Math.abs(panel.offsetHeight - maxH) <= 2) return;
+          saveConfig({panelWidth: panel.offsetWidth, panelHeight: panel.offsetHeight});
+        }
       }, 400);
     }).observe(panel);
   }
@@ -647,11 +724,8 @@
   const sidebar = document.getElementById('sidebar');
   const sidebarNote = document.getElementById('sidebarNote');
   const fileTree = document.getElementById('fileTree');
-  const openFolderBtn = document.getElementById('openFolderBtn');
   const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
   let activeRow = null;
-
-  openFolderBtn.style.display = 'none'; // hide it since we auto-load current directory
 
   function setSidebarCollapsed(collapsed){
     sidebar.classList.toggle('collapsed', collapsed);
@@ -704,6 +778,12 @@
     return row;
   }
 
+  let expandedFolders = Array.isArray(savedConfig.expandedFolders) ? new Set(savedConfig.expandedFolders) : new Set();
+  
+  function saveExpandedFolders() {
+    saveConfig({expandedFolders: Array.from(expandedFolders)});
+  }
+
   function buildNodeDOM(node){
     const wrapper = document.createElement('div');
     const row = createRow(node);
@@ -712,8 +792,18 @@
       const childContainer = document.createElement('div');
       childContainer.style.display = node.expanded ? 'block' : 'none';
       wrapper.appendChild(childContainer);
+      
+      // if pre-expanded via saved state
+      if(node.expanded && node.childrenLoaded) {
+        for(const child of node.children) childContainer.appendChild(buildNodeDOM(child));
+      }
+
       row.addEventListener('click', async ()=>{
         node.expanded = !node.expanded;
+        if (node.expanded) expandedFolders.add(node.path);
+        else expandedFolders.delete(node.path);
+        saveExpandedFolders();
+        
         row.querySelector('.tree-arrow').textContent = node.expanded ? '▾' : '▸';
         if(node.expanded){
           if(!node.childrenLoaded) await loadChildren(node);
@@ -734,6 +824,7 @@
           if(activeRow) activeRow.classList.remove('active');
           row.classList.add('active');
           activeRow = row;
+          saveConfig({lastOpenFile: node.path});
         }catch(err){
           console.error(err);
           alert('Could not read file: ' + node.name);
@@ -743,17 +834,172 @@
     return wrapper;
   }
 
+  // --- Search functionality ---
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  let searchDebounce = null;
+  let searchAbort = null;
+
+  async function performSearch(q) {
+    if (!q) {
+      searchResults.style.display = 'none';
+      return;
+    }
+    searchResults.style.display = 'block';
+    searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
+    
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
+    
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q), { signal: searchAbort.signal });
+      if (!res.ok) throw new Error('Search failed');
+      const results = await res.json();
+      
+      if (results.length === 0) {
+        searchResults.innerHTML = '<div class="search-loading">No results found.</div>';
+        return;
+      }
+      
+      let html = '';
+      for (const r of results) {
+        html += `<div class="search-result" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
+          <div class="s-file">${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span></div>
+          <div class="s-text">${escapeHtml(r.text)}</div>
+        </div>`;
+      }
+      searchResults.innerHTML = html;
+    } catch(e) {
+      if (e.name !== 'AbortError') {
+        searchResults.innerHTML = '<div class="search-loading">Error searching.</div>';
+      }
+    }
+  }
+
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    const q = e.target.value.trim();
+    searchDebounce = setTimeout(() => performSearch(q), 500);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      clearTimeout(searchDebounce);
+      performSearch(e.target.value.trim());
+    } else if (e.key === 'Escape') {
+      searchResults.style.display = 'none';
+      searchInput.blur();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('searchBox').contains(e.target)) {
+      searchResults.style.display = 'none';
+    }
+  });
+
+  searchResults.addEventListener('click', async (e) => {
+    const resDiv = e.target.closest('.search-result');
+    if (!resDiv) return;
+    const file = resDiv.dataset.file;
+    const line = parseInt(resDiv.dataset.line, 10);
+    
+    searchResults.style.display = 'none';
+    
+    try {
+      const res = await fetch('/api/file?path=' + encodeURIComponent(file));
+      if(!res.ok) throw new Error('File not found');
+      const text = await res.text();
+      loadText(text, file);
+      
+      // try to scroll to line
+      setTimeout(() => {
+        let hIdx = lineToHeadingIdx.get(line);
+        if (hIdx === undefined) {
+          // find nearest heading to expand
+          let ctx = findHeadingAtOrBefore(line);
+          if (ctx) {
+            // expand parents
+            let curr = ctx;
+            while (curr && curr.parent !== -1) {
+              headings[curr.parent].collapsed = false;
+              curr = headings[curr.parent];
+            }
+          }
+        }
+        computeSegments();
+        render();
+        // find visual row for line
+        let visRow = 0;
+        let found = false;
+        for (let i=0; i<segments.length; i++) {
+          const [s, e] = segments[i];
+          if (line >= s && line <= e) {
+            visRow += (line - s);
+            found = true;
+            break;
+          } else {
+            visRow += (e - s + 1);
+          }
+        }
+        if (found) {
+          scroller.scrollTop = Math.max(0, (visRow * LINE_H) - (scroller.clientHeight / 2));
+        }
+      }, 50);
+      
+    } catch(err) {
+      console.error(err);
+      alert('Could not read file: ' + file);
+    }
+  });
+
   async function initSidebar() {
     const root = {
       name: 'Workspace', kind: 'directory',
       path: '', depth: 0, expanded: true, childrenLoaded: false, children: []
     };
-    await loadChildren(root);
+    
+    async function loadTree(n) {
+      if (!n.childrenLoaded) await loadChildren(n);
+      for (const child of n.children) {
+        if (child.kind === 'directory' && expandedFolders.has(child.path)) {
+          child.expanded = true;
+          await loadTree(child);
+        }
+      }
+    }
+    
+    await loadTree(root);
     fileTree.innerHTML = '';
     sidebarNote.textContent = '';
     const childContainer = document.createElement('div');
     fileTree.appendChild(childContainer);
     for(const child of root.children) childContainer.appendChild(buildNodeDOM(child));
+    
+    if (savedConfig.lastOpenFile) {
+      try {
+        const res = await fetch('/api/file?path=' + encodeURIComponent(savedConfig.lastOpenFile));
+        if (res.ok) {
+           const text = await res.text();
+           loadText(text, savedConfig.lastOpenFile);
+           // safely find the element (path could have quotes)
+           const r = fileTree.querySelector(`[data-path="${savedConfig.lastOpenFile.replace(/(["\\])/g, '\\$1')}"]`);
+           if (r) {
+             r.classList.add('active');
+             activeRow = r;
+           }
+        }
+      } catch(e){}
+    }
+  }
+  
+  const explorerCollapseAll = document.getElementById('explorerCollapseAll');
+  if (explorerCollapseAll) {
+    explorerCollapseAll.addEventListener('click', () => {
+      expandedFolders.clear();
+      saveExpandedFolders();
+      initSidebar();
+    });
   }
   
   initSidebar();
