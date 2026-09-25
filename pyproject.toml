@@ -1,6 +1,6 @@
 [project]
 name = "mdviewer"
-version = "0.1.13"
+version = "1.3.0"
 description = "Fast Markdown Outline Reader"
 authors = [{ name = "DK" }]
 license = { text = "Apache-2.0" }
