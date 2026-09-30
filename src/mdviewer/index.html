@@ -3180,9 +3180,13 @@
   }
   .double-page-mode-active .doc-body-container {
     overflow: hidden !important;
-    height: calc(100% - 48px);
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
     box-sizing: border-box;
-    padding: 16px 36px 8px !important;
+    padding: 20px 48px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   .double-page-mode-active #docBody {
     column-count: 2 !important;
@@ -3195,7 +3199,8 @@
     max-height: 100% !important;
     max-width: 100% !important;
     width: 100% !important;
-    padding: 12px 16px 24px !important;
+    margin: 0 !important;
+    padding: 0 0 24px 0 !important;
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: var(--accent) var(--bg2);
@@ -3209,6 +3214,9 @@
     break-inside: avoid;
     break-after: avoid;
   }
+  .double-page-mode-active #docBody p,
+  .double-page-mode-active #docBody ul,
+  .double-page-mode-active #docBody ol,
   .double-page-mode-active #docBody pre,
   .double-page-mode-active #docBody blockquote,
   .double-page-mode-active #docBody table,
@@ -14623,6 +14631,17 @@
     }
   }
 
+  function getDoublePageStride() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return 800;
+    const style = window.getComputedStyle(docBody);
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const colGap = parseFloat(style.columnGap) || 60;
+    const contentW = Math.max(100, docBody.clientWidth - padLeft - padRight);
+    return Math.round(contentW + colGap);
+  }
+
   function setDoublePageMode(enabled) {
     isDoublePageMode = enabled;
     localStorage.setItem('mdviewer-double-page', enabled);
@@ -14631,6 +14650,8 @@
     const hud = document.getElementById('docReadingHud');
     const btn1 = document.getElementById('docDoublePageBtn');
     const btn2 = document.getElementById('docFloatDoubleBtn');
+    const docBody = document.getElementById('docBody');
+    const tocSidebar = document.getElementById('docTocSidebar');
 
     if (docView) {
       docView.classList.toggle('double-page-mode-active', enabled);
@@ -14647,7 +14668,19 @@
       btn2.textContent = enabled ? '📄 Single-Page' : '📖 Double-Page';
     }
 
-    updateDoublePageLayout();
+    if (enabled && tocSidebar && !tocSidebar.classList.contains('collapsed')) {
+      tocSidebar.classList.add('collapsed');
+    }
+
+    if (docBody) {
+      if (enabled) {
+        docBody.scrollTop = 0;
+      } else {
+        docBody.scrollLeft = 0;
+      }
+    }
+
+    setTimeout(updateDoublePageLayout, 100);
   }
 
   function setWideLayout(enabled) {
@@ -14670,7 +14703,7 @@
       btn2.textContent = enabled ? '⇥ Centered' : '↔ Wide';
     }
 
-    updateDoublePageLayout();
+    setTimeout(updateDoublePageLayout, 100);
   }
 
   function updateDoublePageLayout() {
@@ -14679,14 +14712,12 @@
     const hudPageText = document.getElementById('docHudPageText');
     if (!docBody) return;
 
-    const scrollWidth = docBody.scrollWidth;
-    const clientWidth = docBody.clientWidth;
-    const scrollLeft = docBody.scrollLeft;
+    const stride = getDoublePageStride();
+    if (stride <= 0) return;
 
-    if (clientWidth <= 0) return;
-
-    const totalPages = Math.max(1, Math.ceil(scrollWidth / clientWidth));
-    const currentPage = Math.min(totalPages, Math.max(1, Math.round(scrollLeft / clientWidth) + 1));
+    const maxScroll = Math.max(0, docBody.scrollWidth - docBody.clientWidth);
+    const totalPages = Math.max(1, Math.round(maxScroll / stride) + 1);
+    const currentPage = Math.min(totalPages, Math.max(1, Math.round(docBody.scrollLeft / stride) + 1));
     const percent = Math.min(100, Math.round((currentPage / totalPages) * 100));
 
     if (hudPageText) {
@@ -14697,15 +14728,23 @@
   function docPageLeft() {
     const docBody = document.getElementById('docBody');
     if (!docBody) return;
-    docBody.scrollBy({ left: -docBody.clientWidth, behavior: 'smooth' });
-    setTimeout(updateDoublePageLayout, 150);
+    const stride = getDoublePageStride();
+    const currentSpread = Math.round(docBody.scrollLeft / stride);
+    const prevSpread = Math.max(0, currentSpread - 1);
+    docBody.scrollTo({ left: prevSpread * stride, behavior: 'smooth' });
+    setTimeout(updateDoublePageLayout, 220);
   }
 
   function docPageRight() {
     const docBody = document.getElementById('docBody');
     if (!docBody) return;
-    docBody.scrollBy({ left: docBody.clientWidth, behavior: 'smooth' });
-    setTimeout(updateDoublePageLayout, 150);
+    const stride = getDoublePageStride();
+    const maxScroll = Math.max(0, docBody.scrollWidth - docBody.clientWidth);
+    const maxSpread = Math.ceil(maxScroll / stride);
+    const currentSpread = Math.round(docBody.scrollLeft / stride);
+    const nextSpread = Math.min(maxSpread, currentSpread + 1);
+    docBody.scrollTo({ left: nextSpread * stride, behavior: 'smooth' });
+    setTimeout(updateDoublePageLayout, 220);
   }
 
   function attachDocCodeCopyButtons() {
@@ -14754,11 +14793,13 @@
     for (const h of headings) {
       if (h.textContent.trim() === headingText.trim()) {
         if (isDoublePageMode) {
-          h.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+          const stride = getDoublePageStride();
+          const targetSpread = Math.floor(h.offsetLeft / stride);
+          docBody.scrollTo({ left: targetSpread * stride, behavior: 'smooth' });
         } else {
           h.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        setTimeout(updateDoublePageLayout, 200);
+        setTimeout(updateDoublePageLayout, 220);
         break;
       }
     }
@@ -15708,11 +15749,66 @@
     }
 
     const docBody = document.getElementById('docBody');
+    const docBodyContainer = document.getElementById('docBodyContainer');
     if (docBody) {
       docBody.addEventListener('scroll', () => {
         if (isDoublePageMode) updateDoublePageLayout();
       }, { passive: true });
     }
+
+    let dpWheelAccumulator = 0;
+    let dpWheelTimer = null;
+    let isDpWheelTurning = false;
+
+    function handleDoublePageWheel(e) {
+      if (!isDoublePageMode) return;
+      if (e.ctrlKey || e.metaKey) return; // Allow pinch-zoom
+
+      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (Math.abs(delta) < 2) return;
+
+      e.preventDefault();
+
+      // Check if discrete mouse wheel click
+      const isDiscrete = e.deltaMode === 1 || Math.abs(delta) >= 40;
+
+      if (isDiscrete) {
+        if (!isDpWheelTurning) {
+          isDpWheelTurning = true;
+          if (delta > 0) {
+            docPageRight();
+          } else {
+            docPageLeft();
+          }
+          setTimeout(() => { isDpWheelTurning = false; }, 260);
+        }
+      } else {
+        // Continuous trackpad gesture
+        dpWheelAccumulator += delta;
+        const THRESHOLD = 50;
+        if (Math.abs(dpWheelAccumulator) >= THRESHOLD) {
+          if (dpWheelAccumulator > 0) {
+            docPageRight();
+          } else {
+            docPageLeft();
+          }
+          dpWheelAccumulator = 0;
+        }
+        clearTimeout(dpWheelTimer);
+        dpWheelTimer = setTimeout(() => { dpWheelAccumulator = 0; }, 250);
+      }
+    }
+
+    if (docBody) {
+      docBody.addEventListener('wheel', handleDoublePageWheel, { passive: false });
+    }
+    if (docBodyContainer) {
+      docBodyContainer.addEventListener('wheel', handleDoublePageWheel, { passive: false });
+    }
+
+    window.addEventListener('resize', () => {
+      if (isDoublePageMode) updateDoublePageLayout();
+    });
 
     setDoublePageMode(isDoublePageMode);
     setWideLayout(isWideLayout);
@@ -16345,12 +16441,15 @@
     }
 
     if (currentAppMode === 'document' && isDoublePageMode) {
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
-        e.preventDefault();
-        docPageRight();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
-        e.preventDefault();
-        docPageLeft();
+      const activeTag = document.activeElement ? document.activeElement.tagName : '';
+      if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'ArrowDown' || (e.key === ' ' && !e.shiftKey)) {
+          e.preventDefault();
+          docPageRight();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'ArrowUp' || (e.key === ' ' && e.shiftKey)) {
+          e.preventDefault();
+          docPageLeft();
+        }
       }
     }
   });
