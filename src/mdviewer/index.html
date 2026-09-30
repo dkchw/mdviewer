@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MD Viewer — Fast Outline Reader</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Viewer — Ultra-Fast Markdown Workstation & Reader</title>
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
   :root{
     --bg:#1a1b26; --bg2:#1f2335; --fg:#c0caf5; --muted:#565f89;
@@ -237,7 +242,7 @@
 
   /* Flashcard Mode */
   #flashcardView{
-    display:none;flex-direction:column;height:100%;width:100%;
+    display:none;flex-direction:column;flex:1 1 auto;min-height:0;width:100%;
     background:var(--bg);position:relative;overflow:hidden;
   }
   #flashcardToolbar{
@@ -2446,6 +2451,245 @@
     transform: scale(1.1);
   }
 
+  /* Media & Anki Import Styles */
+  .md-audio-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(187, 154, 247, 0.15);
+    color: #bb9af7;
+    border: 1px solid rgba(187, 154, 247, 0.35);
+    padding: 0 6px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .md-audio-pill:hover {
+    background: rgba(187, 154, 247, 0.3);
+    color: #fff;
+    border-color: #bb9af7;
+  }
+  .md-img-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(122, 162, 247, 0.15);
+    color: #7aa2f7;
+    border: 1px solid rgba(122, 162, 247, 0.35);
+    padding: 1px 7px 1px 3px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    user-select: none;
+    transition: all 0.18s ease;
+    vertical-align: middle;
+    line-height: 1.4;
+    max-height: 22px;
+  }
+  .md-img-pill:hover {
+    background: rgba(122, 162, 247, 0.3);
+    color: #fff;
+    border-color: #7aa2f7;
+    box-shadow: 0 0 10px rgba(122, 162, 247, 0.35);
+    transform: translateY(-1px);
+  }
+  .md-img-thumb {
+    width: 17px;
+    height: 17px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid rgba(122, 162, 247, 0.4);
+    display: inline-block;
+    flex-shrink: 0;
+    background: #1a1b26;
+  }
+  .md-img-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+  .fc-img-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 14px 0;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .fc-card-img {
+    max-width: 100%;
+    max-height: 360px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    cursor: zoom-in;
+    object-fit: contain;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .fc-card-img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  }
+  .fc-front-media {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 14px 0;
+    width: 100%;
+    max-width: 520px;
+  }
+  .fc-front-img-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+  .fc-front-card-img {
+    max-height: 280px;
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    cursor: zoom-in;
+    object-fit: contain;
+  }
+  .fc-audio-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(187, 154, 247, 0.08);
+    border: 1px solid rgba(187, 154, 247, 0.25);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin: 8px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .fc-audio-wrap:hover {
+    border-color: rgba(187, 154, 247, 0.6);
+    background: rgba(187, 154, 247, 0.14);
+  }
+  .fc-audio-wrap.fc-audio-active {
+    border-color: #bb9af7;
+    background: rgba(187, 154, 247, 0.22);
+    box-shadow: 0 0 12px rgba(187, 154, 247, 0.35);
+  }
+  .fc-audio-play-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #bb9af7;
+    color: #1a1b26;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  }
+  .fc-audio-play-btn:hover {
+    transform: scale(1.08);
+    background: #c099ff;
+  }
+  .fc-audio-wrap audio {
+    flex: 1;
+    height: 34px;
+    min-width: 140px;
+    outline: none;
+  }
+  .fc-audio-caption {
+    font-size: 12px;
+    font-weight: 600;
+    color: #bb9af7;
+    white-space: nowrap;
+    user-select: none;
+    transition: filter 0.15s ease;
+    cursor: pointer;
+  }
+  .fc-audio-caption:hover {
+    filter: brightness(1.25);
+  }
+  @keyframes audioPulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.08); filter: brightness(1.3); box-shadow: 0 0 10px rgba(187, 154, 247, 0.6); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  .audio-playing-pulse {
+    animation: audioPulse 0.5s ease-in-out;
+  }
+  .anki-dropzone {
+    border: 2px dashed rgba(187, 154, 247, 0.4);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(187, 154, 247, 0.03);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .anki-dropzone:hover, .anki-dropzone.dragover {
+    border-color: #bb9af7;
+    background: rgba(187, 154, 247, 0.09);
+  }
+  .anki-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .anki-stat-card {
+    background: #191b28;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .anki-stat-num {
+    font-size: 18px;
+    font-weight: 700;
+    color: #bb9af7;
+  }
+  .anki-stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .anki-recent-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #242737;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .anki-recent-item:hover {
+    background: rgba(187, 154, 247, 0.12);
+    border-color: #bb9af7;
+  }
+  @keyframes fc-pulse-bar {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
   /* Modals for AI settings, prompt editor, rerank, cleanup */
   .ai-modal-overlay {
     position: fixed;
@@ -2594,40 +2838,711 @@
     background: rgba(247, 118, 142, 0.15);
     border-color: rgba(247, 118, 142, 0.4);
   }
+
+  /* ── Mode Switcher & Rust Core Badge ──────────────── */
+  .mode-switcher-container {
+    display: inline-flex;
+    align-items: center;
+    background: #14151f;
+    border: 1px solid #3b4261;
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+    margin-right: 4px;
+  }
+  .mode-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .mode-tab-btn:hover {
+    color: var(--fg);
+    background: rgba(255,255,255,0.06);
+  }
+  .mode-tab-btn.active {
+    background: #24283b;
+    color: #7aa2f7;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .rust-core-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ff9e64;
+    background: rgba(255,158,100,0.12);
+    border: 1px solid rgba(255,158,100,0.3);
+    padding: 4px 9px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* ── Document View ────────────────────────────────── */
+  #documentView {
+    flex: 1;
+    display: none;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+  }
+  .doc-layout {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .doc-toc-sidebar {
+    width: 260px;
+    min-width: 220px;
+    max-width: 380px;
+    height: 100%;
+    background: #16161e;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width 0.2s ease, margin-left 0.2s ease;
+  }
+  .doc-toc-sidebar.collapsed {
+    margin-left: -260px;
+  }
+  .doc-toc-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: #14151f;
+  }
+  .doc-toc-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .doc-toc-item {
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: var(--fg);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    text-decoration: none;
+  }
+  .doc-toc-item:hover {
+    background: rgba(122,162,247,0.12);
+    color: #7aa2f7;
+  }
+  .doc-toc-item.lvl-1 { font-weight: 700; color: #7aa2f7; }
+  .doc-toc-item.lvl-2 { padding-left: 18px; font-weight: 600; color: #bb9af7; }
+  .doc-toc-item.lvl-3 { padding-left: 28px; color: #7dcfff; }
+  .doc-toc-item.lvl-4 { padding-left: 38px; color: #9ece6a; }
+
+  .doc-content-wrap {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .doc-floating-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(26,27,38,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .doc-tool-btn {
+    background: #242737;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-tool-btn:hover { background: #2c3040; color: #fff; }
+  .doc-tool-btn.active {
+    background: #24283b;
+    color: #7aa2f7;
+    border-color: #7aa2f7;
+  }
+
+  .doc-body-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  /* Prose Styling */
+  #docBody, #docLiveBody {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14.5px;
+    line-height: 1.75;
+    color: #c0caf5;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 36px 96px;
+    transition: max-width 0.2s ease;
+    box-sizing: border-box;
+  }
+  .wide-layout-active #docBody {
+    max-width: 100% !important;
+    padding: 32px 48px 96px;
+  }
+  #docBody h1, #docLiveBody h1, #docBody h2, #docLiveBody h2, #docBody h3, #docLiveBody h3,
+  #docBody h4, #docLiveBody h4, #docBody h5, #docLiveBody h5, #docBody h6, #docLiveBody h6 {
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+    font-weight: 600;
+    line-height: 1.3;
+    scroll-margin-top: 60px;
+  }
+  #docBody h1, #docLiveBody h1 { font-size: 2.1em; color: #7aa2f7; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+  #docBody h2, #docLiveBody h2 { font-size: 1.55em; color: #bb9af7; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+  #docBody h3, #docLiveBody h3 { font-size: 1.25em; color: #7dcfff; }
+  #docBody h4, #docLiveBody h4 { font-size: 1.1em; color: #9ece6a; }
+  #docBody p, #docLiveBody p { margin-top: 0; margin-bottom: 16px; }
+  #docBody a, #docLiveBody a { color: #7aa2f7; text-decoration: none; }
+  #docBody a:hover, #docLiveBody a:hover { text-decoration: underline; }
+  #docBody hr, #docLiveBody hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  #docBody ul, #docLiveBody ul, #docBody ol, #docLiveBody ol { margin-top: 0; margin-bottom: 16px; padding-left: 26px; }
+  #docBody li, #docLiveBody li { margin-top: 4px; margin-bottom: 4px; }
+  #docBody li.task-list-item, #docLiveBody li.task-list-item { list-style-type: none; margin-left: -1.4em; display: flex; align-items: baseline; gap: 8px; }
+  #docBody input.task-checkbox, #docLiveBody input.task-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #7aa2f7;
+    margin: 0;
+    flex-shrink: 0;
+    transform: translateY(2px);
+  }
+  #docBody blockquote, #docLiveBody blockquote {
+    margin: 16px 0;
+    padding: 6px 16px;
+    color: #9aa5ce;
+    border-left: 4px solid #7aa2f7;
+    background: rgba(122,162,247,0.06);
+    border-radius: 0 6px 6px 0;
+  }
+  #docBody code, #docLiveBody code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 86%;
+    background: rgba(115,218,202,0.12);
+    color: #73daca;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(115,218,202,0.2);
+  }
+  #docBody pre, #docLiveBody pre {
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    position: relative;
+    margin: 18px 0;
+  }
+  #docBody pre code, #docLiveBody pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #c0caf5;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  #docBody table, #docLiveBody table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 18px 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  #docBody th, #docLiveBody th, #docBody td, #docLiveBody td {
+    border: 1px solid var(--border);
+    padding: 9px 16px;
+    text-align: left;
+  }
+  #docBody th, #docLiveBody th { background: #1f2335; font-weight: 600; color: #7aa2f7; }
+  #docBody mark, #docLiveBody mark { background: rgba(224,175,104,0.25); color: #ffc777; padding: 1px 4px; border-radius: 3px; }
+  #docBody img, #docLiveBody img { max-width: 100%; border-radius: 6px; border: 1px solid var(--border); margin: 12px 0; cursor: zoom-in; }
+  #docBody audio, #docLiveBody audio { width: 100%; max-width: 500px; margin: 8px 0; display: block; }
+
+  /* Obsidian Callouts in Document Mode */
+  .callout {
+    border-left: 4px solid #7aa2f7;
+    background: rgba(122,162,247,0.06);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 18px 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-right: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .callout-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #7aa2f7;
+    margin-bottom: 6px;
+  }
+  .callout-icon { font-size: 15px; }
+  .callout-content { font-size: 13.5px; color: #c0caf5; line-height: 1.6; }
+  .callout-content p:last-child { margin-bottom: 0; }
+  .callout-tip { border-left-color: #9ece6a; background: rgba(158,206,106,0.06); }
+  .callout-tip .callout-title { color: #9ece6a; }
+  .callout-warning { border-left-color: #e0af68; background: rgba(224,175,104,0.06); }
+  .callout-warning .callout-title { color: #e0af68; }
+  .callout-important { border-left-color: #bb9af7; background: rgba(187,154,247,0.06); }
+  .callout-important .callout-title { color: #bb9af7; }
+  .callout-danger { border-left-color: #f7768e; background: rgba(247,118,142,0.06); }
+  .callout-danger .callout-title { color: #f7768e; }
+
+  /* ── Double-Page 2-Column Book Mode ────────────────── */
+  .double-page-mode-active .doc-content-wrap {
+    overflow: hidden !important;
+    padding: 0 !important;
+  }
+  .double-page-mode-active .doc-body-container {
+    overflow: hidden !important;
+    height: calc(100% - 48px);
+    box-sizing: border-box;
+    padding: 16px 36px 8px !important;
+  }
+  .double-page-mode-active #docBody {
+    column-count: 2 !important;
+    column-width: auto !important;
+    column-gap: var(--col-gap, 60px) !important;
+    column-fill: auto !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 12px 16px 24px !important;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) var(--bg2);
+  }
+  .double-page-mode-active #docBody h1,
+  .double-page-mode-active #docBody h2,
+  .double-page-mode-active #docBody h3,
+  .double-page-mode-active #docBody h4,
+  .double-page-mode-active #docBody h5,
+  .double-page-mode-active #docBody h6 {
+    break-inside: avoid;
+    break-after: avoid;
+  }
+  .double-page-mode-active #docBody pre,
+  .double-page-mode-active #docBody blockquote,
+  .double-page-mode-active #docBody table,
+  .double-page-mode-active #docBody li {
+    break-inside: avoid;
+  }
+  .double-page-mode-active #docBody img,
+  .double-page-mode-active #docBody .callout,
+  .double-page-mode-active #docBody .mermaid-container {
+    break-inside: avoid;
+    max-height: calc(100vh - 180px);
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* Reading HUD */
+  .doc-reading-hud {
+    position: absolute;
+    bottom: 16px;
+    right: 32px;
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--fg);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    z-index: 40;
+  }
+  .doc-reading-hud button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .doc-reading-hud button:hover {
+    color: #7aa2f7;
+    background: rgba(122,162,247,0.12);
+  }
+  /* ── Obsidian-Style Document Editor & Live Preview ──────────────── */
+  .doc-view-mode-tabs {
+    display: inline-flex;
+    align-items: center;
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .doc-mode-tab {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-mode-tab:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .doc-mode-tab.active {
+    background: #24283b;
+    color: #7aa2f7;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .doc-editor-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    background: #16161e;
+    position: relative;
+  }
+  .doc-editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: #1a1b26;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 6px;
+    z-index: 10;
+  }
+  .doc-editor-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .doc-ed-btn {
+    background: #242737;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11.5px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+    min-width: 24px;
+    height: 25px;
+  }
+  .doc-ed-btn:hover {
+    background: #2c3040;
+    border-color: rgba(122, 162, 247, 0.4);
+    color: #7aa2f7;
+  }
+  .doc-ed-btn:active {
+    transform: scale(0.96);
+  }
+  .doc-ed-select {
+    background: #1f2335;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 11.5px;
+    cursor: pointer;
+    outline: none;
+    height: 25px;
+  }
+  .doc-ed-select:focus {
+    border-color: #7aa2f7;
+  }
+
+  .doc-editor-split-area {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  .doc-editor-pane {
+    flex: 1 1 50%;
+    min-width: 280px;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    background: #16161e;
+  }
+  .doc-split-divider {
+    width: 5px;
+    background: var(--border);
+    cursor: col-resize;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+  }
+  .doc-split-divider:hover, .doc-split-divider.dragging {
+    background: #7aa2f7;
+  }
+  .doc-live-preview-pane {
+    flex: 1 1 50%;
+    min-width: 280px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+  }
+
+  .doc-gutter {
+    width: 44px;
+    flex-shrink: 0;
+    background: #14151f;
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    overflow: hidden;
+    user-select: none;
+  }
+  .doc-line-numbers {
+    display: flex;
+    flex-direction: column;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 22px;
+    color: #444b6a;
+    text-align: right;
+    padding-right: 8px;
+  }
+  .doc-textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    background: #16161e;
+    color: #c0caf5;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 16px 20px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 22px;
+    tab-size: 2;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    caret-color: #7aa2f7;
+  }
+  .doc-textarea::selection {
+    background: rgba(122, 162, 247, 0.35);
+  }
+
+  .doc-live-header {
+    padding: 6px 14px;
+    background: #1a1b26;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .doc-live-body-container {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 24px 32px 80px;
+  }
+  #docLiveBody {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .doc-editor-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 14px;
+    background: #14151f;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .doc-status-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-status-pill.saved {
+    color: #9ece6a;
+    background: rgba(158, 206, 106, 0.12);
+    border: 1px solid rgba(158, 206, 106, 0.3);
+  }
+  .doc-status-pill.unsaved {
+    color: #ff9e64;
+    background: rgba(255, 158, 100, 0.12);
+    border: 1px solid rgba(255, 158, 100, 0.3);
+  }
+
+  /* Sidebar header action buttons */
+  .sb-header-btn {
+    background: #242737;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 6px;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .sb-header-btn:hover { background: #2c3040; color: #7aa2f7; border-color: #7aa2f7; }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="sidebar">
     <div id="sidebarHeader">
-      <span class="sbTitle">Explorer</span>
-      <button id="explorerCollapseAll" title="Collapse All Folders">Collapse</button>
+      <span class="sbTitle">Library</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button id="importFolderBtn" class="sb-header-btn" title="Import external folder into standalone library">📁 Import</button>
+        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck">📥 Anki</button>
+        <button id="newNoteBtn" class="sb-header-btn" title="New Note">➕</button>
+        <button id="newFolderBtn" class="sb-header-btn" title="New Folder">📁+</button>
+        <button id="explorerCollapseAll" class="sb-header-btn" title="Collapse All Folders">▲</button>
+      </div>
     </div>
     <div id="sidebarNote"></div>
     <div id="fileTree"></div>
   </div>
   <div id="mainPane">
   <div id="toolbar">
-    <button id="sidebarToggleBtn" title="Show/hide file explorer">☰</button>
-    <label class="filebtn" for="fileInput">Open .md file</label>
-    <input type="file" id="fileInput" accept=".md,.markdown,.txt">
-    <div class="sep"></div>
-    <button id="collapseAll">Collapse All</button>
-    <button id="expandAll">Expand All</button>
-    <button id="flashcardModeBtn" title="Study current outline as flashcards">🗂 Flashcard</button>
-    <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;" title="Explore and manage AI supplements across document outlines (review and delete mistakes)">✨ AI Notes (<span id="aiToolbarCount">0</span>)</button>
-    <button id="terminalToggleBtn" title="Toggle In-Browser Sandboxed Terminal (`)">🖥️ Terminal</button>
-    <button id="buffersOverviewBtn" style="display:none;background:#e0af6822;color:#e0af68;border:1px solid #e0af6866;font-weight:600;" title="View Active Staging Buffers">📝 0 Buffers</button>
-    <div class="sep"></div>
-    <span style="color:#a9b1d6;font-size:12px;font-weight:500;">Expand to level:</span>
-    <div class="lvlgroup" id="lvlGroup">
-      <button data-lvl="1">H1</button>
-      <button data-lvl="2">H2</button>
-      <button data-lvl="3">H3</button>
-      <button data-lvl="4">H4</button>
-      <button data-lvl="5">H5</button>
-      <button data-lvl="6">H6</button>
+    <button id="sidebarToggleBtn" title="Show/hide file explorer (Ctrl+B)">☰</button>
+
+    <!-- Unified 3-Mode Switcher -->
+    <div class="mode-switcher-container" id="modeSwitcher">
+      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
+      <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
+      <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
     </div>
+
+    <!-- Rust Engine Badge -->
+    <span id="rustCoreBadge" class="rust-core-badge" title="Accelerated by native Rust engine (mdviewer_core) with SIMD & Rayon">⚡ Rust Core</span>
+
+    <div class="sep"></div>
+
+    <!-- Outline Mode Toolbar Group -->
+    <div id="outlineToolbarGroup" style="display:inline-flex;align-items:center;gap:6px;">
+      <label class="filebtn" for="fileInput">Open .md file</label>
+      <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+      <button id="collapseAll">Collapse All</button>
+      <button id="expandAll">Expand All</button>
+      <span style="color:#a9b1d6;font-size:12px;font-weight:500;">Level:</span>
+      <div class="lvlgroup" id="lvlGroup">
+        <button data-lvl="1">H1</button>
+        <button data-lvl="2">H2</button>
+        <button data-lvl="3">H3</button>
+        <button data-lvl="4">H4</button>
+        <button data-lvl="5">H5</button>
+        <button data-lvl="6">H6</button>
+      </div>
+    </div>
+
+    <!-- Document Mode Toolbar Group -->
+    <div id="docToolbarGroup" style="display:none;align-items:center;gap:6px;">
+      <!-- Obsidian-style Sub-View Switcher -->
+      <div class="doc-view-mode-tabs" id="docViewModeTabs">
+        <button id="docSubViewReadingBtn" class="doc-mode-tab active" title="Reading View — Rendered GitHub prose & double-page [Ctrl+E]">📖 Reading</button>
+        <button id="docSubViewLiveBtn" class="doc-mode-tab" title="Live Preview — Obsidian-style split editor with real-time live preview [Ctrl+E]">⚡ Live Preview</button>
+        <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Source Editor — Full-width focused markdown editor">📝 Source</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Reading View Controls (visible when reading mode is active) -->
+      <div id="docReadingToolsGroup" style="display:inline-flex;align-items:center;gap:6px;">
+        <button id="docDoublePageBtn" class="doc-tool-btn" title="Toggle Double-Page Book Reader">📖 Double-Page</button>
+        <button id="docWideLayoutBtn" class="doc-tool-btn" title="Toggle Wide Edge-to-Edge Layout">↔ Wide</button>
+        <button id="docCheckAllBtn" class="doc-tool-btn" title="Check All Checklists">☑ Check All</button>
+        <button id="docUncheckAllBtn" class="doc-tool-btn" title="Uncheck All Checklists">☐ Uncheck All</button>
+        <button id="docToggleTocBtn" class="doc-tool-btn" title="Toggle Table of Contents">📑 TOC</button>
+      </div>
+
+      <!-- Editing View Controls (visible when live or source mode is active) -->
+      <div id="docEditingToolsGroup" style="display:none;align-items:center;gap:6px;">
+        <button id="docTopSaveBtn" class="doc-tool-btn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;" title="Save file to disk [Ctrl+S]">💾 Save</button>
+        <span id="docTopSaveStatus" class="doc-status-pill saved">✓ Saved</span>
+        <button id="docToggleTOCInEditorBtn" class="doc-tool-btn" title="Toggle Table of Contents Sidebar">📑 TOC</button>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+    <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;" title="Explore and manage AI supplements across document outlines">✨ AI Notes (<span id="aiToolbarCount">0</span>)</button>
+    <button id="terminalToggleBtn" title="Toggle In-Browser Sandboxed Terminal (`)">🖥️ Terminal</button>
+
     <div class="sep"></div>
     <div id="zoomGroup">
       <button id="zoomOut" title="Decrease text size">A−</button>
@@ -2642,7 +3557,7 @@
         <button id="scopeAllBtn" title="Search workspace (Ctrl+Shift+F)">All</button>
       </div>
       <div class="search-input-wrap">
-        <input type="text" id="searchInput" placeholder="Find in file (Ctrl+F)..." spellcheck="false" autocomplete="off" />
+        <input type="text" id="searchInput" placeholder="Find (Ctrl+F)..." spellcheck="false" autocomplete="off" />
         <span id="searchCount"></span>
         <button id="searchPrevBtn" title="Previous match (Shift+Enter)">▲</button>
         <button id="searchNextBtn" title="Next match (Enter)">▼</button>
@@ -2659,11 +3574,155 @@
       <div id="rows"></div>
     </div>
   </div>
+
+  <!-- Document View (Document Mode [2]) -->
+  <div id="documentView">
+    <div class="doc-layout" id="docLayout">
+      <!-- Collapsible TOC Sidebar -->
+      <div id="docTocSidebar" class="doc-toc-sidebar">
+        <div class="doc-toc-header">
+          <span>Table of Contents</span>
+          <button id="docTocCollapseBtn" class="doc-tool-btn" style="padding:1px 6px;font-size:11px;" title="Close TOC">✕</button>
+        </div>
+        <div id="docTocList" class="doc-toc-list"></div>
+      </div>
+      
+      <!-- Document Content Area -->
+      <div id="docContentWrap" class="doc-content-wrap">
+        <div class="doc-floating-bar" id="docFloatingBar">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="doc-view-mode-tabs">
+              <button id="docFloatSubReadingBtn" class="doc-mode-tab active" title="Reading View (Ctrl+E)">📖 Reading</button>
+              <button id="docFloatSubLiveBtn" class="doc-mode-tab" title="Live Preview (Ctrl+E)">⚡ Live Preview</button>
+              <button id="docFloatSubSourceBtn" class="doc-mode-tab" title="Source Editor">📝 Source</button>
+            </div>
+            <div class="sep"></div>
+            <button id="docFloatDoubleBtn" class="doc-tool-btn" title="Toggle Double-Page Book Reader">📖 Double-Page</button>
+            <button id="docFloatWideBtn" class="doc-tool-btn" title="Toggle Wide Edge-to-Edge Layout">↔ Wide</button>
+            <div class="sep"></div>
+            <button id="docFloatCheckAllBtn" class="doc-tool-btn" title="Check All Tasks">☑ Check All</button>
+            <button id="docFloatUncheckAllBtn" class="doc-tool-btn" title="Uncheck All Tasks">☐ Uncheck All</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button id="docFloatEditBtn" class="doc-tool-btn" style="background:rgba(122,162,247,0.18);color:#7aa2f7;border-color:rgba(122,162,247,0.4);font-weight:600;" title="Edit Note (Ctrl+E)">✏️ Edit Note</button>
+            <span id="docWordCount" style="font-size:11.5px;color:var(--muted);">0 words</span>
+            <span id="docReadingTime" style="font-size:11.5px;color:var(--muted);">1 min read</span>
+            <span id="docRenderSpeed" style="font-size:11px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ 0ms</span>
+          </div>
+        </div>
+
+        <!-- 1. Reading Mode Container -->
+        <div id="docBodyContainer" class="doc-body-container">
+          <div id="docBody" class="md-body markdown-body"></div>
+        </div>
+
+        <!-- 2. Obsidian-like Live Preview & Document Editor Container -->
+        <div id="docEditorContainer" class="doc-editor-container" style="display:none;">
+          <!-- Editor Formatting Toolbar -->
+          <div id="docEditorToolbar" class="doc-editor-toolbar">
+            <div class="doc-editor-btn-group">
+              <button class="doc-ed-btn" id="edBtnBold" title="Bold (Ctrl+B)"><b>B</b></button>
+              <button class="doc-ed-btn" id="edBtnItalic" title="Italic (Ctrl+I)"><i>I</i></button>
+              <button class="doc-ed-btn" id="edBtnStrike" title="Strikethrough"><s>S</s></button>
+              <div class="sep" style="height:16px;"></div>
+              <button class="doc-ed-btn" id="edBtnH1" title="Heading 1" style="font-weight:700;color:#7aa2f7;">H1</button>
+              <button class="doc-ed-btn" id="edBtnH2" title="Heading 2" style="font-weight:700;color:#bb9af7;">H2</button>
+              <button class="doc-ed-btn" id="edBtnH3" title="Heading 3" style="font-weight:700;color:#7dcfff;">H3</button>
+              <div class="sep" style="height:16px;"></div>
+              <button class="doc-ed-btn" id="edBtnTask" title="Task List item (Ctrl+L)">☑ Task</button>
+              <button class="doc-ed-btn" id="edBtnBullet" title="Bullet List">• List</button>
+              <button class="doc-ed-btn" id="edBtnNumList" title="Numbered List">1. List</button>
+              <div class="sep" style="height:16px;"></div>
+              <button class="doc-ed-btn" id="edBtnQuote" title="Blockquote">” Quote</button>
+              <select id="edCalloutSelect" class="doc-ed-select" title="Insert Obsidian Callout">
+                <option value="" disabled selected>✨ Callout ▾</option>
+                <option value="NOTE">ℹ️ Note</option>
+                <option value="TIP">💡 Tip</option>
+                <option value="IMPORTANT">⚡ Important</option>
+                <option value="WARNING">⚠️ Warning</option>
+                <option value="CAUTION">🛑 Caution</option>
+              </select>
+              <div class="sep" style="height:16px;"></div>
+              <button class="doc-ed-btn" id="edBtnCode" title="Code Block / Inline">&lt;/&gt;</button>
+              <button class="doc-ed-btn" id="edBtnLink" title="Insert Link (Ctrl+K)">🔗 Link</button>
+              <button class="doc-ed-btn" id="edBtnWiki" title="Obsidian Wikilink">[[ ]]</button>
+              <button class="doc-ed-btn" id="edBtnMath" title="KaTeX Math ($ or $$)">∑ Math</button>
+              <button class="doc-ed-btn" id="edBtnTable" title="Insert Table">⊞ Table</button>
+              <button class="doc-ed-btn" id="edBtnHr" title="Horizontal Divider">—</button>
+            </div>
+
+            <div class="doc-editor-btn-group">
+              <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;margin-right:6px;">
+                <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
+                <span>Auto-save</span>
+              </label>
+              <span id="edSaveStatusPill" class="doc-status-pill saved">✓ Saved</span>
+              <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:3px 10px;" title="Save to disk (Ctrl+S)">💾 Save</button>
+              <button class="doc-tool-btn" id="edBackToReadingBtn" title="Back to Reading Mode (Ctrl+E)">📖 Read</button>
+            </div>
+          </div>
+
+          <!-- Split Workspace Area -->
+          <div id="docEditorSplitArea" class="doc-editor-split-area">
+            <!-- Left Pane: Editor with Gutter -->
+            <div id="docEditorPane" class="doc-editor-pane">
+              <div id="docGutter" class="doc-gutter">
+                <div id="docLineNumbers" class="doc-line-numbers">1</div>
+              </div>
+              <textarea id="docTextarea" class="doc-textarea" spellcheck="false" placeholder="Write markdown content here..."></textarea>
+            </div>
+
+            <!-- Resizable Split Divider -->
+            <div id="docSplitDivider" class="doc-split-divider" title="Drag to resize panes"></div>
+
+            <!-- Right Pane: Live Rendered Preview -->
+            <div id="docLivePreviewPane" class="doc-live-preview-pane">
+              <div class="doc-live-header">
+                <span style="font-weight:600;font-size:12px;color:#7aa2f7;display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:14px;">⚡</span> Live Preview (Obsidian Engine)
+                </span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span id="docLiveStats" style="font-size:11px;color:var(--muted);">0 words</span>
+                  <span id="docLiveRenderSpeed" class="rust-speed-badge" style="font-size:10.5px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:1px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ Rust 0ms</span>
+                </div>
+              </div>
+              <div id="docLiveBodyContainer" class="doc-live-body-container">
+                <div id="docLiveBody" class="md-body markdown-body"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Editor Footer Status Bar -->
+          <div id="docEditorStatusBar" class="doc-editor-status-bar">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span id="edFooterStatusPill" class="doc-status-pill saved">✓ Saved</span>
+              <span id="edFooterFilePath" style="color:var(--muted);font-size:11.5px;">Welcome.md</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;color:var(--muted);font-size:11.5px;">
+              <span id="edFooterCursor">Ln 1, Col 1</span>
+              <span id="edFooterWordCount">0 words</span>
+              <span id="edFooterLineCount">1 lines</span>
+              <span id="edFooterCharCount">0 chars</span>
+              <span id="edFooterReadingTime">1 min read</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Double Page Reading HUD -->
+        <div id="docReadingHud" class="doc-reading-hud" style="display:none;">
+          <button id="docPrevPageBtn" title="Previous Page (Left Arrow / PageUp)">◀</button>
+          <span id="docHudPageText">Page 1 / 1 (100%)</span>
+          <button id="docNextPageBtn" title="Next Page (Right Arrow / PageDown / Space)">▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="flashcardView">
     <div id="flashcardToolbar">
       <button id="fcExitBtn" title="Back to Outline (Esc)">← Back to Outline</button>
       <button id="fcSidebarToggleBtn" title="Toggle File Explorer (E)">📁 Explorer</button>
       <button id="fcOpenFolderDeckBtn" title="Study an entire folder as a massive flashcard deck at any heading level">🎴 Folder Deck</button>
+      <button id="fcAnkiImportBtn" style="background:rgba(187,154,247,0.15);color:#bb9af7;border:1px solid rgba(187,154,247,0.3);font-weight:600;" title="Import Anki .apkg deck to study">📥 Import Anki</button>
       <span id="fcFolderDeckBadge" class="fc-deck-badge" style="display:none;"></span>
       <div class="sep"></div>
       <div class="sep"></div>
@@ -2688,6 +3747,7 @@
       <button id="fcColToggleBtn" title="Toggle 2-Column Page Mode vs 1-Column Scroll (C)">❚❚ 2-Col Page</button>
       <button id="fcFullscreenBtn" title="Toggle Fullscreen (F)">⛶ Fullscreen</button>
       <button id="fcAnimToggleBtn" title="Toggle flashcard animation (turn off for instant flip)">🎬 Animation: On</button>
+      <button id="fcAudioAutoplayBtn" title="Toggle Audio Auto-play on card flip or reveal (Shift+A)">🔊 Audio: On</button>
       <div class="sep"></div>
       <div class="sep"></div>
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
@@ -2707,6 +3767,7 @@
               <span id="fcFrontZoomLevel" title="Reset text size (0)">100%</span>
               <button id="fcFrontZoomIn" title="Increase text size (+ or Ctrl++)">A+</button>
             </div>
+            <button id="fcFrontAudioBtn" style="display:none;background:rgba(122,162,247,0.18);color:#7aa2f7;border:1px solid rgba(122,162,247,0.4);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Play card audio (R)">🔊 Audio (R)</button>
             <button id="fcFrontGenBackBtn" style="display:none;background:rgba(187,154,247,0.18);color:#bb9af7;border:1px solid rgba(187,154,247,0.4);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Generate card back with AI">⚡ Gen Back</button>
             <button id="fcFrontEditBtn" title="Edit Card Content (Ctrl+E)">✏️ Edit</button>
             <button id="fcFrontAnimBtn" title="Toggle flashcard animation (turn off for instant flip)">🎬 Anim: On</button>
@@ -2715,7 +3776,8 @@
           <div class="fc-badge" id="fcLevelBadge">H1</div>
           <div class="fc-breadcrumb" id="fcBreadcrumb"></div>
           <div class="fc-front-title" id="fcFrontTitle">Title</div>
-          <div class="fc-hint">Click card or press <b>Space / W / Enter</b> to flip</div>
+          <div class="fc-front-media" id="fcFrontMedia" style="display:none;"></div>
+          <div class="fc-hint">Click card or press <b>Space / W / Enter</b> to flip • <b>R</b> for audio</div>
         </div>
         <!-- Back Face -->
         <div class="fc-face fc-back" id="fcBackFace">
@@ -2740,6 +3802,7 @@
                 <button id="fcCardZoomIn" title="Increase text size (+ or Ctrl++)">A+</button>
               </div>
               <div class="fc-back-controls">
+                <button id="fcBackAudioBtn" style="display:none;background:rgba(122,162,247,0.18);color:#7aa2f7;border:1px solid rgba(122,162,247,0.4);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Replay card audio (R)">🔊 Replay (R)</button>
                 <button id="fcCardEditBtn" title="Edit Card Content (Ctrl+E)">✏️ Edit</button>
                 <button id="fcCardColBtn" title="Toggle 2-Column Page Mode vs 1-Column Scroll (C)">❚❚ 2 Col</button>
                 <button id="fcCardAnimBtn" title="Toggle flashcard animation (turn off for instant flip)">🎬 Anim: On</button>
@@ -2762,7 +3825,7 @@
             <div class="fc-back-content" id="fcBackContent"></div>
             <div class="fc-back-spacer" id="fcBackSpacer" style="display:none;position:absolute;top:0;left:0;width:1px;height:1px;pointer-events:none;opacity:0;"></div>
           </div>
-          <div class="fc-hint" style="padding:5px 12px;background:#191b29;border-top:1px solid var(--border);margin-top:0;">Click card or press <b>Space / W / Enter</b> to flip back</div>
+          <div class="fc-hint" style="padding:5px 12px;background:#191b29;border-top:1px solid var(--border);margin-top:0;">Click card or press <b>Space / W / Enter</b> to flip back • <b>R</b> to replay audio</div>
         </div>
 
         <!-- Card In-Place Editor -->
@@ -3238,6 +4301,18 @@
         </div>
         <span style="font-size:11px;color:var(--muted);margin-top:2px;">Default is <b>OFF</b>. When turned off, generation only runs when you explicitly click Generate or Batch.</span>
       </div>
+
+      <!-- Flashcard Audio Settings -->
+      <div class="ai-modal-field" style="margin-top:12px;">
+        <label>Flashcard Audio Playback:</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+          <input type="checkbox" id="fcAudioAutoplayCheck" style="cursor:pointer;width:16px;height:16px;accent-color:var(--accent);" />
+          <label for="fcAudioAutoplayCheck" style="margin:0;cursor:pointer;font-size:12.5px;color:var(--fg);font-weight:normal;">
+            Automatically play audio when card flips or reveals (Shortcut: <b>R</b> to replay)
+          </label>
+        </div>
+        <span style="font-size:11px;color:var(--muted);margin-top:2px;">Default is <b>ON</b>. Press <b>R</b> at any time on front or back to hear pronunciation.</span>
+      </div>
     </div>
     <div class="ai-modal-footer">
       <button class="fc-btn-secondary" id="fcAiSettingsCancelBtn">Cancel</button>
@@ -3433,8 +4508,342 @@
   </div>
 </div>
 
+<!-- Interactive Lightbox Image Modal -->
+<div id="imageModal" class="ai-modal-overlay" style="display:none; z-index:99999; backdrop-filter:blur(8px); background:rgba(10,12,20,0.85); align-items:center; justify-content:center;">
+  <div class="image-modal-dialog" style="position:relative; max-width:94vw; max-height:94vh; display:flex; flex-direction:column; align-items:center; justify-content:center; outline:none;">
+    <div class="image-modal-toolbar" style="position:absolute; top:-44px; right:0; left:0; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:0 4px;">
+      <span id="imageModalCaption" style="color:#c0caf5; font-size:13px; font-weight:600; max-width:55vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 4px rgba(0,0,0,0.8);"></span>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="imageModalZoomOutBtn" class="fc-btn-secondary" style="padding:3px 9px; font-size:12px; font-weight:700; background:rgba(36,40,59,0.9);" title="Zoom Out (-)">−</button>
+        <span id="imageModalZoomLevel" style="color:#7aa2f7; font-size:11.5px; font-weight:700; min-width:38px; text-align:center;">100%</span>
+        <button id="imageModalZoomInBtn" class="fc-btn-secondary" style="padding:3px 9px; font-size:12px; font-weight:700; background:rgba(36,40,59,0.9);" title="Zoom In (+)">+</button>
+        <button id="imageModalResetBtn" class="fc-btn-secondary" style="padding:3px 9px; font-size:11.5px; font-weight:600; background:rgba(36,40,59,0.9);" title="Reset Zoom (0)">1:1</button>
+        <a id="imageModalOpenNewTab" href="#" target="_blank" class="fc-btn-secondary" style="padding:3px 9px; font-size:11.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:rgba(36,40,59,0.9);" title="Open raw image in new tab">↗ New Tab</a>
+        <button id="imageModalCloseBtn" class="fc-btn-secondary" style="padding:3px 9px; font-size:14px; font-weight:700; color:#ff757f; background:rgba(36,40,59,0.9);" title="Close (Esc)">✕</button>
+      </div>
+    </div>
+    <div id="imageModalViewport" style="overflow:auto; max-width:94vw; max-height:86vh; display:flex; align-items:center; justify-content:center; border-radius:8px; box-shadow:0 12px 40px rgba(0,0,0,0.7); background:rgba(18,20,30,0.7); border:1px solid rgba(122,162,247,0.25); cursor:grab;">
+      <img id="imageModalImg" src="" alt="Full Preview" style="max-width:100%; max-height:86vh; object-fit:contain; transform-origin:center center; transition:transform 0.15s ease-out; user-select:none; -webkit-user-drag:none;" />
+    </div>
+  </div>
+</div>
+
 <!-- Global App Toast -->
 <div id="appToast" class="fc-toast" style="display:none;"></div>
+
+<!-- Study Folder as Flashcard Deck Modal -->
+<div id="fcFolderDeckModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog">
+    <div class="ai-modal-header">
+      <span class="ai-modal-title" id="fcFolderDeckModalTitle">🎴 Study Folder as Flashcard Deck</span>
+      <button class="term-action-btn close" id="fcFolderDeckModalCloseBtn">✕</button>
+    </div>
+    <div class="ai-modal-body">
+      <div class="ai-modal-field">
+        <label>Selected Folder:</label>
+        <input type="text" id="fcFolderDeckPathInput" class="ai-modal-input" readonly style="opacity:0.85;" />
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderDeckLevelSelect">Heading Level Filter:</label>
+        <select id="fcFolderDeckLevelSelect" class="fc-prompt-select">
+          <option value="2" selected>H2 - Level 2 Headings (Recommended)</option>
+          <option value="1">H1 - Level 1 Headings</option>
+          <option value="3">H3 - Level 3 Headings</option>
+          <option value="4">H4 - Level 4 Headings</option>
+          <option value="all">All Heading Levels (H1 - H6)</option>
+        </select>
+        <span style="font-size:11px;color:var(--muted);margin-top:2px;">Extracts every heading at this level across all markdown files in the folder as individual flashcards.</span>
+      </div>
+      <div class="ai-modal-field">
+        <div class="fc-batch-checkbox-row">
+          <input type="checkbox" id="fcFolderDeckRecursiveCheck" checked>
+          <span>Include all subdirectories (recursive)</span>
+        </div>
+      </div>
+      <div id="fcFolderDeckStats" style="font-size:11.5px;color:#7aa2f7;margin-top:4px;"></div>
+    </div>
+    <div class="ai-modal-footer">
+      <button class="fc-btn-secondary" id="fcFolderDeckCancelBtn">Cancel</button>
+      <button class="fc-btn-primary" id="fcFolderDeckGenBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;" title="Generate AI supplements for all cards across all files in this folder">⚡ Generate All in Folder</button>
+      <button class="fc-btn-primary" id="fcFolderDeckStartBtn" style="font-weight:700;">🚀 Open Flashcard Deck</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Generate All Files in Folder Modal -->
+<div id="fcFolderGenerateModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog">
+    <div class="ai-modal-header">
+      <span class="ai-modal-title" id="fcFolderGenModalTitle">⚡ Generate AI for All Files in Folder</span>
+      <button class="term-action-btn close" id="fcFolderGenCloseBtn">✕</button>
+    </div>
+    <div class="ai-modal-body">
+      <div class="ai-modal-field">
+        <label>Target Folder:</label>
+        <input type="text" id="fcFolderGenPathInput" class="ai-modal-input" readonly style="opacity:0.85;" />
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderGenProviderSelect">AI Provider:</label>
+        <select id="fcFolderGenProviderSelect" class="fc-prompt-select">
+          <option value="openrouter" selected>✨ OpenRouter (Cloud API)</option>
+          <option value="ollama">🦙 Ollama (Local LLM)</option>
+        </select>
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderGenPromptSelect">AI Prompt Template:</label>
+        <select id="fcFolderGenPromptSelect" class="fc-prompt-select"></select>
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderGenLevelSelect">Heading Level Filter:</label>
+        <select id="fcFolderGenLevelSelect" class="fc-prompt-select">
+          <option value="2" selected>H2 - Level 2 Headings (Recommended for Flashcards)</option>
+          <option value="all">All Heading Levels (H1 - H6)</option>
+          <option value="1">H1 - Level 1 Headings</option>
+          <option value="3">H3 - Level 3 Headings</option>
+          <option value="4">H4 - Level 4 Headings</option>
+        </select>
+        <span style="font-size:11px;color:var(--muted);margin-top:2px;">Extracts headings at this level across all markdown files in the folder for bulk concurrent generation.</span>
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderGenConcurrencyInput">Max Concurrency (Simultaneous Requests):</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="fcFolderGenConcurrencyInput" min="1" max="2000" value="1000" class="ai-modal-input" style="width:110px;padding:4px 8px;" />
+          <span style="font-size:11px;color:var(--muted);">Default: <b>1000</b> concurrent requests</span>
+        </div>
+      </div>
+      <div class="ai-modal-field">
+        <label for="fcFolderGenModeSelect">Generation / Regeneration Mode:</label>
+        <select id="fcFolderGenModeSelect" class="fc-prompt-select">
+          <option value="missing" selected>✨ Generate Missing Only (Skip already generated cards)</option>
+          <option value="overwrite">🔄 Regenerate & Overwrite (Fix mistakes across all files)</option>
+          <option value="new_version">➕ Regenerate as New Version (Create v+1, preserve history)</option>
+        </select>
+        <div id="fcFolderGenModeHint" style="font-size:11px;color:#7aa2f7;margin-top:3px;">
+          💡 Skips cards that already have an AI supplement. Fast & incremental.
+        </div>
+      </div>
+      <div class="ai-modal-field">
+        <div class="fc-batch-checkbox-row">
+          <input type="checkbox" id="fcFolderGenRecursiveCheck" checked>
+          <span>Include all subdirectories (recursive)</span>
+        </div>
+      </div>
+      <div id="fcFolderGenStats" style="font-size:11.5px;color:#7aa2f7;margin-top:4px;"></div>
+    </div>
+    <div class="ai-modal-footer">
+      <button class="fc-btn-secondary" id="fcFolderGenCancelBtn">Cancel</button>
+      <button class="fc-btn-primary" id="fcFolderGenStartBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">🚀 Start Generating All Files</button>
+    </div>
+  </div>
+</div>
+
+<!-- Anki Deck Import Modal -->
+<div id="ankiImportModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog" style="max-width:660px;">
+    <div class="ai-modal-header" style="background:linear-gradient(90deg, #1f2335 0%, #24283b 100%);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">📥</span>
+        <span class="ai-modal-title">Import Anki Deck (.apkg)</span>
+        <span style="font-size:10.5px;background:rgba(187,154,247,0.18);color:#bb9af7;border:1px solid rgba(187,154,247,0.3);padding:2px 7px;border-radius:10px;font-weight:600;">Markdown Native</span>
+      </div>
+      <button class="term-action-btn close" id="ankiModalCloseBtn" title="Close (Esc)">✕</button>
+    </div>
+
+    <div class="ai-modal-body" style="display:flex;flex-direction:column;gap:14px;max-height:75vh;overflow-y:auto;padding:16px;">
+      <!-- Step 1: Select Deck -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--fg);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+          <span>1. Select Anki Deck</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:400;">Supports Anki 2.0 & 2.1+ (.apkg)</span>
+        </div>
+
+        <div id="ankiDropzone" class="anki-dropzone">
+          <input type="file" id="ankiFileInput" accept=".apkg" style="display:none;" />
+          <div style="font-size:28px;margin-bottom:6px;">📦</div>
+          <div style="font-size:13px;font-weight:600;color:var(--fg);">Drag & drop an .apkg file here, or <span style="color:#bb9af7;text-decoration:underline;">browse</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Audio, images, and cloze deletions are automatically converted for mdviewer</div>
+        </div>
+
+        <!-- Recent Decks Detected in Downloads/Workspace -->
+        <div id="ankiRecentSection" style="margin-top:10px;display:none;">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;">⚡ Detected Decks in Downloads & Workspace:</div>
+          <div id="ankiRecentList" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- Manual Path Input Option -->
+        <div style="margin-top:10px;display:flex;gap:6px;">
+          <input type="text" id="ankiPathInput" class="ai-modal-input" placeholder="Or enter path to .apkg file on disk..." style="flex:1;font-size:12px;" />
+          <button type="button" id="ankiInspectBtn" class="fc-btn-secondary" style="font-size:12px;white-space:nowrap;">Inspect</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Inspection Preview -->
+      <div id="ankiInspectionCard" style="display:none;background:#1b1d2b;border:1px solid rgba(187,154,247,0.25);border-radius:8px;padding:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:8px;margin-bottom:10px;">
+          <div>
+            <div id="ankiInspectFilename" style="font-weight:700;font-size:13.5px;color:#bb9af7;">Deck Name</div>
+            <div id="ankiInspectColVersion" style="font-size:10.5px;color:var(--muted);">Schema</div>
+          </div>
+          <span id="ankiInspectStatusBadge" style="font-size:11px;background:rgba(158,206,106,0.15);color:#9ece6a;border:1px solid rgba(158,206,106,0.3);padding:2px 8px;border-radius:10px;font-weight:600;">✓ Ready to Convert</span>
+        </div>
+
+        <div class="anki-stat-grid">
+          <div class="anki-stat-card">
+            <div class="anki-stat-num" id="ankiInspectNotesCount">0</div>
+            <div class="anki-stat-label">Total Notes</div>
+          </div>
+          <div class="anki-stat-card">
+            <div class="anki-stat-num" id="ankiInspectCardsCount">0</div>
+            <div class="anki-stat-label">Total Cards</div>
+          </div>
+          <div class="anki-stat-card">
+            <div class="anki-stat-num" id="ankiInspectAudioCount" style="color:#7aa2f7;">0</div>
+            <div class="anki-stat-label">🔊 Audio Files</div>
+          </div>
+          <div class="anki-stat-card">
+            <div class="anki-stat-num" id="ankiInspectImageCount" style="color:#ff9e64;">0</div>
+            <div class="anki-stat-label">🖼️ Image Files</div>
+          </div>
+        </div>
+
+        <div id="ankiDecksListPreview" style="margin-top:8px;font-size:11.5px;color:var(--fg);display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+
+      <!-- Step 3: Conversion Options -->
+      <div id="ankiOptionsCard" style="display:none;background:#16161e;border:1px solid var(--border);border-radius:8px;padding:12px;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;font-weight:700;color:var(--fg);">2. Conversion Settings</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px;">Target Folder in Workspace:</label>
+            <input type="text" id="ankiTargetFolderInput" class="ai-modal-input" placeholder="e.g. Decks/German (leave blank for root)" style="font-size:12px;" />
+          </div>
+          <div>
+            <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px;">Card Heading Level:</label>
+            <select id="ankiHeadingLevelSelect" class="ai-modal-input" style="font-size:12px;">
+              <option value="2" selected>Level 2 (## Front) [Recommended for Flashcards]</option>
+              <option value="1">Level 1 (# Front)</option>
+              <option value="3">Level 3 (### Front)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none;">
+            <input type="checkbox" id="ankiExtractMediaCb" checked style="accent-color:#bb9af7;" />
+            Extract Audio & Images to assets/
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none;">
+            <input type="checkbox" id="ankiNumberCardsCb" checked style="accent-color:#bb9af7;" />
+            Number cards (## 1. Word)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none;">
+            <input type="checkbox" id="ankiIncludeTagsCb" checked style="accent-color:#bb9af7;" />
+            Include Anki Tags as **Tags:** badge
+          </label>
+        </div>
+      </div>
+
+      <!-- Import Progress / Status -->
+      <div id="ankiProgressCard" style="display:none;background:#14151f;border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="fc-ai-thinking-spinner" style="border-top-color:#bb9af7;"></div>
+          <span id="ankiProgressText" style="font-size:12px;font-weight:600;color:#bb9af7;">Importing deck and converting notes...</span>
+        </div>
+        <div style="margin-top:8px;height:4px;background:#24283b;border-radius:2px;overflow:hidden;">
+          <div id="ankiProgressBar" style="width:100%;height:100%;background:#bb9af7;animation:fc-pulse-bar 1.5s infinite;"></div>
+        </div>
+      </div>
+
+      <!-- Success Card -->
+      <div id="ankiSuccessCard" style="display:none;background:rgba(158,206,106,0.08);border:1px solid rgba(158,206,106,0.3);border-radius:8px;padding:14px;">
+        <div style="display:flex;align-items:center;gap:8px;color:#9ece6a;font-weight:700;font-size:13.5px;margin-bottom:6px;">
+          <span>✓</span>
+          <span id="ankiSuccessTitle">Import Complete!</span>
+        </div>
+        <div id="ankiSuccessSummary" style="font-size:12px;color:var(--fg);margin-bottom:12px;">Converted cards successfully.</div>
+        <div style="display:flex;gap:10px;">
+          <button type="button" id="ankiOpenReaderBtn" class="fc-btn-primary" style="background:#7aa2f7;color:#1a1b26;">📂 Open in Reader</button>
+          <button type="button" id="ankiOpenFlashcardsBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;">🎴 Start Flashcards</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-modal-footer" style="padding:10px 18px;background:#16161e;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--muted);">Imported notes work with outline, flashcards, glowing badges & AI supplements.</span>
+      <div style="display:flex;gap:8px;">
+        <button class="fc-btn-secondary" id="ankiModalCancelBtn">Cancel</button>
+        <button class="fc-btn-primary" id="ankiStartImportBtn" style="background:#bb9af7;color:#1a1b26;display:none;">⚡ Import & Convert</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Folder Modal -->
+<div id="importFolderModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog" style="max-width:560px;">
+    <div class="ai-modal-header" style="background:linear-gradient(90deg, #1f2335 0%, #24283b 100%);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">📁</span>
+        <span class="ai-modal-title">Import Folder into Library</span>
+      </div>
+      <button class="ai-modal-close" id="importFolderCloseBtn">✕</button>
+    </div>
+
+    <div class="ai-modal-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--fg);display:block;margin-bottom:6px;">Folder Path on Disk:</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="importFolderPathInput" class="ai-modal-input" placeholder="e.g. /home/user/Documents/Notes or relative path..." style="flex:1;font-size:12.5px;" />
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Enter the path to any folder containing markdown notes and media.</div>
+      </div>
+
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--fg);display:block;margin-bottom:6px;">Target Subfolder in Library (optional):</label>
+        <input type="text" id="importFolderSubdirInput" class="ai-modal-input" placeholder="e.g. Notes/Work (leave blank for folder name under Notes/)" style="font-size:12.5px;width:100%;" />
+      </div>
+
+      <div style="background:#16161e;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="importFolderUseRustCb" checked style="accent-color:#7aa2f7;" />
+          <span style="font-weight:600;color:#7aa2f7;">⚡ Accelerate with native Rust Rayon engine</span>
+        </label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;padding-left:24px;">Multi-threaded directory traversal, parallel file copy, and sub-millisecond indexing.</div>
+      </div>
+
+      <!-- Import Progress Card -->
+      <div id="importFolderProgressCard" style="display:none;background:#14151f;border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="fc-ai-thinking-spinner" style="border-top-color:#7aa2f7;"></div>
+          <span id="importFolderProgressText" style="font-size:12px;font-weight:600;color:#7aa2f7;">Importing folder and copying assets...</span>
+        </div>
+      </div>
+
+      <!-- Success Result Card -->
+      <div id="importFolderSuccessCard" style="display:none;background:rgba(158,206,106,0.08);border:1px solid rgba(158,206,106,0.3);border-radius:8px;padding:14px;">
+        <div style="display:flex;align-items:center;gap:8px;color:#9ece6a;font-weight:700;font-size:13.5px;margin-bottom:6px;">
+          <span>✓</span>
+          <span>Folder Imported Successfully!</span>
+        </div>
+        <div id="importFolderSuccessSummary" style="font-size:12px;color:var(--fg);margin-bottom:12px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button type="button" id="importFolderOpenDocBtn" class="fc-btn-primary" style="background:#7aa2f7;color:#1a1b26;">📖 Open in Document Mode</button>
+          <button type="button" id="importFolderOpenOutlineBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;">📑 Open in Outline</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-modal-footer" style="padding:10px 18px;background:#16161e;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--muted);">All markdown files, images, and audio will be imported into your library.</span>
+      <div style="display:flex;gap:8px;">
+        <button class="fc-btn-secondary" id="importFolderCancelBtn">Cancel</button>
+        <button class="fc-btn-primary" id="importFolderStartBtn" style="background:#7aa2f7;color:#1a1b26;">📁 Import Folder</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 (async function(){
@@ -3470,6 +4879,23 @@
   let wsSearching = false;
 
   let currentFilePath = '';
+  let currentCard = null;
+
+  function resolveMediaUrl(cleanUrl, cardFilePath){
+    if(!cleanUrl) return '';
+    cleanUrl = cleanUrl.trim();
+    if(cleanUrl.startsWith('/') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')){
+      return cleanUrl;
+    }
+    if(cleanUrl.startsWith('./')){
+      cleanUrl = cleanUrl.substring(2);
+    }
+    const fp = cardFilePath || (typeof currentCard !== 'undefined' && currentCard && currentCard.file_path) || (typeof currentFilePath !== 'undefined' ? currentFilePath : '');
+    if(fp && fp.includes('/')){
+      return fp.substring(0, fp.lastIndexOf('/') + 1) + cleanUrl;
+    }
+    return cleanUrl;
+  }
 
   let savedConfig = {};
   try {
@@ -3598,11 +5024,46 @@
 
   // Applied only to the handful of rows in the current viewport -> O(viewport), not O(file).
   function mdInline(escaped){
-    let t = escaped.replace(/\*\*([A-Za-z0-9ÄÖÜäöüß\s/_.-]+):\*\*/g, (m, k) => {
+    const tokens = [];
+    const saveToken = (html) => {
+      const id = tokens.length;
+      tokens.push(html);
+      return `@@MDREADERTOKEN${id}@@`;
+    };
+
+    let t = escaped;
+
+    // 1. Code spans
+    t = t.replace(/`([^`]+)`/g, (m, code) => saveToken(`<span class="md-code">${code}</span>`));
+
+    // 2. Images & Audio embeds
+    t = t.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+      const cleanUrl = url.trim();
+      const resolvedUrl = resolveMediaUrl(cleanUrl);
+      if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(cleanUrl)) {
+        return saveToken(`<span class="md-audio-pill" onclick="event.stopPropagation(); const a = new Audio('${resolvedUrl}'); a.play().catch(e => console.log(e));" title="Click to play audio">🔊 ${alt || 'Audio'}</span>`);
+      }
+      return saveToken(`<span class="md-img-pill" onclick="event.stopPropagation(); if(typeof openImageModal==='function') openImageModal('${resolvedUrl}', '${escapeHtml(alt || 'Image')}'); else window.open('${resolvedUrl}','_blank');" title="Click to view image: ${escapeHtml(alt || 'Image')}"><img src="${resolvedUrl}" class="md-img-thumb" alt="" loading="lazy" /><span class="md-img-label">🖼️ ${alt || 'Image'}</span></span>`);
+    });
+
+    // 3. Anki sound syntax
+    t = t.replace(/\[sound:([^\]]+)\]/g, (m, url) => {
+      let cleanUrl = url.trim();
+      if (!cleanUrl.startsWith('assets/') && !cleanUrl.startsWith('/') && !cleanUrl.startsWith('http')) {
+        cleanUrl = 'assets/' + cleanUrl;
+      }
+      const resolvedUrl = resolveMediaUrl(cleanUrl);
+      return saveToken(`<span class="md-audio-pill" onclick="event.stopPropagation(); const a = new Audio('${resolvedUrl}'); a.play().catch(e => console.log(e));" title="Click to play audio">🔊 Audio</span>`);
+    });
+
+    // 4. Links
+    t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, (m, label) => saveToken(`<span class="md-link">${label}</span>`));
+
+    // 5. Badges, bold, italic, highlights, task checkboxes
+    t = t.replace(/\*\*([A-Za-z0-9ÄÖÜäöüß\s/_.-]+):\*\*/g, (m, k) => {
       const color = getMdKeyColor(k);
       return `<span class="fc-key-badge badge-${color}"><span class="badge-dot"></span>${k}:</span>`;
     });
-    t = t.replace(/`([^`]+)`/g, '<span class="md-code">$1</span>');
     t = t.replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, (m,a,b)=>`<span class="md-bold">${a||b}</span>`);
     t = t.replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, (m,pre,inner)=>`${pre}<span class="md-italic">${inner}</span>`);
     t = t.replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, (m,pre,inner)=>`${pre}<span class="md-italic">${inner}</span>`);
@@ -3610,7 +5071,9 @@
     t = t.replace(/~~([^~]+)~~/g, '<del class="md-del">$1</del>');
     t = t.replace(/\[\s*\]\s*/g, '<span class="md-task-uncheck">☐</span> ');
     t = t.replace(/\[x\]\s*/gi, '<span class="md-task-check">☑</span> ');
-    t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '<span class="md-link">$1</span>');
+
+    // 6. Restore tokens
+    t = t.replace(/@@MDREADERTOKEN(\d+)@@/g, (m, id) => tokens[parseInt(id, 10)] || '');
     return t;
   }
 
@@ -4092,6 +5555,9 @@
     reader.onload = () => {
       loadText(reader.result, file.name);
       syncUrlState('replace');
+      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+        renderCurrentDocument();
+      }
     };
     reader.readAsText(file);
   }
@@ -5342,6 +6808,14 @@
   const fcColToggleBtn = document.getElementById('fcColToggleBtn');
   const fcFullscreenBtn = document.getElementById('fcFullscreenBtn');
   const fcAnimToggleBtn = document.getElementById('fcAnimToggleBtn');
+  const fcAudioAutoplayBtn = document.getElementById('fcAudioAutoplayBtn');
+  const fcFrontAudioBtn = document.getElementById('fcFrontAudioBtn');
+  const fcBackAudioBtn = document.getElementById('fcBackAudioBtn');
+  const fcAudioAutoplayCheck = document.getElementById('fcAudioAutoplayCheck');
+  let isFcAudioAutoplay = localStorage.getItem('mdv_audio_autoplay') !== 'false';
+  let activeFlashcardAudio = null;
+  let currentCardAudioUrl = null;
+  let currentCardAudioUrls = [];
   const fcFrontAnimBtn = document.getElementById('fcFrontAnimBtn');
   const fcCardColBtn = document.getElementById('fcCardColBtn');
   const fcCardAnimBtn = document.getElementById('fcCardAnimBtn');
@@ -5355,6 +6829,7 @@
   const fcLevelBadge = document.getElementById('fcLevelBadge');
   const fcBreadcrumb = document.getElementById('fcBreadcrumb');
   const fcFrontTitle = document.getElementById('fcFrontTitle');
+  const fcFrontMedia = document.getElementById('fcFrontMedia');
   const fcBackTitle = document.getElementById('fcBackTitle');
   const fcBackBody = document.getElementById('fcBackBody');
   const fcBackContent = document.getElementById('fcBackContent');
@@ -5794,6 +7269,299 @@
         fcCardAnimBtn.title = 'Flashcard animation is ON (3D flip). Click to turn off.';
       }
     }
+  }
+
+  function toggleFcAudioAutoplay(){
+    isFcAudioAutoplay = !isFcAudioAutoplay;
+    localStorage.setItem('mdv_audio_autoplay', isFcAudioAutoplay ? 'true' : 'false');
+    updateFcAudioAutoplayUI();
+  }
+
+  function updateFcAudioAutoplayUI(){
+    if(fcAudioAutoplayBtn){
+      fcAudioAutoplayBtn.innerHTML = isFcAudioAutoplay ? '🔊 Audio: On' : '🔇 Audio: Off';
+      fcAudioAutoplayBtn.title = isFcAudioAutoplay
+        ? 'Audio Auto-play is ON (plays pronunciation on card flip / reveal). Click to turn Off (Shift+A)'
+        : 'Audio Auto-play is OFF. Click to turn On (Shift+A)';
+      fcAudioAutoplayBtn.style.color = isFcAudioAutoplay ? '#7aa2f7' : 'var(--muted)';
+      fcAudioAutoplayBtn.style.borderColor = isFcAudioAutoplay ? 'rgba(122,162,247,0.4)' : 'var(--border)';
+    }
+    if(fcAudioAutoplayCheck){
+      fcAudioAutoplayCheck.checked = isFcAudioAutoplay;
+    }
+  }
+
+  function flashAudioButtons(){
+    const btns = [fcFrontAudioBtn, fcBackAudioBtn, fcAudioAutoplayBtn].filter(Boolean);
+    btns.forEach(b => {
+      b.classList.remove('audio-playing-pulse');
+      void b.offsetWidth;
+      b.classList.add('audio-playing-pulse');
+      setTimeout(() => b.classList.remove('audio-playing-pulse'), 600);
+    });
+  }
+
+  let currentCardAudioIndex = 0;
+
+  function stopAllCardAudios(){
+    const allAudios = document.querySelectorAll('#fcFrontFace audio, #fcBackContent audio');
+    allAudios.forEach(a => {
+      try {
+        if (!a.paused) {
+          a.pause();
+          a.currentTime = 0;
+        }
+      } catch(e){}
+    });
+    document.querySelectorAll('.fc-audio-wrap').forEach(w => {
+      w.classList.remove('fc-audio-active');
+      const b = w.querySelector('.fc-audio-play-btn');
+      if (b) b.textContent = '▶';
+    });
+    if(activeFlashcardAudio){
+      try {
+        activeFlashcardAudio.pause();
+        activeFlashcardAudio.currentTime = 0;
+      } catch(e){}
+    }
+  }
+
+  function updateAudioReplayButtons(activeIdx = 0, total = 0){
+    const hasAudio = total > 0;
+    if(fcFrontAudioBtn){
+      fcFrontAudioBtn.style.display = hasAudio ? 'inline-flex' : 'none';
+      if(hasAudio){
+        fcFrontAudioBtn.innerHTML = total > 1
+          ? `🔊 Audio (${activeIdx + 1}/${total}) (R)`
+          : `🔊 Audio (R)`;
+        fcFrontAudioBtn.title = total > 1
+          ? `Play Audio ${activeIdx + 1} of ${total} (Press R to cycle, or keys 1-${Math.min(9, total)})`
+          : `Play Audio (Press R)`;
+      }
+    }
+    if(fcBackAudioBtn){
+      fcBackAudioBtn.style.display = hasAudio ? 'inline-flex' : 'none';
+      if(hasAudio){
+        fcBackAudioBtn.innerHTML = total > 1
+          ? `🔊 Replay (${activeIdx + 1}/${total}) (R)`
+          : `🔊 Replay (R)`;
+        fcBackAudioBtn.title = total > 1
+          ? `Play Audio ${activeIdx + 1} of ${total} (Press R to cycle, or keys 1-${Math.min(9, total)})`
+          : `Replay Audio (Press R)`;
+      }
+    }
+  }
+
+  window.playEmbedAudio = function(el){
+    const wrap = el.closest('.fc-audio-wrap');
+    if(!wrap) return;
+    const audio = wrap.querySelector('audio');
+    if(!audio) return;
+    const playBtn = wrap.querySelector('.fc-audio-play-btn');
+
+    if(!audio.paused && !audio.ended){
+      audio.pause();
+      if(playBtn) playBtn.textContent = '▶';
+      wrap.classList.remove('fc-audio-active');
+    } else {
+      stopAllCardAudios();
+      wrap.classList.add('fc-audio-active');
+      if(playBtn) playBtn.textContent = '⏸';
+      flashAudioButtons();
+
+      if(audio.ended || (audio.duration && audio.currentTime >= audio.duration - 0.1)){
+        audio.currentTime = 0;
+      }
+      const p = audio.play();
+      if(p && typeof p.catch === 'function'){
+        p.catch(e => {
+          console.log('Audio playback error:', e);
+          if(playBtn) playBtn.textContent = '▶';
+          wrap.classList.remove('fc-audio-active');
+        });
+      }
+
+      const container = wrap.closest('#fcBackContent, #fcFrontFace');
+      if(container){
+        const allAudios = Array.from(container.querySelectorAll('audio'));
+        const idx = allAudios.indexOf(audio);
+        if(idx !== -1){
+          currentCardAudioIndex = idx;
+          updateAudioReplayButtons(idx, allAudios.length);
+        }
+      }
+    }
+  };
+
+  function initCardAudioElements(container){
+    if(!container) return;
+    const wraps = container.querySelectorAll('.fc-audio-wrap');
+    wraps.forEach((wrap, wrapIdx) => {
+      const audio = wrap.querySelector('audio');
+      const playBtn = wrap.querySelector('.fc-audio-play-btn');
+      if(!audio) return;
+
+      audio.onfocus = null; // Prevent onfocus blur from blocking native clicks
+
+      if(audio._initialized) return;
+      audio._initialized = true;
+
+      audio.addEventListener('play', () => {
+        document.querySelectorAll('audio').forEach(other => {
+          if(other !== audio && !other.paused){
+            other.pause();
+          }
+        });
+        document.querySelectorAll('.fc-audio-wrap').forEach(w => {
+          if(w !== wrap){
+            w.classList.remove('fc-audio-active');
+            const b = w.querySelector('.fc-audio-play-btn');
+            if(b) b.textContent = '▶';
+          }
+        });
+        wrap.classList.add('fc-audio-active');
+        if(playBtn) playBtn.textContent = '⏸';
+        const allAudios = Array.from(container.querySelectorAll('audio'));
+        const idx = allAudios.indexOf(audio);
+        if(idx !== -1){
+          currentCardAudioIndex = idx;
+          updateAudioReplayButtons(idx, allAudios.length);
+        }
+      });
+
+      audio.addEventListener('pause', () => {
+        if(playBtn) playBtn.textContent = '▶';
+        wrap.classList.remove('fc-audio-active');
+      });
+
+      audio.addEventListener('ended', () => {
+        if(playBtn) playBtn.textContent = '▶';
+        wrap.classList.remove('fc-audio-active');
+      });
+    });
+  }
+
+  function extractCardAudioUrls(h, origBack){
+    const urls = [];
+    const textToScan = ((h && h.text) ? h.text : '') + '\n' + (origBack || '');
+    const cardFilePath = (h && h.file_path) || currentFilePath;
+
+    // 1. Markdown audio links: ![alt](url)
+    const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    let m;
+    while((m = mdImgRegex.exec(textToScan)) !== null){
+      const u = m[2].trim();
+      if(/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(u)){
+        const res = resolveMediaUrl(u, cardFilePath);
+        if(res && !urls.includes(res)) urls.push(res);
+      }
+    }
+
+    // 2. Anki sound syntax: [sound:url]
+    const ankiSoundRegex = /\[sound:([^\]]+)\]/g;
+    while((m = ankiSoundRegex.exec(textToScan)) !== null){
+      let u = m[1].trim();
+      if(!u.startsWith('assets/') && !u.startsWith('/') && !u.startsWith('http')){
+        u = 'assets/' + u;
+      }
+      const res = resolveMediaUrl(u, cardFilePath);
+      if(res && !urls.includes(res)) urls.push(res);
+    }
+
+    // 3. HTML audio syntax: <audio src="..."> or <source src="...">
+    const htmlAudioRegex = /<(?:audio|source)[^>]+src=["']([^"']+)["']/gi;
+    while((m = htmlAudioRegex.exec(textToScan)) !== null){
+      const res = resolveMediaUrl(m[1].trim(), cardFilePath);
+      if(res && !urls.includes(res)) urls.push(res);
+    }
+
+    return urls;
+  }
+
+  function playCurrentCardAudioAtIndex(targetIndex = 0){
+    const isFlipped = fcCard && fcCard.classList.contains('flipped');
+    const primary = isFlipped ? fcBackContent : fcFrontFace;
+    const secondary = isFlipped ? fcFrontFace : fcBackContent;
+
+    let audios = primary ? Array.from(primary.querySelectorAll('audio')) : [];
+    if(audios.length === 0 && secondary){
+      audios = Array.from(secondary.querySelectorAll('audio'));
+    }
+
+    if(audios.length === 0 && currentCardAudioUrls.length === 0){
+      return false;
+    }
+
+    stopAllCardAudios();
+    flashAudioButtons();
+
+    if(audios.length > 0){
+      const idx = Math.max(0, Math.min(targetIndex, audios.length - 1));
+      currentCardAudioIndex = idx;
+      updateAudioReplayButtons(idx, audios.length);
+
+      const targetAudio = audios[idx];
+      const wrap = targetAudio.closest('.fc-audio-wrap');
+      if(wrap){
+        wrap.classList.add('fc-audio-active');
+        const btn = wrap.querySelector('.fc-audio-play-btn');
+        if(btn) btn.textContent = '⏸';
+      }
+
+      try {
+        targetAudio.currentTime = 0;
+        const p = targetAudio.play();
+        if(p && typeof p.catch === 'function'){
+          p.catch(e => console.log('Flashcard audio play interrupted:', e));
+        }
+        return true;
+      } catch(e) {
+        console.warn('Audio play error:', e);
+      }
+    }
+
+    if(currentCardAudioUrls.length > 0){
+      const idx = Math.max(0, Math.min(targetIndex, currentCardAudioUrls.length - 1));
+      currentCardAudioIndex = idx;
+      updateAudioReplayButtons(idx, currentCardAudioUrls.length);
+
+      try {
+        activeFlashcardAudio = new Audio(currentCardAudioUrls[idx]);
+        const p = activeFlashcardAudio.play();
+        if(p && typeof p.catch === 'function'){
+          p.catch(e => console.log('Fallback audio play error:', e));
+        }
+        return true;
+      } catch(e) {
+        console.warn('Fallback audio play error:', e);
+      }
+    }
+    return false;
+  }
+
+  function playCurrentCardAudio(options = {}){
+    const isFlipped = fcCard && fcCard.classList.contains('flipped');
+    const primary = isFlipped ? fcBackContent : fcFrontFace;
+    const secondary = isFlipped ? fcFrontFace : fcBackContent;
+
+    let audios = primary ? Array.from(primary.querySelectorAll('audio')) : [];
+    if(audios.length === 0 && secondary){
+      audios = Array.from(secondary.querySelectorAll('audio'));
+    }
+    const total = audios.length > 0 ? audios.length : currentCardAudioUrls.length;
+
+    if(total <= 1){
+      return playCurrentCardAudioAtIndex(0);
+    }
+
+    // Cycle through audios: if already played index 0, cycle to 1, etc.
+    let nextIdx = 0;
+    if(options && options.initial){
+      nextIdx = 0;
+    } else {
+      nextIdx = (currentCardAudioIndex + 1) % total;
+    }
+    return playCurrentCardAudioAtIndex(nextIdx);
   }
 
   function getBreadcrumb(h){
@@ -6373,6 +8141,7 @@
       fcBreadcrumb.textContent = '';
       fcFrontTitle.textContent = 'No headings found';
       fcFrontTitle.style.color = 'var(--muted)';
+      if(fcFrontMedia) { fcFrontMedia.style.display = 'none'; fcFrontMedia.innerHTML = ''; }
       fcBackTitle.textContent = 'No Content';
       if(fcBackContent) fcBackContent.innerHTML = '<div class="prow-line plain" style="padding:16px; opacity:0.6;"><span class="txt">Open a markdown file with headings to generate flashcards.</span></div>';
       fcStats.textContent = '0 / 0';
@@ -6382,6 +8151,14 @@
       fcPrevBtn.disabled = true;
       fcNextBtn.disabled = true;
       fcFlipBtn.disabled = true;
+      currentCardAudioUrl = null;
+      currentCardAudioUrls = [];
+      if(fcFrontAudioBtn) fcFrontAudioBtn.style.display = 'none';
+      if(fcBackAudioBtn) fcBackAudioBtn.style.display = 'none';
+      if(activeFlashcardAudio){
+        activeFlashcardAudio.pause();
+        activeFlashcardAudio.currentTime = 0;
+      }
       updatePageIndicator();
       return;
     }
@@ -6415,11 +8192,49 @@
     fcLevelBadge.textContent = `H${h.level}`;
     fcLevelBadge.style.color = `var(--h${h.level})`;
     fcBreadcrumb.textContent = isFolderDeck ? ('📁 ' + (h.breadcrumb || (h.file_name ? `${h.file_name} > H${h.level}` : getBreadcrumb(h)))) : getBreadcrumb(h);
-    fcFrontTitle.textContent = h.text;
+
+    // Extract any image embeds from front heading text
+    const frontImgs = [];
+    let cleanFrontTitle = (h.text || '').replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+      const u = url.trim();
+      if (!/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(u)) {
+        frontImgs.push({ alt: alt || 'Card Image', url: u });
+      }
+      return '';
+    }).replace(/\[sound:[^\]]+\]/g, '').trim();
+
+    let displayTitle = cleanFrontTitle;
+    if (!displayTitle || /^\d+\.?\s*$/.test(displayTitle)) {
+      if (frontImgs.length > 0 && frontImgs[0].alt && frontImgs[0].alt.toLowerCase() !== 'image') {
+        displayTitle = (cleanFrontTitle ? cleanFrontTitle + ' ' : '') + frontImgs[0].alt;
+      } else {
+        displayTitle = cleanFrontTitle || `Card ${currentCardIndex + 1}`;
+      }
+    }
+
+    fcFrontTitle.textContent = displayTitle;
     fcFrontTitle.style.color = `var(--h${h.level})`;
 
+    // Front media container
+    if (fcFrontMedia) {
+      if (frontImgs.length > 0) {
+        fcFrontMedia.style.display = 'flex';
+        fcFrontMedia.innerHTML = frontImgs.map(img => {
+          const resolved = resolveMediaUrl(img.url, h.file_path);
+          return `<div class="fc-front-img-wrap"><img class="fc-card-img fc-front-card-img" src="${resolved}" alt="${escapeHtml(img.alt)}" loading="lazy" onclick="event.stopPropagation(); if(typeof openImageModal==='function') openImageModal('${resolved}', '${escapeHtml(img.alt)}'); else window.open('${resolved}','_blank');" /></div>`;
+        }).join('');
+      } else {
+        fcFrontMedia.style.display = 'none';
+        fcFrontMedia.innerHTML = '';
+      }
+    }
+
     // Back title & content
-    fcBackTitle.textContent = '#'.repeat(h.level) + ' ' + h.text;
+    let cleanBackTitle = (h.text || '').replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '').replace(/\[sound:[^\]]+\]/g, '').trim();
+    if (!cleanBackTitle || /^\d+\.?\s*$/.test(cleanBackTitle)) {
+      cleanBackTitle = displayTitle;
+    }
+    fcBackTitle.textContent = '#'.repeat(h.level) + ' ' + cleanBackTitle;
     fcBackTitle.style.color = `var(--h${h.level})`;
 
     const cardSlug = getCardSlug(h);
@@ -6503,7 +8318,24 @@
       cardBackViewMode = targetMode;
     }
 
+    // Stop previously playing audio
+    stopAllCardAudios();
+
+    // Detect audio for current card
+    currentCard = h;
+    currentCardAudioUrls = extractCardAudioUrls(h, origBack);
+    currentCardAudioUrl = currentCardAudioUrls.length > 0 ? currentCardAudioUrls[0] : null;
+    currentCardAudioIndex = 0;
+
+    updateAudioReplayButtons(0, currentCardAudioUrls.length);
+
     renderBackFaceContent();
+
+    // Auto-play front audio if front itself has audio embed and auto-play is enabled
+    const frontAudio = (h && h.text) ? extractCardAudioUrls(h, '') : [];
+    if(frontAudio.length > 0 && isFcAudioAutoplay){
+      setTimeout(() => playCurrentCardAudioAtIndex(0), 120);
+    }
 
     fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length}`;
     if(fcCardCount) fcCardCount.textContent = flashcardList.length;
@@ -6570,6 +8402,9 @@
           isProgrammaticScroll = false;
         }, 50);
       }
+      if(willBeFlipped && isFcAudioAutoplay && currentCardAudioUrl){
+        setTimeout(() => playCurrentCardAudioAtIndex(0), 60);
+      }
       if(typeof syncUrlState === 'function') syncUrlState('replace');
       return;
     }
@@ -6631,6 +8466,9 @@
         });
       } else {
         isProgrammaticScroll = false;
+      }
+      if(willBeFlipped && isFcAudioAutoplay && currentCardAudioUrl){
+        setTimeout(() => playCurrentCardAudioAtIndex(0), 60);
       }
       if(typeof syncUrlState === 'function') syncUrlState('replace');
     }, 340);
@@ -6716,12 +8554,19 @@
       return;
     }
     isFlashcardMode = true;
-    if(mainToolbar) mainToolbar.style.display = 'none';
+    if(mainToolbar) {
+      mainToolbar.style.display = 'flex';
+      const outlineGroup = document.getElementById('outlineToolbarGroup');
+      const docGroup = document.getElementById('docToolbarGroup');
+      if (outlineGroup) outlineGroup.style.display = 'none';
+      if (docGroup) docGroup.style.display = 'none';
+    }
     scroller.style.display = 'none';
     flashcardView.style.display = 'flex';
     updateFullscreenUI();
     updateColumnState();
     updateFcAnimationUI();
+    updateFcAudioAutoplayUI();
     updateFcSidebarToggleState();
     if(options.filter) setFlashcardFilter(options.filter);
     flashcardList = collectFlashcards(flashcardFilter);
@@ -6743,6 +8588,10 @@
 
   function exitFlashcardMode(){
     if(isCardEditing) closeCardEditor();
+    if(activeFlashcardAudio){
+      activeFlashcardAudio.pause();
+      activeFlashcardAudio.currentTime = 0;
+    }
     clearTimeout(autoSnapTimer);
     autoSnapTimer = null;
     if(pageAnimId){
@@ -6779,7 +8628,13 @@
   }
 
   if(flashcardModeBtn) flashcardModeBtn.addEventListener('click', enterFlashcardMode);
-  if(fcExitBtn) fcExitBtn.addEventListener('click', exitFlashcardMode);
+  if(fcExitBtn) fcExitBtn.addEventListener('click', () => {
+    if (typeof setAppMode === 'function') {
+      setAppMode('outline');
+    } else {
+      exitFlashcardMode();
+    }
+  });
   if(fcFlipBtn) fcFlipBtn.addEventListener('click', flipFlashcard);
   if(fcNextBtn) fcNextBtn.addEventListener('click', nextFlashcard);
   if(fcPrevBtn) fcPrevBtn.addEventListener('click', prevFlashcard);
@@ -6787,6 +8642,20 @@
   if(fcColToggleBtn) fcColToggleBtn.addEventListener('click', toggleTwoColumn);
   if(fcFullscreenBtn) fcFullscreenBtn.addEventListener('click', toggleFullscreen);
   if(fcAnimToggleBtn) fcAnimToggleBtn.addEventListener('click', toggleFcAnimation);
+  if(fcAudioAutoplayBtn) fcAudioAutoplayBtn.addEventListener('click', toggleFcAudioAutoplay);
+  if(fcFrontAudioBtn) fcFrontAudioBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playCurrentCardAudio();
+  });
+  if(fcBackAudioBtn) fcBackAudioBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playCurrentCardAudio();
+  });
+  if(fcAudioAutoplayCheck) fcAudioAutoplayCheck.addEventListener('change', () => {
+    isFcAudioAutoplay = fcAudioAutoplayCheck.checked;
+    localStorage.setItem('mdv_audio_autoplay', isFcAudioAutoplay ? 'true' : 'false');
+    updateFcAudioAutoplayUI();
+  });
   if(fcAiToggleBtn) fcAiToggleBtn.addEventListener('click', () => toggleFcInfoPanel());
   if(fcCardColBtn) fcCardColBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -7066,7 +8935,7 @@
     });
 
     fcCard.addEventListener('click', (e) => {
-      if(isCardEditing || e.target.closest('button, a, input, textarea, select, .fc-card-editor')) return;
+      if(isCardEditing || e.target.closest('button, a, input, textarea, select, audio, .fc-audio-wrap, .fc-card-editor')) return;
 
       // Don't flip if text is selected anywhere
       const selection = window.getSelection();
@@ -7256,7 +9125,18 @@
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 's' || e.key === 'S')){
       e.preventDefault();
       shuffleFlashcards();
-    } else if(e.key === '[' || e.key === 'PageDown' || e.key === 'ArrowDown' || (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'a' || e.key === 'A'))){
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'r' || e.key === 'R')){
+      e.preventDefault();
+      playCurrentCardAudio();
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key)){
+      const num = parseInt(e.key, 10);
+      if(playCurrentCardAudioAtIndex(num - 1)){
+        e.preventDefault();
+      }
+    } else if(!e.ctrlKey && !e.metaKey && e.shiftKey && (e.key === 'a' || e.key === 'A')){
+      e.preventDefault();
+      toggleFcAudioAutoplay();
+    } else if(e.key === '[' || e.key === 'PageDown' || e.key === 'ArrowDown' || (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A'))){
       e.preventDefault();
       if(fcCard && fcCard.classList.contains('flipped')){
         if(fcTwoColumn){
@@ -7306,6 +9186,17 @@
 
       loadText(text, filePath);
       await setActiveTreeRow(filePath);
+
+      const docTextarea = document.getElementById('docTextarea');
+      if (docTextarea) {
+        docTextarea.value = text;
+        if (typeof updateDocLineNumbers === 'function') updateDocLineNumbers();
+        if (typeof updateEditorStats === 'function') updateEditorStats();
+        if (typeof setDocSaveStatus === 'function') setDocSaveStatus(true);
+        if (typeof docSubMode !== 'undefined' && docSubMode === 'live' && typeof renderLivePreview === 'function') {
+          renderLivePreview();
+        }
+      }
       if(typeof loadCurrentFileAiCards === 'function'){
         await loadCurrentFileAiCards(filePath);
       }
@@ -7348,6 +9239,9 @@
         if(isFlashcardMode){
           exitFlashcardMode();
         }
+        if(typeof currentAppMode !== 'undefined' && currentAppMode === 'document'){
+          renderCurrentDocument();
+        }
         if(options.line != null && options.line >= 0){
           setTimeout(() => scrollToLine(options.line, true), 50);
         } else {
@@ -7369,6 +9263,10 @@
       }
     } catch(err){
       console.error(err);
+      if(filePath !== 'Welcome.md' && !options.noFallback){
+        openFile('Welcome.md', { noFallback: true });
+        return;
+      }
       if(options.interactive){
         alert('Could not read file: ' + filePath);
       }
@@ -7440,7 +9338,7 @@
       try { targetFile = sessionStorage.getItem('mdv_tab_file'); } catch(e) {}
     }
     if(!targetFile && !isFromPopstate){
-      targetFile = savedConfig.lastOpenFile;
+      targetFile = savedConfig.lastOpenFile || 'Welcome.md';
     }
     
     if(!targetFile) return;
@@ -7809,7 +9707,59 @@
 
     const inline = (str) => {
       if (!str) return '';
-      let s = escape(str);
+
+      // 0. Extract tokens (code, media, links) so URLs with underscores or special chars are never corrupted by formatting
+      const tokens = [];
+      const saveToken = (html) => {
+        const id = tokens.length;
+        tokens.push(html);
+        return `@@MDINLINETOKEN${id}@@`;
+      };
+
+      let s = str;
+
+      // Inline code: `code`
+      s = s.replace(/`([^`]+)`/g, (m, code) => saveToken(`<code class="fc-md-inline-code">${escape(code)}</code>`));
+
+      // Images & Audio embeds: ![alt](url)
+      s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+        const cleanUrl = url.trim();
+        const resolvedUrl = resolveMediaUrl(cleanUrl);
+        if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(cleanUrl)) {
+          return saveToken(`
+            <div class="fc-audio-wrap" data-audio-src="${resolvedUrl}" onclick="if(event.target.tagName!=='AUDIO'){event.stopPropagation();playEmbedAudio(this);}" title="Click to play">
+              <button type="button" class="fc-audio-play-btn" onclick="event.stopPropagation();playEmbedAudio(this);" title="Play / Pause">▶</button>
+              <audio controls preload="auto" src="${resolvedUrl}" onclick="event.stopPropagation();"></audio>
+              <span class="fc-audio-caption" onclick="event.stopPropagation();playEmbedAudio(this);" style="cursor:pointer;" title="Click to play">🔊 ${escape(alt || 'Audio')}</span>
+            </div>
+          `);
+        }
+        return saveToken(`<div class="fc-img-wrap"><img class="fc-card-img" src="${resolvedUrl}" alt="${escape(alt || 'Image')}" loading="lazy" onclick="event.stopPropagation(); if(typeof openImageModal==='function') openImageModal(this.src, '${escape(alt || 'Image')}'); else window.open(this.src,'_blank');" /></div>`);
+      });
+
+      // Anki [sound:...] fallback
+      s = s.replace(/\[sound:([^\]]+)\]/g, (m, url) => {
+        let cleanUrl = url.trim();
+        if (!cleanUrl.startsWith('assets/') && !cleanUrl.startsWith('/') && !cleanUrl.startsWith('http')) {
+          cleanUrl = 'assets/' + cleanUrl;
+        }
+        const resolvedUrl = resolveMediaUrl(cleanUrl);
+        return saveToken(`
+          <div class="fc-audio-wrap" data-audio-src="${resolvedUrl}" onclick="if(event.target.tagName!=='AUDIO'){event.stopPropagation();playEmbedAudio(this);}" title="Click to play">
+            <button type="button" class="fc-audio-play-btn" onclick="event.stopPropagation();playEmbedAudio(this);" title="Play / Pause">▶</button>
+            <audio controls preload="auto" src="${resolvedUrl}" onclick="event.stopPropagation();"></audio>
+            <span class="fc-audio-caption" onclick="event.stopPropagation();playEmbedAudio(this);" style="cursor:pointer;" title="Click to play">🔊 Audio</span>
+          </div>
+        `);
+      });
+
+      // Links: [text](url)
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, text, url) => {
+        return saveToken(`<a class="fc-md-link" href="${url.trim()}" target="_blank" rel="noopener">${escape(text)}</a>`);
+      });
+
+      // Escape remaining characters
+      s = escape(s);
 
       // Key pill badge transformation:
       // When a line has **Key:** or **Key name:**
@@ -7833,15 +9783,12 @@
       // Strikethrough:
       s = s.replace(/~~([^~]+)~~/g, '<del class="fc-md-del">$1</del>');
 
-      // Inline code:
-      s = s.replace(/`([^`]+)`/g, '<code class="fc-md-inline-code">$1</code>');
-
       // Checkbox tasks:
       s = s.replace(/\[\s*\]\s*/g, '<span class="fc-task-box unchecked">☐</span> ');
       s = s.replace(/\[x\]\s*/gi, '<span class="fc-task-box checked">☑</span> ');
 
-      // Links:
-      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="fc-md-link" href="$2" target="_blank" rel="noopener">$1</a>');
+      // Restore protected tokens
+      s = s.replace(/@@MDINLINETOKEN(\d+)@@/g, (m, id) => tokens[parseInt(id, 10)] || '');
 
       return s;
     };
@@ -8033,7 +9980,12 @@
         continue;
       }
 
-      out.push(`<p class="fc-md-p">${inline(line)}</p>`);
+      const rendered = inline(line);
+      if (rendered.trim().startsWith('<div class="fc-audio-wrap"') || rendered.trim().startsWith('<div class="fc-img-wrap"')) {
+        out.push(rendered);
+      } else {
+        out.push(`<p class="fc-md-p">${rendered}</p>`);
+      }
     }
 
     if (inList) {
@@ -8801,6 +10753,7 @@
     }
 
     fcBackContent.innerHTML = `<div class="fc-enhanced-markdown">${renderEnhancedMarkdown(rawText)}</div>`;
+    initCardAudioElements(fcBackContent);
   }
 
   // Apply AI content directly into markdown file as section content
@@ -8934,6 +10887,7 @@
           </div>
         </div>
       `;
+      initCardAudioElements(fcBackContent);
       const applyBtn = document.getElementById('fcBackApplyMdBtn');
       if (applyBtn) {
         applyBtn.addEventListener('click', (e) => {
@@ -9981,6 +11935,9 @@
     if (fcAiSettingsAutoCheck) {
       fcAiSettingsAutoCheck.checked = (aiSettings.batch_auto_next === true || aiSettings.batch_auto_next === 'true' || aiSettings.batch_auto_next === 1 || aiSettings.batch_auto_next === '1');
     }
+    if (fcAudioAutoplayCheck) {
+      fcAudioAutoplayCheck.checked = isFcAudioAutoplay;
+    }
     fcAiSettingsModal.classList.add('active');
     setTimeout(() => {
       if (prov === 'ollama' && fcOllamaHostInput) fcOllamaHostInput.focus();
@@ -9991,6 +11948,8 @@
   function closeAiSettingsModal() {
     fcAiSettingsModal.classList.remove('active');
   }
+  window.openAiSettingsModal = openAiSettingsModal;
+  window.closeAiSettingsModal = closeAiSettingsModal;
 
   async function testOllamaConnection(notify = true) {
     if (!fcOllamaHostInput) return;
@@ -10078,6 +12037,12 @@
     }
     if (fcBatchAutoCheck) fcBatchAutoCheck.checked = autoGen;
     if (fcBatchProviderSelect) fcBatchProviderSelect.value = selectedProvider;
+
+    if (fcAudioAutoplayCheck) {
+      isFcAudioAutoplay = fcAudioAutoplayCheck.checked;
+      try { localStorage.setItem('mdv_audio_autoplay', isFcAudioAutoplay ? 'true' : 'false'); } catch (e) {}
+      updateFcAudioAutoplayUI();
+    }
 
     try {
       localStorage.setItem('mdv_openrouter_api_key', apiKey);
@@ -11575,6 +13540,1887 @@
     });
   }
 
+  // --- Anki Import Controller ---
+  const ankiImportModal = document.getElementById('ankiImportModal');
+  const ankiModalCloseBtn = document.getElementById('ankiModalCloseBtn');
+  const ankiModalCancelBtn = document.getElementById('ankiModalCancelBtn');
+  const ankiImportToolbarBtn = document.getElementById('ankiImportToolbarBtn');
+  const fcAnkiImportBtn = document.getElementById('fcAnkiImportBtn');
+  const ankiDropzone = document.getElementById('ankiDropzone');
+  const ankiFileInput = document.getElementById('ankiFileInput');
+  const ankiRecentSection = document.getElementById('ankiRecentSection');
+  const ankiRecentList = document.getElementById('ankiRecentList');
+  const ankiPathInput = document.getElementById('ankiPathInput');
+  const ankiInspectBtn = document.getElementById('ankiInspectBtn');
+  const ankiInspectionCard = document.getElementById('ankiInspectionCard');
+  const ankiInspectFilename = document.getElementById('ankiInspectFilename');
+  const ankiInspectColVersion = document.getElementById('ankiInspectColVersion');
+  const ankiInspectNotesCount = document.getElementById('ankiInspectNotesCount');
+  const ankiInspectCardsCount = document.getElementById('ankiInspectCardsCount');
+  const ankiInspectAudioCount = document.getElementById('ankiInspectAudioCount');
+  const ankiInspectImageCount = document.getElementById('ankiInspectImageCount');
+  const ankiDecksListPreview = document.getElementById('ankiDecksListPreview');
+  const ankiOptionsCard = document.getElementById('ankiOptionsCard');
+  const ankiTargetFolderInput = document.getElementById('ankiTargetFolderInput');
+  const ankiHeadingLevelSelect = document.getElementById('ankiHeadingLevelSelect');
+  const ankiExtractMediaCb = document.getElementById('ankiExtractMediaCb');
+  const ankiNumberCardsCb = document.getElementById('ankiNumberCardsCb');
+  const ankiIncludeTagsCb = document.getElementById('ankiIncludeTagsCb');
+  const ankiProgressCard = document.getElementById('ankiProgressCard');
+  const ankiProgressText = document.getElementById('ankiProgressText');
+  const ankiSuccessCard = document.getElementById('ankiSuccessCard');
+  const ankiSuccessTitle = document.getElementById('ankiSuccessTitle');
+  const ankiSuccessSummary = document.getElementById('ankiSuccessSummary');
+  const ankiStartImportBtn = document.getElementById('ankiStartImportBtn');
+  const ankiOpenReaderBtn = document.getElementById('ankiOpenReaderBtn');
+  const ankiOpenFlashcardsBtn = document.getElementById('ankiOpenFlashcardsBtn');
+
+  let activeAnkiApkgPath = null;
+  let activeAnkiMeta = null;
+  let lastImportedFile = null;
+
+  function openAnkiImportModal() {
+    if (!ankiImportModal) return;
+    ankiImportModal.style.display = 'flex';
+    ankiImportModal.classList.add('active');
+    resetAnkiModalState();
+    loadRecentApkgs();
+  }
+
+  function closeAnkiImportModal() {
+    if (!ankiImportModal) return;
+    ankiImportModal.style.display = 'none';
+    ankiImportModal.classList.remove('active');
+  }
+
+  function resetAnkiModalState() {
+    activeAnkiApkgPath = null;
+    activeAnkiMeta = null;
+    lastImportedFile = null;
+    if (ankiInspectionCard) ankiInspectionCard.style.display = 'none';
+    if (ankiOptionsCard) ankiOptionsCard.style.display = 'none';
+    if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+    if (ankiSuccessCard) ankiSuccessCard.style.display = 'none';
+    if (ankiStartImportBtn) ankiStartImportBtn.style.display = 'none';
+    if (ankiPathInput) ankiPathInput.value = '';
+    if (ankiFileInput) ankiFileInput.value = '';
+  }
+
+  async function loadRecentApkgs() {
+    if (!ankiRecentSection || !ankiRecentList) return;
+    try {
+      const res = await fetch('/api/anki/recent');
+      if (!res.ok) return;
+      const data = await res.json();
+      const apkgs = data.recent_apkgs || [];
+      if (!apkgs.length) {
+        ankiRecentSection.style.display = 'none';
+        return;
+      }
+      ankiRecentSection.style.display = 'block';
+      ankiRecentList.innerHTML = apkgs.slice(0, 5).map(a => {
+        const mb = (a.size / (1024 * 1024)).toFixed(1);
+        const loc = a.in_workspace ? 'Workspace' : 'Downloads';
+        return `
+          <div class="anki-recent-item" data-path="${escapeHtml(a.path)}">
+            <div style="display:flex;align-items:center;gap:8px;overflow:hidden;">
+              <span>📦</span>
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <div style="font-weight:600;font-size:12px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.name)}</div>
+                <div style="font-size:10px;color:var(--muted);">${mb} MB • ${loc}</div>
+              </div>
+            </div>
+            <button type="button" class="fc-btn-secondary" style="font-size:11px;padding:2px 8px;white-space:nowrap;">Select</button>
+          </div>
+        `;
+      }).join('');
+
+      ankiRecentList.querySelectorAll('.anki-recent-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const path = el.getAttribute('data-path');
+          if (path) {
+            ankiPathInput.value = path;
+            inspectApkgPath(path);
+          }
+        });
+      });
+    } catch (e) {
+      console.warn('Failed to load recent apkgs:', e);
+    }
+  }
+
+  async function inspectApkgPath(path) {
+    if (!path) return;
+    resetAnkiModalState();
+    ankiPathInput.value = path;
+    if (ankiProgressCard) {
+      ankiProgressCard.style.display = 'block';
+      ankiProgressText.textContent = 'Inspecting deck structure and cards...';
+    }
+    try {
+      const res = await fetch('/api/anki/inspect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: path.trim() })
+      });
+      const data = await res.json();
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+      if (!res.ok || data.status === 'error') {
+        showToast('Error inspecting APKG: ' + (data.message || res.statusText), 4000);
+        return;
+      }
+      displayApkgInspection(data, path);
+    } catch (e) {
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+      showToast('Error: ' + e.message, 4000);
+    }
+  }
+
+  function displayApkgInspection(meta, path) {
+    activeAnkiApkgPath = meta.temp_path || path;
+    activeAnkiMeta = meta;
+
+    if (ankiInspectionCard) ankiInspectionCard.style.display = 'block';
+    if (ankiInspectFilename) ankiInspectFilename.textContent = meta.filename || 'Anki Deck';
+    if (ankiInspectColVersion) ankiInspectColVersion.textContent = `Schema: ${meta.col_version || 'Anki 2.x'} (${(meta.file_size / (1024*1024)).toFixed(1)} MB)`;
+    if (ankiInspectNotesCount) ankiInspectNotesCount.textContent = (meta.total_notes || 0).toLocaleString();
+    if (ankiInspectCardsCount) ankiInspectCardsCount.textContent = (meta.total_cards || 0).toLocaleString();
+    if (ankiInspectAudioCount) ankiInspectAudioCount.textContent = (meta.media?.audio || 0).toLocaleString();
+    if (ankiInspectImageCount) ankiInspectImageCount.textContent = (meta.media?.images || 0).toLocaleString();
+
+    if (ankiDecksListPreview) {
+      const decks = meta.decks || [];
+      ankiDecksListPreview.innerHTML = decks.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:4px 8px;border-radius:4px;">
+          <span style="font-weight:600;color:#c0caf5;">📖 ${escapeHtml(d.name)}</span>
+          <span style="color:var(--muted);font-size:11px;">${d.note_count} cards</span>
+        </div>
+      `).join('');
+    }
+
+    let defaultFolderName = 'Decks';
+    if (meta.decks && meta.decks.length > 0 && meta.decks[0].name && meta.decks[0].name !== 'Default') {
+      const cleanDeck = meta.decks[0].name.split('::')[0].replace(/[\\/*?:"<>|]/g, '_').trim();
+      if (cleanDeck) defaultFolderName = 'Decks/' + cleanDeck;
+    } else if (meta.filename) {
+      const cleanBase = meta.filename.replace(/\.apkg$/i, '').replace(/[\\/*?:"<>|]/g, '_').trim();
+      if (cleanBase) defaultFolderName = 'Decks/' + cleanBase;
+    }
+    if (ankiTargetFolderInput) ankiTargetFolderInput.value = defaultFolderName;
+
+    if (ankiOptionsCard) ankiOptionsCard.style.display = 'flex';
+    if (ankiStartImportBtn) ankiStartImportBtn.style.display = 'inline-flex';
+  }
+
+  async function uploadAndInspectApkgFile(file) {
+    if (!file) return;
+    resetAnkiModalState();
+    if (ankiProgressCard) {
+      ankiProgressCard.style.display = 'block';
+      ankiProgressText.textContent = `Uploading and inspecting ${file.name}...`;
+    }
+    try {
+      const res = await fetch('/api/anki/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-Filename': encodeURIComponent(file.name)
+        },
+        body: file
+      });
+      const data = await res.json();
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+      if (!res.ok || data.status === 'error') {
+        showToast('Upload error: ' + (data.message || res.statusText), 4000);
+        return;
+      }
+      displayApkgInspection(data, data.temp_path);
+    } catch (e) {
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+      showToast('Error uploading APKG: ' + e.message, 4000);
+    }
+  }
+
+  async function startAnkiImport() {
+    if (!activeAnkiApkgPath) {
+      showToast('Please select or inspect an Anki deck first', 3000);
+      return;
+    }
+
+    const targetFolder = (ankiTargetFolderInput ? ankiTargetFolderInput.value : '').trim();
+    const headingLevel = ankiHeadingLevelSelect ? parseInt(ankiHeadingLevelSelect.value, 10) : 2;
+    const numberCards = ankiNumberCardsCb ? ankiNumberCardsCb.checked : true;
+    const extractMedia = ankiExtractMediaCb ? ankiExtractMediaCb.checked : true;
+    const includeTags = ankiIncludeTagsCb ? ankiIncludeTagsCb.checked : true;
+
+    if (ankiProgressCard) {
+      ankiProgressCard.style.display = 'block';
+      ankiProgressText.textContent = 'Converting cards, extracting media, and writing Markdown...';
+    }
+    if (ankiStartImportBtn) ankiStartImportBtn.style.display = 'none';
+    if (ankiOptionsCard) ankiOptionsCard.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/anki/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: activeAnkiApkgPath,
+          output_dir: targetFolder,
+          options: {
+            heading_level: headingLevel,
+            number_cards: numberCards,
+            extract_media: extractMedia,
+            include_tags: includeTags
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+
+      if (!res.ok || data.status === 'error') {
+        showToast('Import error: ' + (data.message || res.statusText), 5000);
+        if (ankiOptionsCard) ankiOptionsCard.style.display = 'flex';
+        if (ankiStartImportBtn) ankiStartImportBtn.style.display = 'inline-flex';
+        return;
+      }
+
+      lastImportedFile = data.workspace_files && data.workspace_files.length ? data.workspace_files[0] : (data.imported_files && data.imported_files.length ? (targetFolder ? targetFolder + '/' + data.imported_files[0] : data.imported_files[0]) : null);
+
+      if (ankiSuccessCard) {
+        ankiSuccessCard.style.display = 'block';
+        if (ankiSuccessTitle) ankiSuccessTitle.textContent = `Import Complete! (${data.total_notes.toLocaleString()} Notes)`;
+        if (ankiSuccessSummary) {
+          const filesCreated = (data.imported_files || []).join(', ');
+          ankiSuccessSummary.innerHTML = `
+            Created: <b>${filesCreated}</b><br/>
+            Extracted: <b>${data.extracted_media_count.toLocaleString()} media files</b> (audio & images in assets/)
+          `;
+        }
+      }
+
+      showToast(`✓ Successfully imported ${data.total_notes} cards from Anki!`, 4000);
+
+      if (typeof initSidebar === 'function') {
+        initSidebar();
+      }
+    } catch (e) {
+      if (ankiProgressCard) ankiProgressCard.style.display = 'none';
+      if (ankiOptionsCard) ankiOptionsCard.style.display = 'flex';
+      if (ankiStartImportBtn) ankiStartImportBtn.style.display = 'inline-flex';
+      showToast('Error during Anki import: ' + e.message, 5000);
+    }
+  }
+
+  // Event Listeners for Anki Import
+  if (ankiImportToolbarBtn) ankiImportToolbarBtn.addEventListener('click', openAnkiImportModal);
+  if (fcAnkiImportBtn) fcAnkiImportBtn.addEventListener('click', openAnkiImportModal);
+  if (ankiModalCloseBtn) ankiModalCloseBtn.addEventListener('click', closeAnkiImportModal);
+  if (ankiModalCancelBtn) ankiModalCancelBtn.addEventListener('click', closeAnkiImportModal);
+
+  if (ankiInspectBtn) {
+    ankiInspectBtn.addEventListener('click', () => {
+      const p = (ankiPathInput ? ankiPathInput.value : '').trim();
+      if (p) inspectApkgPath(p);
+      else showToast('Please enter an APKG file path', 3000);
+    });
+  }
+
+  if (ankiPathInput) {
+    ankiPathInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const p = ankiPathInput.value.trim();
+        if (p) inspectApkgPath(p);
+      }
+    });
+  }
+
+  if (ankiDropzone && ankiFileInput) {
+    ankiDropzone.addEventListener('click', () => ankiFileInput.click());
+    ankiFileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) uploadAndInspectApkgFile(file);
+    });
+
+    ankiDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      ankiDropzone.classList.add('dragover');
+    });
+    ankiDropzone.addEventListener('dragleave', () => ankiDropzone.classList.remove('dragover'));
+    ankiDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      ankiDropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) uploadAndInspectApkgFile(file);
+    });
+  }
+
+  if (ankiStartImportBtn) ankiStartImportBtn.addEventListener('click', startAnkiImport);
+
+  if (ankiOpenReaderBtn) {
+    ankiOpenReaderBtn.addEventListener('click', async () => {
+      if (lastImportedFile) {
+        closeAnkiImportModal();
+        if (flashcardView && flashcardView.style.display !== 'none') {
+          exitFlashcardMode();
+        }
+        await openFile(lastImportedFile);
+      }
+    });
+  }
+
+  if (ankiOpenFlashcardsBtn) {
+    ankiOpenFlashcardsBtn.addEventListener('click', async () => {
+      if (lastImportedFile) {
+        closeAnkiImportModal();
+        await openFile(lastImportedFile);
+        if (flashcardModeBtn) {
+          flashcardModeBtn.click();
+          const h2Btn = document.getElementById('fcFilterH2');
+          if (h2Btn) h2Btn.click();
+        }
+      }
+    });
+  }
+
+  // --- Interactive Lightbox Image Modal ---
+  let imageModalZoom = 1.0;
+  let isImageModalPanning = false;
+  let imageModalPanStart = { x: 0, y: 0 };
+  let imageModalScrollStart = { x: 0, y: 0 };
+
+  const imageModal = document.getElementById('imageModal');
+  const imageModalImg = document.getElementById('imageModalImg');
+  const imageModalCaption = document.getElementById('imageModalCaption');
+  const imageModalZoomLevel = document.getElementById('imageModalZoomLevel');
+  const imageModalZoomInBtn = document.getElementById('imageModalZoomInBtn');
+  const imageModalZoomOutBtn = document.getElementById('imageModalZoomOutBtn');
+  const imageModalResetBtn = document.getElementById('imageModalResetBtn');
+  const imageModalOpenNewTab = document.getElementById('imageModalOpenNewTab');
+  const imageModalCloseBtn = document.getElementById('imageModalCloseBtn');
+  const imageModalViewport = document.getElementById('imageModalViewport');
+
+  function openImageModal(src, caption) {
+    if (!imageModal || !imageModalImg) {
+      window.open(src, '_blank');
+      return;
+    }
+    imageModalZoom = 1.0;
+    imageModalImg.src = src;
+    imageModalImg.style.transform = 'scale(1.0)';
+    if (imageModalCaption) imageModalCaption.textContent = caption || src.split('/').pop().split('?')[0];
+    if (imageModalZoomLevel) imageModalZoomLevel.textContent = '100%';
+    if (imageModalOpenNewTab) imageModalOpenNewTab.href = src;
+    imageModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeImageModal() {
+    if (!imageModal) return;
+    imageModal.style.display = 'none';
+    if (imageModalImg) imageModalImg.src = '';
+    imageModalZoom = 1.0;
+    document.body.style.overflow = '';
+  }
+
+  function updateImageModalZoom(newZoom) {
+    imageModalZoom = Math.max(0.25, Math.min(5.0, newZoom));
+    if (imageModalImg) {
+      imageModalImg.style.transform = `scale(${imageModalZoom})`;
+    }
+    if (imageModalZoomLevel) {
+      imageModalZoomLevel.textContent = `${Math.round(imageModalZoom * 100)}%`;
+    }
+    if (imageModalViewport) {
+      imageModalViewport.style.cursor = imageModalZoom > 1.05 ? 'grab' : 'default';
+    }
+  }
+
+  if (imageModalZoomInBtn) {
+    imageModalZoomInBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateImageModalZoom(imageModalZoom + 0.25);
+    });
+  }
+  if (imageModalZoomOutBtn) {
+    imageModalZoomOutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateImageModalZoom(imageModalZoom - 0.25);
+    });
+  }
+  if (imageModalResetBtn) {
+    imageModalResetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateImageModalZoom(1.0);
+    });
+  }
+  if (imageModalCloseBtn) {
+    imageModalCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeImageModal();
+    });
+  }
+  if (imageModal) {
+    imageModal.addEventListener('click', (e) => {
+      if (e.target === imageModal || e.target.classList.contains('image-modal-dialog')) {
+        closeImageModal();
+      }
+    });
+  }
+  if (imageModalViewport) {
+    // Mouse wheel zoom
+    imageModalViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      updateImageModalZoom(imageModalZoom + delta);
+    }, { passive: false });
+
+    // Drag to pan when zoomed
+    imageModalViewport.addEventListener('mousedown', (e) => {
+      if (imageModalZoom <= 1.05) return;
+      isImageModalPanning = true;
+      imageModalViewport.style.cursor = 'grabbing';
+      imageModalPanStart = { x: e.clientX, y: e.clientY };
+      imageModalScrollStart = { x: imageModalViewport.scrollLeft, y: imageModalViewport.scrollTop };
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isImageModalPanning) return;
+      const dx = e.clientX - imageModalPanStart.x;
+      const dy = e.clientY - imageModalPanStart.y;
+      imageModalViewport.scrollLeft = imageModalScrollStart.x - dx;
+      imageModalViewport.scrollTop = imageModalScrollStart.y - dy;
+    });
+    window.addEventListener('mouseup', () => {
+      if (isImageModalPanning) {
+        isImageModalPanning = false;
+        if (imageModalViewport) imageModalViewport.style.cursor = imageModalZoom > 1.05 ? 'grab' : 'default';
+      }
+    });
+  }
+
+  // Keyboard controls for image modal
+  window.addEventListener('keydown', (e) => {
+    if (imageModal && imageModal.style.display !== 'none') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeImageModal();
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        updateImageModalZoom(imageModalZoom + 0.25);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        updateImageModalZoom(imageModalZoom - 0.25);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        updateImageModalZoom(1.0);
+      }
+    }
+  });
+
+  window.openImageModal = openImageModal;
+  window.closeImageModal = closeImageModal;
+
+  // =========================================================================
+  // UNIFIED 3-MODE ARCHITECTURE & DOCUMENT MODE ENGINE (mdserve integration)
+  // =========================================================================
+  let currentAppMode = localStorage.getItem('mdviewer-mode') || 'outline';
+  let isDoublePageMode = localStorage.getItem('mdviewer-double-page') === 'true';
+  let isWideLayout = localStorage.getItem('mdviewer-wide-layout') !== 'false';
+  let currentDocToc = [];
+  let isRenderingDoc = false;
+
+  function setAppMode(mode, options = {}) {
+    if (mode !== 'outline' && mode !== 'document' && mode !== 'flashcards') {
+      mode = 'outline';
+    }
+    currentAppMode = mode;
+    localStorage.setItem('mdviewer-mode', mode);
+
+    const outlineBtn = document.getElementById('modeOutlineBtn');
+    const docBtn = document.getElementById('modeDocumentBtn');
+    const fcBtn = document.getElementById('modeFlashcardsBtn');
+    if (outlineBtn) outlineBtn.classList.toggle('active', mode === 'outline');
+    if (docBtn) docBtn.classList.toggle('active', mode === 'document');
+    if (fcBtn) fcBtn.classList.toggle('active', mode === 'flashcards');
+
+    const outlineGroup = document.getElementById('outlineToolbarGroup');
+    const docGroup = document.getElementById('docToolbarGroup');
+    if (outlineGroup) outlineGroup.style.display = (mode === 'outline') ? 'inline-flex' : 'none';
+    if (docGroup) docGroup.style.display = (mode === 'document') ? 'inline-flex' : 'none';
+
+    if (mode === 'flashcards') {
+      if (!isFlashcardMode) {
+        enterFlashcardMode(options);
+      }
+    } else {
+      if (isFlashcardMode) {
+        exitFlashcardMode();
+      }
+    }
+
+    const scrollerEl = document.getElementById('scroller');
+    const docViewEl = document.getElementById('documentView');
+    const fcViewEl = document.getElementById('flashcardView');
+
+    if (scrollerEl) scrollerEl.style.display = (mode === 'outline') ? 'block' : 'none';
+    if (docViewEl) docViewEl.style.display = (mode === 'document') ? 'block' : 'none';
+    if (fcViewEl) fcViewEl.style.display = (mode === 'flashcards') ? 'flex' : 'none';
+
+    if (mode !== 'document' && typeof isDocEditorDirty !== 'undefined' && isDocEditorDirty) {
+      if (typeof saveDocEditor === 'function') saveDocEditor(true);
+    }
+
+    if (mode === 'document') {
+      if (typeof setDocSubMode === 'function') {
+        setDocSubMode(docSubMode || 'reading');
+      } else {
+        renderCurrentDocument();
+      }
+    } else if (mode === 'outline') {
+      render();
+    }
+  }
+
+  function setupModeSwitcher() {
+    const outlineBtn = document.getElementById('modeOutlineBtn');
+    const docBtn = document.getElementById('modeDocumentBtn');
+    const fcBtn = document.getElementById('modeFlashcardsBtn');
+
+    if (outlineBtn) outlineBtn.addEventListener('click', () => setAppMode('outline'));
+    if (docBtn) docBtn.addEventListener('click', () => setAppMode('document'));
+    if (fcBtn) fcBtn.addEventListener('click', () => setAppMode('flashcards'));
+  }
+
+  async function renderCurrentDocument(targetFile = null) {
+    let filePath = targetFile || currentFilePath;
+    const docBody = document.getElementById('docBody');
+    const docSpeedBadge = document.getElementById('docRenderSpeed');
+    const docWordCount = document.getElementById('docWordCount');
+    const docReadingTime = document.getElementById('docReadingTime');
+    const docTocList = document.getElementById('docTocList');
+    
+    if (!docBody) return;
+    if (!filePath && (!lines || lines.length === 0)) {
+      filePath = 'Welcome.md';
+    }
+
+    isRenderingDoc = true;
+    const t0 = performance.now();
+
+    try {
+      let payload = {};
+      if (filePath) {
+        payload.file = filePath;
+      } else {
+        payload.content = lines.join('\n');
+      }
+
+      const res = await fetch('/api/document/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Render failed: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      const renderDur = (performance.now() - t0).toFixed(1);
+
+      if (docSpeedBadge) {
+        const engineLabel = data.engine === 'rust' ? '⚡ Rust' : '🐍 Py';
+        docSpeedBadge.textContent = `${engineLabel} ${data.render_duration_ms ? data.render_duration_ms.toFixed(1) : renderDur}ms`;
+      }
+
+      docBody.innerHTML = data.html || '';
+
+      const rawText = docBody.innerText || '';
+      const words = rawText.trim() ? rawText.trim().split(/\s+/).length : 0;
+      if (docWordCount) docWordCount.textContent = `${words.toLocaleString()} words`;
+      if (docReadingTime) {
+        const minutes = Math.max(1, Math.round(words / 200));
+        docReadingTime.textContent = `${minutes} min read`;
+      }
+
+      currentDocToc = data.toc || [];
+      if (docTocList) {
+        docTocList.innerHTML = '';
+        if (currentDocToc.length === 0) {
+          docTocList.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px;">No headings in note</div>';
+        } else {
+          currentDocToc.forEach((h) => {
+            const item = document.createElement('a');
+            item.className = `doc-toc-item lvl-${h.level}`;
+            item.textContent = h.text;
+            item.href = 'javascript:void(0)';
+            item.addEventListener('click', () => {
+              scrollToDocHeading(h.text);
+            });
+            docTocList.appendChild(item);
+          });
+        }
+      }
+
+      if (window.renderMathInElement) {
+        try {
+          renderMathInElement(docBody, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ],
+            throwOnError: false
+          });
+        } catch (err) {
+          console.warn('KaTeX render error:', err);
+        }
+      }
+
+      if (window.mermaid) {
+        try {
+          const mermaidContainers = docBody.querySelectorAll('.mermaid, .language-mermaid, pre code.language-mermaid');
+          if (mermaidContainers.length > 0) {
+            mermaid.run({ querySelector: '.mermaid, .language-mermaid' });
+          }
+        } catch (err) {
+          console.warn('Mermaid render error:', err);
+        }
+      }
+
+      attachDocCheckboxes();
+      attachDocCodeCopyButtons();
+      attachDocImageLightboxes();
+      updateDoublePageLayout();
+
+    } catch (err) {
+      console.error('Document render error:', err);
+      docBody.innerHTML = `<div style="color:#f7768e;padding:24px;">Failed to render document: ${err.message}</div>`;
+    } finally {
+      isRenderingDoc = false;
+    }
+  }
+
+  function attachDocCheckboxes() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    const checkboxes = docBody.querySelectorAll('input.task-checkbox');
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const idx = parseInt(cb.getAttribute('data-idx'), 10);
+        const isChecked = cb.checked;
+        
+        const li = cb.closest('li');
+        if (li) {
+          li.style.textDecoration = isChecked ? 'line-through' : 'none';
+          li.style.opacity = isChecked ? '0.7' : '1';
+        }
+
+        if (!currentFilePath) return;
+
+        try {
+          const res = await fetch('/api/document/checkbox', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: currentFilePath, index: idx })
+          });
+          const data = await res.json();
+          if (data.status !== 'ok') {
+            showAppToast(`Checkbox sync error: ${data.message || 'Unknown'}`);
+            cb.checked = !isChecked;
+          } else {
+            showAppToast(isChecked ? 'Task completed ✓' : 'Task uncompleted', 1200);
+          }
+        } catch (err) {
+          console.error('Error syncing checkbox:', err);
+          cb.checked = !isChecked;
+        }
+      });
+    });
+  }
+
+  async function toggleAllDocTasks(checkAll) {
+    if (!currentFilePath) return;
+    try {
+      const res = await fetch('/api/document/toggle_all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: currentFilePath, check_all: checkAll })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        showAppToast(checkAll ? 'All tasks marked done' : 'All tasks cleared', 1200);
+        renderCurrentDocument();
+      }
+    } catch (err) {
+      console.error('Error toggling all tasks:', err);
+    }
+  }
+
+  function setDoublePageMode(enabled) {
+    isDoublePageMode = enabled;
+    localStorage.setItem('mdviewer-double-page', enabled);
+
+    const docView = document.getElementById('documentView');
+    const hud = document.getElementById('docReadingHud');
+    const btn1 = document.getElementById('docDoublePageBtn');
+    const btn2 = document.getElementById('docFloatDoubleBtn');
+
+    if (docView) {
+      docView.classList.toggle('double-page-mode-active', enabled);
+    }
+    if (hud) {
+      hud.style.display = enabled ? 'flex' : 'none';
+    }
+    if (btn1) {
+      btn1.classList.toggle('active', enabled);
+      btn1.textContent = enabled ? '📄 Single-Page' : '📖 Double-Page';
+    }
+    if (btn2) {
+      btn2.classList.toggle('active', enabled);
+      btn2.textContent = enabled ? '📄 Single-Page' : '📖 Double-Page';
+    }
+
+    updateDoublePageLayout();
+  }
+
+  function setWideLayout(enabled) {
+    isWideLayout = enabled;
+    localStorage.setItem('mdviewer-wide-layout', enabled);
+
+    const docView = document.getElementById('documentView');
+    const btn1 = document.getElementById('docWideLayoutBtn');
+    const btn2 = document.getElementById('docFloatWideBtn');
+
+    if (docView) {
+      docView.classList.toggle('wide-layout-active', enabled);
+    }
+    if (btn1) {
+      btn1.classList.toggle('active', enabled);
+      btn1.textContent = enabled ? '⇥ Centered' : '↔ Wide';
+    }
+    if (btn2) {
+      btn2.classList.toggle('active', enabled);
+      btn2.textContent = enabled ? '⇥ Centered' : '↔ Wide';
+    }
+
+    updateDoublePageLayout();
+  }
+
+  function updateDoublePageLayout() {
+    if (!isDoublePageMode) return;
+    const docBody = document.getElementById('docBody');
+    const hudPageText = document.getElementById('docHudPageText');
+    if (!docBody) return;
+
+    const scrollWidth = docBody.scrollWidth;
+    const clientWidth = docBody.clientWidth;
+    const scrollLeft = docBody.scrollLeft;
+
+    if (clientWidth <= 0) return;
+
+    const totalPages = Math.max(1, Math.ceil(scrollWidth / clientWidth));
+    const currentPage = Math.min(totalPages, Math.max(1, Math.round(scrollLeft / clientWidth) + 1));
+    const percent = Math.min(100, Math.round((currentPage / totalPages) * 100));
+
+    if (hudPageText) {
+      hudPageText.textContent = `Page ${currentPage} / ${totalPages} (${percent}%)`;
+    }
+  }
+
+  function docPageLeft() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    docBody.scrollBy({ left: -docBody.clientWidth, behavior: 'smooth' });
+    setTimeout(updateDoublePageLayout, 150);
+  }
+
+  function docPageRight() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    docBody.scrollBy({ left: docBody.clientWidth, behavior: 'smooth' });
+    setTimeout(updateDoublePageLayout, 150);
+  }
+
+  function attachDocCodeCopyButtons() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    const preElements = docBody.querySelectorAll('pre');
+    preElements.forEach(pre => {
+      if (pre.querySelector('.code-copy-btn')) return;
+      const btn = document.createElement('button');
+      btn.className = 'doc-tool-btn code-copy-btn';
+      btn.textContent = '📋 Copy';
+      btn.style.cssText = 'position:absolute;top:6px;right:6px;padding:2px 8px;font-size:11px;opacity:0.65;';
+      btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+      btn.addEventListener('mouseleave', () => { btn.style.opacity = '0.65'; });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+        });
+      });
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+  }
+
+  function attachDocImageLightboxes() {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    const images = docBody.querySelectorAll('img');
+    images.forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof openImageModal === 'function') {
+          openImageModal(img.src, img.alt);
+        }
+      });
+    });
+  }
+
+  function scrollToDocHeading(headingText) {
+    const docBody = document.getElementById('docBody');
+    if (!docBody) return;
+    const headings = docBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    for (const h of headings) {
+      if (h.textContent.trim() === headingText.trim()) {
+        if (isDoublePageMode) {
+          h.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        } else {
+          h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        setTimeout(updateDoublePageLayout, 200);
+        break;
+      }
+    }
+  }
+
+
+  // ==========================================
+  // Obsidian-Grade Document Editor & Live Preview
+  // ==========================================
+  let docSubMode = localStorage.getItem('mdviewer-doc-submode') || 'reading';
+  let isDocEditorDirty = false;
+  let docEditorSaveTimer = null;
+  let docPreviewDebounceTimer = null;
+  let isSyncingScroll = false;
+
+  function setDocSaveStatus(isSaved, text = null) {
+    const pills = [
+      document.getElementById('edSaveStatusPill'),
+      document.getElementById('edFooterStatusPill'),
+      document.getElementById('docTopSaveStatus')
+    ];
+    pills.forEach(pill => {
+      if (!pill) return;
+      if (isSaved) {
+        pill.className = 'doc-status-pill saved';
+        pill.textContent = text || '✓ Saved';
+      } else {
+        pill.className = 'doc-status-pill unsaved';
+        pill.textContent = text || '● Unsaved';
+      }
+    });
+  }
+
+  function updateDocLineNumbers() {
+    const textarea = document.getElementById('docTextarea');
+    const lineNumbersEl = document.getElementById('docLineNumbers');
+    if (!textarea || !lineNumbersEl) return;
+    const text = textarea.value;
+    const count = text ? text.split('\n').length : 1;
+    let nums = '';
+    for (let i = 1; i <= count; i++) {
+      nums += `<div>${i}</div>`;
+    }
+    lineNumbersEl.innerHTML = nums;
+  }
+
+  function updateEditorStats() {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    const text = textarea.value;
+    const linesArr = text ? text.split('\n') : [''];
+    const linesCount = linesArr.length;
+    const charsCount = text.length;
+    const wordsCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const readMins = Math.max(1, Math.round(wordsCount / 200));
+
+    const cursor = textarea.selectionStart || 0;
+    const textBefore = text.substring(0, cursor);
+    const linesBefore = textBefore.split('\n');
+    const curLine = linesBefore.length;
+    const curCol = linesBefore[linesBefore.length - 1].length + 1;
+
+    const elCursor = document.getElementById('edFooterCursor');
+    const elWords = document.getElementById('edFooterWordCount');
+    const elLines = document.getElementById('edFooterLineCount');
+    const elChars = document.getElementById('edFooterCharCount');
+    const elRead = document.getElementById('edFooterReadingTime');
+    const elFile = document.getElementById('edFooterFilePath');
+    const elLiveWords = document.getElementById('docLiveStats');
+
+    if (elCursor) elCursor.textContent = `Ln ${curLine}, Col ${curCol}`;
+    if (elWords) elWords.textContent = `${wordsCount.toLocaleString()} words`;
+    if (elLines) elLines.textContent = `${linesCount.toLocaleString()} lines`;
+    if (elChars) elChars.textContent = `${charsCount.toLocaleString()} chars`;
+    if (elRead) elRead.textContent = `${readMins} min read`;
+    if (elFile) elFile.textContent = currentFilePath || 'Welcome.md';
+    if (elLiveWords) elLiveWords.textContent = `${wordsCount.toLocaleString()} words`;
+  }
+
+  async function renderLivePreview() {
+    const textarea = document.getElementById('docTextarea');
+    const liveBody = document.getElementById('docLiveBody');
+    const speedBadge = document.getElementById('docLiveRenderSpeed');
+    if (!textarea || !liveBody) return;
+    if (docSubMode !== 'live') return;
+
+    const t0 = performance.now();
+    try {
+      const res = await fetch('/api/document/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: currentFilePath,
+          content: textarea.value
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const dur = (performance.now() - t0).toFixed(1);
+
+      liveBody.innerHTML = data.html || '';
+
+      if (speedBadge) {
+        const engineLabel = data.engine === 'rust' ? '⚡ Rust' : '🐍 Py';
+        const ms = data.render_duration_ms ? data.render_duration_ms.toFixed(1) : dur;
+        speedBadge.textContent = `${engineLabel} ${ms}ms`;
+      }
+
+      if (window.renderMathInElement) {
+        try {
+          renderMathInElement(liveBody, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ],
+            throwOnError: false
+          });
+        } catch (err) {
+          console.warn('KaTeX live render error:', err);
+        }
+      }
+
+      if (window.mermaid) {
+        try {
+          const mNodes = liveBody.querySelectorAll('.mermaid, .language-mermaid, pre code.language-mermaid');
+          if (mNodes.length > 0) {
+            mermaid.run({ querySelector: '#docLiveBody .mermaid, #docLiveBody .language-mermaid' });
+          }
+        } catch (err) {
+          console.warn('Mermaid live render error:', err);
+        }
+      }
+
+      // Checkbox interactive sync in live preview
+      const cbs = liveBody.querySelectorAll('input.task-checkbox');
+      cbs.forEach(cb => {
+        cb.addEventListener('change', () => {
+          const idx = parseInt(cb.getAttribute('data-idx'), 10);
+          toggleCheckboxInEditor(idx, cb.checked);
+        });
+      });
+
+      // Image lightboxes in live preview
+      const imgs = liveBody.querySelectorAll('img');
+      imgs.forEach(img => {
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (typeof openImageModal === 'function') {
+            openImageModal(img.src, img.alt);
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error('Live preview error:', err);
+    }
+  }
+
+  function toggleCheckboxInEditor(checkboxIndex, isChecked) {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    const text = textarea.value;
+    const regex = /^(\s*[-*+]\s+\[)([ xX])(\]\s.*)$/gm;
+    let match;
+    let currentIdx = 0;
+    let newText = '';
+    let lastIndex = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (currentIdx === checkboxIndex) {
+        newText += text.substring(lastIndex, match.index);
+        newText += match[1] + (isChecked ? 'x' : ' ') + match[3];
+        lastIndex = regex.lastIndex;
+        break;
+      }
+      currentIdx++;
+    }
+    if (lastIndex > 0) {
+      newText += text.substring(lastIndex);
+      textarea.value = newText;
+      isDocEditorDirty = true;
+      setDocSaveStatus(false);
+      scheduleDocAutoSave();
+      scheduleLivePreview();
+    }
+  }
+
+  function scheduleLivePreview() {
+    if (docPreviewDebounceTimer) clearTimeout(docPreviewDebounceTimer);
+    docPreviewDebounceTimer = setTimeout(renderLivePreview, 120);
+  }
+
+  async function saveDocEditor(isSilent = false) {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    if (!currentFilePath) {
+      currentFilePath = 'Welcome.md';
+    }
+
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: currentFilePath,
+          file: currentFilePath,
+          content: textarea.value
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        isDocEditorDirty = false;
+        lines = textarea.value.split('\n');
+        setDocSaveStatus(true);
+        if (!isSilent) {
+          showAppToast('Saved to disk ✓', 1200);
+        }
+      } else {
+        alert('Save error: ' + (data.message || 'Unknown'));
+      }
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      showAppToast('Failed to save: ' + err.message);
+    }
+  }
+
+  function scheduleDocAutoSave() {
+    const cb = document.getElementById('edAutoSaveCb');
+    if (!cb || !cb.checked) return;
+    if (docEditorSaveTimer) clearTimeout(docEditorSaveTimer);
+    docEditorSaveTimer = setTimeout(() => {
+      if (isDocEditorDirty) {
+        saveDocEditor(true);
+      }
+    }, 1200);
+  }
+
+  function setDocSubMode(subMode) {
+    docSubMode = subMode;
+    localStorage.setItem('mdviewer-doc-submode', subMode);
+
+    const readingContainer = document.getElementById('docBodyContainer');
+    const editorContainer = document.getElementById('docEditorContainer');
+    const readingTools = document.getElementById('docReadingToolsGroup');
+    const editingTools = document.getElementById('docEditingToolsGroup');
+    const readingHud = document.getElementById('docReadingHud');
+    const splitArea = document.getElementById('docEditorSplitArea');
+    const editorPane = document.getElementById('docEditorPane');
+    const splitDivider = document.getElementById('docSplitDivider');
+    const livePane = document.getElementById('docLivePreviewPane');
+    const textarea = document.getElementById('docTextarea');
+
+    // Update Tab Buttons in Top Toolbar and Floating Bar
+    const topTabs = [
+      { id: 'docSubViewReadingBtn', mode: 'reading' },
+      { id: 'docSubViewLiveBtn', mode: 'live' },
+      { id: 'docSubViewSourceBtn', mode: 'source' }
+    ];
+    const floatTabs = [
+      { id: 'docFloatSubReadingBtn', mode: 'reading' },
+      { id: 'docFloatSubLiveBtn', mode: 'live' },
+      { id: 'docFloatSubSourceBtn', mode: 'source' }
+    ];
+    topTabs.forEach(t => {
+      const el = document.getElementById(t.id);
+      if (el) el.classList.toggle('active', t.mode === subMode);
+    });
+    floatTabs.forEach(t => {
+      const el = document.getElementById(t.id);
+      if (el) el.classList.toggle('active', t.mode === subMode);
+    });
+
+    const floatEditBtn = document.getElementById('docFloatEditBtn');
+    if (floatEditBtn) {
+      floatEditBtn.textContent = (subMode === 'reading') ? '✏️ Edit Note' : '📖 Reading View';
+    }
+
+    if (subMode === 'reading') {
+      if (readingContainer) readingContainer.style.display = 'block';
+      if (editorContainer) editorContainer.style.display = 'none';
+      if (readingTools) readingTools.style.display = 'inline-flex';
+      if (editingTools) editingTools.style.display = 'none';
+      if (readingHud) readingHud.style.display = isDoublePageMode ? 'flex' : 'none';
+      renderCurrentDocument();
+    } else {
+      if (readingContainer) readingContainer.style.display = 'none';
+      if (editorContainer) editorContainer.style.display = 'flex';
+      if (readingTools) readingTools.style.display = 'none';
+      if (editingTools) editingTools.style.display = 'inline-flex';
+      if (readingHud) readingHud.style.display = 'none';
+
+      // Ensure textarea has content
+      if (textarea && (!textarea.value || (!isDocEditorDirty && textarea.value !== lines.join('\n')))) {
+        textarea.value = lines.join('\n');
+        setDocSaveStatus(true);
+      }
+
+      updateDocLineNumbers();
+      updateEditorStats();
+
+      if (subMode === 'live') {
+        if (splitArea) {
+          splitArea.classList.remove('split-mode-source');
+          splitArea.classList.add('split-mode-live');
+        }
+        if (splitDivider) splitDivider.style.display = 'block';
+        if (livePane) livePane.style.display = 'flex';
+        if (editorPane) editorPane.style.flex = '1 1 50%';
+        renderLivePreview();
+      } else if (subMode === 'source') {
+        if (splitArea) {
+          splitArea.classList.remove('split-mode-live');
+          splitArea.classList.add('split-mode-source');
+        }
+        if (splitDivider) splitDivider.style.display = 'none';
+        if (livePane) livePane.style.display = 'none';
+        if (editorPane) editorPane.style.flex = '1 1 100%';
+      }
+    }
+  }
+
+  function toggleDocEditMode() {
+    if (docSubMode === 'reading') {
+      setDocSubMode('live');
+      const textarea = document.getElementById('docTextarea');
+      if (textarea) textarea.focus();
+    } else {
+      setDocSubMode('reading');
+    }
+  }
+
+  // Formatting & Ergonomic Editor Helpers
+  function insertTextAtCursor(text, selectionOffset = 0, selectionLength = 0) {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    textarea.focus();
+    const success = document.execCommand('insertText', false, text);
+    if (!success) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      textarea.value = before + text + after;
+      textarea.selectionStart = start + text.length;
+      textarea.selectionEnd = start + text.length;
+    }
+    if (selectionLength > 0 || selectionOffset !== 0) {
+      const cur = textarea.selectionStart;
+      textarea.selectionStart = cur + selectionOffset;
+      textarea.selectionEnd = textarea.selectionStart + selectionLength;
+    }
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function wrapSelection(prefix, suffix, defaultText = '') {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    textarea.focus();
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    const contentToWrap = selected || defaultText;
+    const replacement = prefix + contentToWrap + suffix;
+
+    const success = document.execCommand('insertText', false, replacement);
+    if (!success) {
+      textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+    }
+    if (!selected) {
+      textarea.selectionStart = start + prefix.length;
+      textarea.selectionEnd = textarea.selectionStart + contentToWrap.length;
+    }
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function toggleLinePrefix(prefix) {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    textarea.focus();
+    const start = textarea.selectionStart;
+    const val = textarea.value;
+    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    let lineEnd = val.indexOf('\n', start);
+    if (lineEnd === -1) lineEnd = val.length;
+
+    const currentLine = val.substring(lineStart, lineEnd);
+    let newLine = '';
+    if (currentLine.startsWith(prefix)) {
+      newLine = currentLine.substring(prefix.length);
+    } else {
+      newLine = prefix + currentLine;
+    }
+    textarea.setSelectionRange(lineStart, lineEnd);
+    document.execCommand('insertText', false, newLine);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function setupDocumentEditor() {
+    const textarea = document.getElementById('docTextarea');
+    const gutter = document.getElementById('docGutter');
+    const liveBodyContainer = document.getElementById('docLiveBodyContainer');
+    const splitDivider = document.getElementById('docSplitDivider');
+    const splitArea = document.getElementById('docEditorSplitArea');
+    const editorPane = document.getElementById('docEditorPane');
+
+    if (!textarea) return;
+
+    // Sub-mode tabs in top toolbar
+    const topTabReading = document.getElementById('docSubViewReadingBtn');
+    const topTabLive = document.getElementById('docSubViewLiveBtn');
+    const topTabSource = document.getElementById('docSubViewSourceBtn');
+    if (topTabReading) topTabReading.addEventListener('click', () => setDocSubMode('reading'));
+    if (topTabLive) topTabLive.addEventListener('click', () => setDocSubMode('live'));
+    if (topTabSource) topTabSource.addEventListener('click', () => setDocSubMode('source'));
+
+    // Sub-mode tabs in floating toolbar
+    const flTabReading = document.getElementById('docFloatSubReadingBtn');
+    const flTabLive = document.getElementById('docFloatSubLiveBtn');
+    const flTabSource = document.getElementById('docFloatSubSourceBtn');
+    if (flTabReading) flTabReading.addEventListener('click', () => setDocSubMode('reading'));
+    if (flTabLive) flTabLive.addEventListener('click', () => setDocSubMode('live'));
+    if (flTabSource) flTabSource.addEventListener('click', () => setDocSubMode('source'));
+
+    const floatEditBtn = document.getElementById('docFloatEditBtn');
+    if (floatEditBtn) floatEditBtn.addEventListener('click', toggleDocEditMode);
+
+    const backToReadBtn = document.getElementById('edBackToReadingBtn');
+    if (backToReadBtn) backToReadBtn.addEventListener('click', () => setDocSubMode('reading'));
+
+    // Save buttons
+    const edSaveBtn = document.getElementById('edSaveBtn');
+    const docTopSaveBtn = document.getElementById('docTopSaveBtn');
+    if (edSaveBtn) edSaveBtn.addEventListener('click', () => saveDocEditor(false));
+    if (docTopSaveBtn) docTopSaveBtn.addEventListener('click', () => saveDocEditor(false));
+
+    // Editor formatting toolbar buttons
+    const boldBtn = document.getElementById('edBtnBold');
+    const italicBtn = document.getElementById('edBtnItalic');
+    const strikeBtn = document.getElementById('edBtnStrike');
+    const h1Btn = document.getElementById('edBtnH1');
+    const h2Btn = document.getElementById('edBtnH2');
+    const h3Btn = document.getElementById('edBtnH3');
+    const taskBtn = document.getElementById('edBtnTask');
+    const bulletBtn = document.getElementById('edBtnBullet');
+    const numListBtn = document.getElementById('edBtnNumList');
+    const quoteBtn = document.getElementById('edBtnQuote');
+    const calloutSelect = document.getElementById('edCalloutSelect');
+    const codeBtn = document.getElementById('edBtnCode');
+    const linkBtn = document.getElementById('edBtnLink');
+    const wikiBtn = document.getElementById('edBtnWiki');
+    const mathBtn = document.getElementById('edBtnMath');
+    const tableBtn = document.getElementById('edBtnTable');
+    const hrBtn = document.getElementById('edBtnHr');
+    const tocInEditorBtn = document.getElementById('docToggleTOCInEditorBtn');
+
+    if (boldBtn) boldBtn.addEventListener('click', () => wrapSelection('**', '**', 'bold text'));
+    if (italicBtn) italicBtn.addEventListener('click', () => wrapSelection('*', '*', 'italic text'));
+    if (strikeBtn) strikeBtn.addEventListener('click', () => wrapSelection('~~', '~~', 'strikethrough text'));
+    if (h1Btn) h1Btn.addEventListener('click', () => toggleLinePrefix('# '));
+    if (h2Btn) h2Btn.addEventListener('click', () => toggleLinePrefix('## '));
+    if (h3Btn) h3Btn.addEventListener('click', () => toggleLinePrefix('### '));
+    if (taskBtn) taskBtn.addEventListener('click', () => toggleLinePrefix('- [ ] '));
+    if (bulletBtn) bulletBtn.addEventListener('click', () => toggleLinePrefix('- '));
+    if (numListBtn) numListBtn.addEventListener('click', () => toggleLinePrefix('1. '));
+    if (quoteBtn) quoteBtn.addEventListener('click', () => toggleLinePrefix('> '));
+
+    if (calloutSelect) {
+      calloutSelect.addEventListener('change', () => {
+        const type = calloutSelect.value;
+        if (!type) return;
+        insertTextAtCursor(`> [!${type}] Title\n> Content goes here\n\n`);
+        calloutSelect.value = '';
+      });
+    }
+
+    if (codeBtn) {
+      codeBtn.addEventListener('click', () => {
+        const sel = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        if (sel.includes('\n')) {
+          wrapSelection('```\n', '\n```\n', sel || 'code');
+        } else {
+          wrapSelection('`', '`', 'code');
+        }
+      });
+    }
+
+    if (linkBtn) linkBtn.addEventListener('click', () => wrapSelection('[', '](https://)', 'link text'));
+    if (wikiBtn) wikiBtn.addEventListener('click', () => wrapSelection('[[', ']]', 'Page Note'));
+    if (mathBtn) {
+      mathBtn.addEventListener('click', () => {
+        const sel = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        if (sel.includes('\n')) {
+          wrapSelection('$$\n', '\n$$\n', 'E = mc^2');
+        } else {
+          wrapSelection('$', '$', 'x^2 + y^2 = z^2');
+        }
+      });
+    }
+    if (tableBtn) {
+      tableBtn.addEventListener('click', () => {
+        insertTextAtCursor('\n| Header 1 | Header 2 | Header 3 |\n| :--- | :---: | ---: |\n| Item 1 | Item 2 | Item 3 |\n| Item 4 | Item 5 | Item 6 |\n\n');
+      });
+    }
+    if (hrBtn) hrBtn.addEventListener('click', () => insertTextAtCursor('\n---\n\n'));
+
+    if (tocInEditorBtn) {
+      tocInEditorBtn.addEventListener('click', () => {
+        const tocSidebar = document.getElementById('docTocSidebar');
+        if (tocSidebar) tocSidebar.classList.toggle('collapsed');
+      });
+    }
+
+    // Textarea input and stats handling
+    textarea.addEventListener('input', () => {
+      isDocEditorDirty = true;
+      setDocSaveStatus(false);
+      updateDocLineNumbers();
+      updateEditorStats();
+      scheduleLivePreview();
+      scheduleDocAutoSave();
+    });
+
+    textarea.addEventListener('click', updateEditorStats);
+    textarea.addEventListener('keyup', updateEditorStats);
+
+    // Synchronized scroll between Textarea, Gutter, and Live Preview
+    textarea.addEventListener('scroll', () => {
+      if (gutter) gutter.scrollTop = textarea.scrollTop;
+      if (docSubMode === 'live' && liveBodyContainer && !isSyncingScroll) {
+        isSyncingScroll = true;
+        const maxSrc = textarea.scrollHeight - textarea.clientHeight;
+        if (maxSrc > 0) {
+          const ratio = textarea.scrollTop / maxSrc;
+          const maxTgt = liveBodyContainer.scrollHeight - liveBodyContainer.clientHeight;
+          liveBodyContainer.scrollTop = ratio * maxTgt;
+        }
+        setTimeout(() => { isSyncingScroll = false; }, 40);
+      }
+    }, { passive: true });
+
+    if (liveBodyContainer) {
+      liveBodyContainer.addEventListener('scroll', () => {
+        if (docSubMode === 'live' && !isSyncingScroll) {
+          isSyncingScroll = true;
+          const maxSrc = liveBodyContainer.scrollHeight - liveBodyContainer.clientHeight;
+          if (maxSrc > 0) {
+            const ratio = liveBodyContainer.scrollTop / maxSrc;
+            const maxTgt = textarea.scrollHeight - textarea.clientHeight;
+            textarea.scrollTop = ratio * maxTgt;
+            if (gutter) gutter.scrollTop = textarea.scrollTop;
+          }
+          setTimeout(() => { isSyncingScroll = false; }, 40);
+        }
+      }, { passive: true });
+    }
+
+    // Obsidian-grade Smart Typing: Auto-indent, List Continuation, Tab Indent, Auto-close brackets
+    textarea.addEventListener('keydown', (e) => {
+      const pos = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const val = textarea.value;
+
+      // 1. Enter Key: Smart auto-indent & list continuation
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+        const lineContent = val.substring(lineStart, pos);
+
+        // Task item check: e.g. "- [ ] " or "- [x] "
+        const taskMatch = lineContent.match(/^(\s*[-*+]\s+\[[ xX]\]\s+)(.*)$/);
+        if (taskMatch) {
+          e.preventDefault();
+          if (taskMatch[2].trim() === '') {
+            // Empty task item: terminate list by clearing prefix
+            textarea.setSelectionRange(lineStart, pos);
+            document.execCommand('insertText', false, '');
+          } else {
+            document.execCommand('insertText', false, '\n- [ ] ');
+          }
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+
+        // Bullet item check: e.g. "- " or "* " or "+ "
+        const bulletMatch = lineContent.match(/^(\s*[-*+]\s+)(.*)$/);
+        if (bulletMatch) {
+          e.preventDefault();
+          if (bulletMatch[2].trim() === '') {
+            // Empty bullet: terminate list
+            textarea.setSelectionRange(lineStart, pos);
+            document.execCommand('insertText', false, '');
+          } else {
+            document.execCommand('insertText', false, '\n' + bulletMatch[1]);
+          }
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+
+        // Numbered list item check: e.g. "1. "
+        const numMatch = lineContent.match(/^(\s*)(\d+)(\.\s+)(.*)$/);
+        if (numMatch) {
+          e.preventDefault();
+          if (numMatch[4].trim() === '') {
+            // Empty numbered item: terminate list
+            textarea.setSelectionRange(lineStart, pos);
+            document.execCommand('insertText', false, '');
+          } else {
+            const nextNum = parseInt(numMatch[2], 10) + 1;
+            document.execCommand('insertText', false, `\n${numMatch[1]}${nextNum}${numMatch[3]}`);
+          }
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+
+        // Blockquote item check: e.g. "> "
+        const quoteMatch = lineContent.match(/^(\s*>+\s*)(.*)$/);
+        if (quoteMatch) {
+          e.preventDefault();
+          if (quoteMatch[2].trim() === '') {
+            textarea.setSelectionRange(lineStart, pos);
+            document.execCommand('insertText', false, '');
+          } else {
+            document.execCommand('insertText', false, '\n' + quoteMatch[1]);
+          }
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+
+        // General whitespace auto-indent
+        const indentMatch = lineContent.match(/^(\s+)/);
+        if (indentMatch) {
+          e.preventDefault();
+          document.execCommand('insertText', false, '\n' + indentMatch[1]);
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+      }
+
+      // 2. Tab / Shift+Tab 2-space indentation
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Outdent line(s)
+          const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+          const currentLine = val.substring(lineStart, pos);
+          if (currentLine.startsWith('  ')) {
+            textarea.setSelectionRange(lineStart, lineStart + 2);
+            document.execCommand('insertText', false, '');
+          } else if (currentLine.startsWith(' ')) {
+            textarea.setSelectionRange(lineStart, lineStart + 1);
+            document.execCommand('insertText', false, '');
+          }
+        } else {
+          // Indent 2 spaces
+          document.execCommand('insertText', false, '  ');
+        }
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+
+      // 3. Auto-close brackets and quotes & selection wrap
+      const pairs = {
+        '(': ')',
+        '[': ']',
+        '{': '}',
+        '"': '"',
+        "'": "'",
+        '`': '`'
+      };
+      if (pairs[e.key]) {
+        const closeChar = pairs[e.key];
+        if (pos !== end) {
+          // Wrap selected text
+          e.preventDefault();
+          const selected = val.substring(pos, end);
+          document.execCommand('insertText', false, e.key + selected + closeChar);
+          textarea.setSelectionRange(pos + 1, end + 1);
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+      }
+    });
+
+    // Resizable Split Divider Drag Handling
+    if (splitDivider && splitArea && editorPane) {
+      let isDragging = false;
+      splitDivider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        splitDivider.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = splitArea.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        let pct = (offsetX / rect.width) * 100;
+        pct = Math.max(20, Math.min(80, pct));
+        editorPane.style.flex = `0 0 ${pct}%`;
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          splitDivider.classList.remove('dragging');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      });
+    }
+  }
+
+    function setupDocumentMode() {
+    setupDocumentEditor();
+    const dpBtn1 = document.getElementById('docDoublePageBtn');
+    const dpBtn2 = document.getElementById('docFloatDoubleBtn');
+    if (dpBtn1) dpBtn1.addEventListener('click', () => setDoublePageMode(!isDoublePageMode));
+    if (dpBtn2) dpBtn2.addEventListener('click', () => setDoublePageMode(!isDoublePageMode));
+
+    const wideBtn1 = document.getElementById('docWideLayoutBtn');
+    const wideBtn2 = document.getElementById('docFloatWideBtn');
+    if (wideBtn1) wideBtn1.addEventListener('click', () => setWideLayout(!isWideLayout));
+    if (wideBtn2) wideBtn2.addEventListener('click', () => setWideLayout(!isWideLayout));
+
+    const checkAllBtn1 = document.getElementById('docCheckAllBtn');
+    const checkAllBtn2 = document.getElementById('docFloatCheckAllBtn');
+    if (checkAllBtn1) checkAllBtn1.addEventListener('click', () => toggleAllDocTasks(true));
+    if (checkAllBtn2) checkAllBtn2.addEventListener('click', () => toggleAllDocTasks(true));
+
+    const uncheckAllBtn1 = document.getElementById('docUncheckAllBtn');
+    const uncheckAllBtn2 = document.getElementById('docFloatUncheckAllBtn');
+    if (uncheckAllBtn1) uncheckAllBtn1.addEventListener('click', () => toggleAllDocTasks(false));
+    if (uncheckAllBtn2) uncheckAllBtn2.addEventListener('click', () => toggleAllDocTasks(false));
+
+    const prevPageBtn = document.getElementById('docPrevPageBtn');
+    const nextPageBtn = document.getElementById('docNextPageBtn');
+    if (prevPageBtn) prevPageBtn.addEventListener('click', docPageLeft);
+    if (nextPageBtn) nextPageBtn.addEventListener('click', docPageRight);
+
+    const tocToggleBtn = document.getElementById('docToggleTocBtn');
+    const tocCollapseBtn = document.getElementById('docTocCollapseBtn');
+    const tocSidebar = document.getElementById('docTocSidebar');
+    if (tocToggleBtn && tocSidebar) {
+      tocToggleBtn.addEventListener('click', () => {
+        tocSidebar.classList.toggle('collapsed');
+      });
+    }
+    if (tocCollapseBtn && tocSidebar) {
+      tocCollapseBtn.addEventListener('click', () => {
+        tocSidebar.classList.add('collapsed');
+      });
+    }
+
+    const docBody = document.getElementById('docBody');
+    if (docBody) {
+      docBody.addEventListener('scroll', () => {
+        if (isDoublePageMode) updateDoublePageLayout();
+      }, { passive: true });
+    }
+
+    setDoublePageMode(isDoublePageMode);
+    setWideLayout(isWideLayout);
+  }
+
+  function setupFolderImportModal() {
+    const importModal = document.getElementById('importFolderModal');
+    const openBtn = document.getElementById('importFolderBtn');
+    const closeBtn = document.getElementById('importFolderCloseBtn');
+    const cancelBtn = document.getElementById('importFolderCancelBtn');
+    const startBtn = document.getElementById('importFolderStartBtn');
+    const pathInput = document.getElementById('importFolderPathInput');
+    const subdirInput = document.getElementById('importFolderSubdirInput');
+    const useRustCb = document.getElementById('importFolderUseRustCb');
+    const progressCard = document.getElementById('importFolderProgressCard');
+    const successCard = document.getElementById('importFolderSuccessCard');
+    const successSummary = document.getElementById('importFolderSuccessSummary');
+    const openDocBtn = document.getElementById('importFolderOpenDocBtn');
+    const openOutlineBtn = document.getElementById('importFolderOpenOutlineBtn');
+
+    if (!importModal) return;
+
+    function openModal() {
+      importModal.style.display = 'flex';
+      importModal.classList.add('active');
+      if (progressCard) progressCard.style.display = 'none';
+      if (successCard) successCard.style.display = 'none';
+      if (startBtn) startBtn.style.display = 'inline-block';
+      if (pathInput) pathInput.focus();
+    }
+
+    function closeModal() {
+      importModal.style.display = 'none';
+      importModal.classList.remove('active');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    let lastImportedFile = '';
+
+    if (startBtn) {
+      startBtn.addEventListener('click', async () => {
+        const srcPath = pathInput.value.trim();
+        const subfolder = subdirInput ? subdirInput.value.trim() : '';
+        const useRust = useRustCb ? useRustCb.checked : true;
+
+        if (!srcPath) {
+          alert('Please enter a folder path to import.');
+          return;
+        }
+
+        if (progressCard) progressCard.style.display = 'block';
+        if (successCard) successCard.style.display = 'none';
+        startBtn.style.display = 'none';
+
+        try {
+          const res = await fetch('/api/library/import_folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: srcPath, subfolder, use_rust: useRust })
+          });
+          const data = await res.json();
+          if (progressCard) progressCard.style.display = 'none';
+
+          if (data.status === 'ok') {
+            if (successCard) successCard.style.display = 'block';
+            const fileCount = data.files_copied || 0;
+            const assetCount = data.assets_copied || 0;
+            const cardCount = data.total_cards || 0;
+            const dur = data.duration_ms ? data.duration_ms.toFixed(1) : '0';
+            
+            if (successSummary) {
+              successSummary.innerHTML = `
+                <div><strong>${fileCount}</strong> Markdown notes imported (${cardCount} flashcard headings)</div>
+                <div><strong>${assetCount}</strong> media assets (audio & images) copied</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:4px;">Accelerated import finished in <strong>${dur}ms</strong></div>
+              `;
+            }
+
+            if (typeof initSidebar === 'function') {
+              await initSidebar();
+            }
+
+            if (data.imported_files && data.imported_files.length > 0) {
+              const destSub = subfolder || srcPath.split(/[/\\]/).filter(Boolean).pop();
+              lastImportedFile = destSub ? `${destSub}/${data.imported_files[0]}` : data.imported_files[0];
+            }
+          } else {
+            alert('Import error: ' + (data.message || 'Unknown'));
+            startBtn.style.display = 'inline-block';
+          }
+        } catch (err) {
+          if (progressCard) progressCard.style.display = 'none';
+          startBtn.style.display = 'inline-block';
+          alert('Failed to import folder: ' + err.message);
+        }
+      });
+    }
+
+    if (openDocBtn) {
+      openDocBtn.addEventListener('click', async () => {
+        closeModal();
+        if (lastImportedFile) {
+          await openFile(lastImportedFile);
+        }
+        setAppMode('document');
+      });
+    }
+
+    if (openOutlineBtn) {
+      openOutlineBtn.addEventListener('click', async () => {
+        closeModal();
+        if (lastImportedFile) {
+          await openFile(lastImportedFile);
+        }
+        setAppMode('outline');
+      });
+    }
+  }
+
+  async function initEngineInfo() {
+    try {
+      const res = await fetch('/api/engine/info');
+      if (res.ok) {
+        const data = await res.json();
+        const badge = document.getElementById('rustCoreBadge');
+        if (badge) {
+          if (data.rust && data.rust.available) {
+            badge.innerHTML = `⚡ Rust Core`;
+            badge.title = `Accelerated by native Rust engine (${data.rust.features ? data.rust.features.join(', ') : 'Rayon + SIMD'}). Standalone Library: ${data.library_dir}`;
+            badge.style.display = 'inline-flex';
+          } else {
+            badge.innerHTML = `🐍 Python Core`;
+            badge.title = `Running on Standard Python engine. Standalone Library: ${data.library_dir}`;
+            badge.style.display = 'inline-flex';
+            badge.style.borderColor = '#7aa2f7';
+            badge.style.color = '#7aa2f7';
+            badge.style.background = 'rgba(122,162,247,0.12)';
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not query engine info', e);
+    }
+  }
+
+  function setupFileActions() {
+    const newNoteBtn = document.getElementById('newNoteBtn');
+    const newFolderBtn = document.getElementById('newFolderBtn');
+
+    if (newNoteBtn) {
+      newNoteBtn.addEventListener('click', async () => {
+        const name = prompt('Enter new note name (e.g. Notes/MyIdea.md):', 'Notes/Untitled.md');
+        if (!name) return;
+        let clean = name.trim();
+        if (!clean.endsWith('.md') && !clean.endsWith('.markdown')) clean += '.md';
+        try {
+          const res = await fetch('/api/file/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: clean, is_dir: false })
+          });
+          const data = await res.json();
+          if (data.status === 'ok') {
+            showAppToast(`Created note: ${clean}`);
+            if (typeof initSidebar === 'function') await initSidebar();
+            await openFile(clean);
+          } else {
+            alert('Error: ' + data.message);
+          }
+        } catch (err) {
+          alert('Error creating note: ' + err.message);
+        }
+      });
+    }
+
+    if (newFolderBtn) {
+      newFolderBtn.addEventListener('click', async () => {
+        const name = prompt('Enter new folder name (e.g. Notes/Projects):', 'Notes/NewFolder');
+        if (!name) return;
+        try {
+          const res = await fetch('/api/file/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: name.trim(), is_dir: true })
+          });
+          const data = await res.json();
+          if (data.status === 'ok') {
+            showAppToast(`Created folder: ${name.trim()}`);
+            if (typeof initSidebar === 'function') await initSidebar();
+          } else {
+            alert('Error: ' + data.message);
+          }
+        } catch (err) {
+          alert('Error creating folder: ' + err.message);
+        }
+      });
+    }
+  }
+
+  // Keyboard shortcut listener for Mode Switching & Double Page Paging
+  document.addEventListener('keydown', (e) => {
+    // Global editor shortcuts that trigger even inside textarea/inputs
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+        e.preventDefault();
+        toggleDocEditMode();
+        return;
+      }
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+        e.preventDefault();
+        saveDocEditor();
+        return;
+      }
+    }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if (e.key === '1') {
+      e.preventDefault();
+      setAppMode('outline');
+      return;
+    }
+    if (e.key === '2') {
+      e.preventDefault();
+      setAppMode('document');
+      return;
+    }
+    if (e.key === '3') {
+      e.preventDefault();
+      setAppMode('flashcards');
+      return;
+    }
+    if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      if (currentAppMode === 'outline') setAppMode('document');
+      else if (currentAppMode === 'document') setAppMode('flashcards');
+      else setAppMode('outline');
+      return;
+    }
+
+    if (currentAppMode === 'document' && isDoublePageMode) {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+        e.preventDefault();
+        docPageRight();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
+        e.preventDefault();
+        docPageLeft();
+      }
+    }
+  });
+
+  window.setAppMode = setAppMode;
+  window.renderCurrentDocument = renderCurrentDocument;
+  window.setDocSubMode = setDocSubMode;
+  window.toggleDocEditMode = toggleDocEditMode;
+  window.saveDocEditor = saveDocEditor;
+  window.renderLivePreview = renderLivePreview;
+  window.setDoublePageMode = setDoublePageMode;
+  window.setWideLayout = setWideLayout;
+
   // Initial startup: determine active file for this tab, expand ancestors, build tree, restore state
   (async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -11583,7 +15429,7 @@
       try { initialFile = sessionStorage.getItem('mdv_tab_file'); } catch(e) {}
     }
     if(!initialFile){
-      initialFile = savedConfig.lastOpenFile;
+      initialFile = savedConfig.lastOpenFile || 'Welcome.md';
     }
 
     if(initialFile){
@@ -11595,6 +15441,15 @@
     await refreshAiSummary();
     await initSidebar();
     await restoreTabState();
+
+    setupModeSwitcher();
+    setupDocumentMode();
+    setupFolderImportModal();
+    setupFileActions();
+    await initEngineInfo();
+
+    const savedMode = localStorage.getItem('mdviewer-mode') || 'outline';
+    setAppMode(savedMode);
 
     applyZoom();
     applyFcZoom();
@@ -11610,113 +15465,6 @@
   })();
 })();
 </script>
-
-<!-- Study Folder as Flashcard Deck Modal -->
-<div id="fcFolderDeckModal" class="ai-modal-overlay" style="display:none;">
-  <div class="ai-modal-dialog">
-    <div class="ai-modal-header">
-      <span class="ai-modal-title" id="fcFolderDeckModalTitle">🎴 Study Folder as Flashcard Deck</span>
-      <button class="term-action-btn close" id="fcFolderDeckModalCloseBtn">✕</button>
-    </div>
-    <div class="ai-modal-body">
-      <div class="ai-modal-field">
-        <label>Selected Folder:</label>
-        <input type="text" id="fcFolderDeckPathInput" class="ai-modal-input" readonly style="opacity:0.85;" />
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderDeckLevelSelect">Heading Level Filter:</label>
-        <select id="fcFolderDeckLevelSelect" class="fc-prompt-select">
-          <option value="2" selected>H2 - Level 2 Headings (Recommended)</option>
-          <option value="1">H1 - Level 1 Headings</option>
-          <option value="3">H3 - Level 3 Headings</option>
-          <option value="4">H4 - Level 4 Headings</option>
-          <option value="all">All Heading Levels (H1 - H6)</option>
-        </select>
-        <span style="font-size:11px;color:var(--muted);margin-top:2px;">Extracts every heading at this level across all markdown files in the folder as individual flashcards.</span>
-      </div>
-      <div class="ai-modal-field">
-        <div class="fc-batch-checkbox-row">
-          <input type="checkbox" id="fcFolderDeckRecursiveCheck" checked>
-          <span>Include all subdirectories (recursive)</span>
-        </div>
-      </div>
-      <div id="fcFolderDeckStats" style="font-size:11.5px;color:#7aa2f7;margin-top:4px;"></div>
-    </div>
-    <div class="ai-modal-footer">
-      <button class="fc-btn-secondary" id="fcFolderDeckCancelBtn">Cancel</button>
-      <button class="fc-btn-primary" id="fcFolderDeckGenBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;" title="Generate AI supplements for all cards across all files in this folder">⚡ Generate All in Folder</button>
-      <button class="fc-btn-primary" id="fcFolderDeckStartBtn" style="font-weight:700;">🚀 Open Flashcard Deck</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- Generate All Files in Folder Modal -->
-<div id="fcFolderGenerateModal" class="ai-modal-overlay" style="display:none;">
-  <div class="ai-modal-dialog">
-    <div class="ai-modal-header">
-      <span class="ai-modal-title" id="fcFolderGenModalTitle">⚡ Generate AI for All Files in Folder</span>
-      <button class="term-action-btn close" id="fcFolderGenCloseBtn">✕</button>
-    </div>
-    <div class="ai-modal-body">
-      <div class="ai-modal-field">
-        <label>Target Folder:</label>
-        <input type="text" id="fcFolderGenPathInput" class="ai-modal-input" readonly style="opacity:0.85;" />
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderGenProviderSelect">AI Provider:</label>
-        <select id="fcFolderGenProviderSelect" class="fc-prompt-select">
-          <option value="openrouter" selected>✨ OpenRouter (Cloud API)</option>
-          <option value="ollama">🦙 Ollama (Local LLM)</option>
-        </select>
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderGenPromptSelect">AI Prompt Template:</label>
-        <select id="fcFolderGenPromptSelect" class="fc-prompt-select"></select>
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderGenLevelSelect">Heading Level Filter:</label>
-        <select id="fcFolderGenLevelSelect" class="fc-prompt-select">
-          <option value="2" selected>H2 - Level 2 Headings (Recommended for Flashcards)</option>
-          <option value="all">All Heading Levels (H1 - H6)</option>
-          <option value="1">H1 - Level 1 Headings</option>
-          <option value="3">H3 - Level 3 Headings</option>
-          <option value="4">H4 - Level 4 Headings</option>
-        </select>
-        <span style="font-size:11px;color:var(--muted);margin-top:2px;">Extracts headings at this level across all markdown files in the folder for bulk concurrent generation.</span>
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderGenConcurrencyInput">Max Concurrency (Simultaneous Requests):</label>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input type="number" id="fcFolderGenConcurrencyInput" min="1" max="2000" value="1000" class="ai-modal-input" style="width:110px;padding:4px 8px;" />
-          <span style="font-size:11px;color:var(--muted);">Default: <b>1000</b> concurrent requests</span>
-        </div>
-      </div>
-      <div class="ai-modal-field">
-        <label for="fcFolderGenModeSelect">Generation / Regeneration Mode:</label>
-        <select id="fcFolderGenModeSelect" class="fc-prompt-select">
-          <option value="missing" selected>✨ Generate Missing Only (Skip already generated cards)</option>
-          <option value="overwrite">🔄 Regenerate & Overwrite (Fix mistakes across all files)</option>
-          <option value="new_version">➕ Regenerate as New Version (Create v+1, preserve history)</option>
-        </select>
-        <div id="fcFolderGenModeHint" style="font-size:11px;color:#7aa2f7;margin-top:3px;">
-          💡 Skips cards that already have an AI supplement. Fast & incremental.
-        </div>
-      </div>
-      <div class="ai-modal-field">
-        <div class="fc-batch-checkbox-row">
-          <input type="checkbox" id="fcFolderGenRecursiveCheck" checked>
-          <span>Include all subdirectories (recursive)</span>
-        </div>
-      </div>
-      <div id="fcFolderGenStats" style="font-size:11.5px;color:#7aa2f7;margin-top:4px;"></div>
-    </div>
-    <div class="ai-modal-footer">
-      <button class="fc-btn-secondary" id="fcFolderGenCancelBtn">Cancel</button>
-      <button class="fc-btn-primary" id="fcFolderGenStartBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">🚀 Start Generating All Files</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>

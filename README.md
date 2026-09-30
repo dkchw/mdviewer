@@ -1,67 +1,97 @@
 # mdviewer
 
-`mdviewer` is a fast, lightweight, and local Markdown Outline Reader that spins up a local server to let you view your markdown files right from your browser, securely and efficiently. It automatically loads a sidebar with the file structure of your current directory.
+**Ultra-fast Markdown Workstation** — a standalone, offline-first markdown reader, editor, and flashcard study tool powered by a native Rust rendering core.
 
 ## Features
 
-- **Fast Markdown Rendering**: Renders Markdown quickly and clearly with full outline views and interactive flashcard review mode.
-- **Sidebar File Explorer**: Automatically browses and explores markdown files with right-click context actions.
-- **In-Browser Sandboxed Terminal**: An isolated, browser-embedded CLI (press `` ` `` or click `🖥️ Terminal`) with zero dependencies on host OS terminals. Supports `ls`, `cd`, `pwd`, `cat`, `hx`/`edit`, `diff`, `accept`, `discard`, `status`, `touch`, `mkdir`, and `help`.
-- **Staging Buffer Editing**: Opening or editing files creates an isolated staging buffer (`~/.mdviewer_buffers/`). Original vault files on disk are **never touched or overwritten** until you review the diff and explicitly choose to **Accept & Replace**.
-- **Strict Security Isolation**: Strict directory boundary checking (`safe_rel_path`) blocks all path-traversal attempts outside the served workspace.
-- **Zero External Dependencies**: Relies solely on Python's built-in standard library (`http.server`, `urllib`, `difflib`).
-- **Fully Local & Offline**: Operates completely local without network access.
+### Three Unified Modes
+
+| Mode | Shortcut | Description |
+| :--- | :---: | :--- |
+| **📋 Outline** | `1` | Fast collapsible outline reader with heading-level expansion |
+| **📖 Document** | `2` | Full rendered document view with Obsidian-grade editing |
+| **🎴 Flashcards** | `3` | Heading-based flashcard study mode with AI supplements |
+
+### Document Mode — Obsidian-Style Editing
+- **📖 Reading View**: Rendered GitHub-style prose, double-page book layout, TOC sidebar, interactive checkboxes synced to disk
+- **⚡ Live Preview**: Side-by-side split editor with real-time rendered preview (Rust engine, sub-3ms), synchronized scrolling, KaTeX math, Mermaid diagrams, Obsidian callouts
+- **📝 Source Editor**: Full-width focused markdown authoring with line numbers
+- **`Ctrl+E`** toggles between Reading and Edit views (Obsidian muscle-memory)
+- **Smart Editing**: Auto-indent, list continuation (`- [ ]`, `-`, `1.`, `>`), Tab/Shift+Tab indent, bracket auto-close, full formatting toolbar
+- **Auto-Save**: Debounced auto-save to disk with `Ctrl+S` instant save
+
+### Flashcard Mode — AI-Powered Study
+- Study any heading level as flashcard decks (file or entire folder)
+- AI supplement generation via OpenRouter or local Ollama with streaming
+- Multi-version prompt management, batch generation (up to 1000 concurrent)
+- Anki `.apkg` import with audio/image media support
+- Audio playback with speed control and auto-play
+
+### Core Architecture
+- **Rust Rendering Core** (`mdviewer_core`): Native binary for sub-10ms library indexing, outline parsing, and markdown-to-HTML rendering with callout, task list, and code fence support
+- **Python Backend** (`__main__.py`): HTTP server with file management, document rendering API, AI generation orchestration, and Anki import
+- **Single-File Frontend** (`index.html`): Zero-framework SPA with Tokyo Night theme
+
+### Additional Features
+- **Sidebar File Explorer**: Browse, create, rename, delete files and folders with right-click context menus
+- **In-Browser Terminal**: Sandboxed CLI with `ls`, `cd`, `cat`, `edit`, `diff`, `accept`, `discard` commands
+- **Folder Import**: Import external folders into the standalone library with Rust-accelerated copying
+- **Workspace Search**: `Ctrl+Shift+F` full-text search across all files
+- **Zero External Dependencies**: Python standard library only (no pip packages required)
+- **Fully Local & Offline**: No network access needed, no telemetry
 
 ## Installation
 
-You can install `mdviewer` using `uv` (or `pip`):
+```bash
+# Install with uv
+uv tool install .
+
+# Or with pip
+pip install .
+```
+
+### Building the Rust Core (optional, for maximum performance)
 
 ```bash
-uv tool install .
-# or
-pip install .
+cd crates/mdviewer_core
+cargo build --release
+cp target/release/mdviewer_core ../../src/mdviewer/bin/
 ```
 
 ## Usage
 
-Navigate to any directory with Markdown files and run:
-
 ```bash
+# Standalone mode (uses ~/.mdviewer/ library)
 mdviewer
+
+# Serve a specific directory
+mdviewer /path/to/your/notes
+
+# Import an Anki deck
+mdviewer import-anki deck.apkg -o ./output
+
+# Import a folder into the library
+mdviewer import-folder /path/to/folder
 ```
 
-This will spin up a local server on port `2026` (or a random port if `2026` is in use) and automatically open it in your default web browser.
+The server starts on port `2026` (or auto-selects a free port) and opens in your default browser.
 
-### In-Browser Terminal & Staging Buffer Commands
+## Keyboard Shortcuts
 
-| Command | Action |
-| --- | --- |
-| `` ` `` *(backtick)* | Toggle in-browser sandboxed terminal drawer |
-| `hx <file>` or `edit <file>` | Open file in the built-in staging buffer modal |
-| `diff [file]` | Review unified diff between staged buffer and original disk file |
-| `accept <file>` | Explicitly apply buffer changes to original disk file |
-| `discard <file>` | Discard staged changes without modifying original file |
-| `status` | List all active staging buffers awaiting acceptance |
-### Flashcard AI Assistant, Multi-Version & Learning Mode
-
-| Key / Control | Action |
-| --- | --- |
-| `Space` / `W` / `Enter` | Flip flashcard between front and back |
-| `T` | **Swap AI Supplement to Card Back** (toggle between original markdown and AI supplement for learning) |
-| `I` | Toggle AI Assistant side panel |
-| `O` | Toggle Cards Overview and Search panel |
-| `C` | Toggle 2-Column page view vs 1-Column scroll |
-| `F` | Toggle Fullscreen mode |
-| `🎴 Folder Deck` | **Study Entire Folder as a Deck**: Right-click any folder or click `🎴 Folder Deck` to open all files at a chosen heading level (H1, H2, H3, or All) as a massive deck (e.g. 4,337 cards in milliseconds) |
-| `📁 Folder All` | **Generate All Files in Folder**: Right-click any folder $\rightarrow$ `⚡ Generate All in Folder...` or click `📁 Folder All` in the AI panel to generate AI supplements across all files in the current folder at once (concurrency up to 1000) |
-| `⚡ Generate` | **Real-Time Streaming & Live Thinking**: Zero artificial timeout; streams SSE tokens live with collapsible thinking process box displaying duration and model reasoning |
-| `⏹ Stop` | Cancel in-flight generation cleanly at any time |
-| `🚀 All` | Generate AI supplements for **all** cards in outline or folder concurrently (up to 1000 workers) |
-| `➕ New Ver` | Generate and store a new version for the current prompt without overwriting prior outputs |
-| Prompt Chips | Switch between different prompts generated on the card (e.g. Detailed, Vocabulary, Mnemonics, Quiz) |
-| Back View Tabs | Toggle between `📄 Original` section markdown and `✨ AI Supplement` directly on the card back |
-| Back Sub-Bar | Switch prompts and versions right on the card back while studying |
+| Key | Action |
+| :--- | :--- |
+| `1` / `2` / `3` | Switch mode: Outline / Document / Flashcards |
+| `Ctrl+E` | Toggle between Reading View and Edit View |
+| `Ctrl+S` | Save current document to disk |
+| `Ctrl+F` | Search in current file |
+| `Ctrl+Shift+F` | Search across all files |
+| `` ` `` | Toggle in-browser terminal |
+| `Space` / `Enter` | Flip flashcard |
+| `←` `→` | Previous / next flashcard |
+| `F` | Toggle fullscreen |
+| `Tab` | Indent (in editor) |
+| `Shift+Tab` | Outdent (in editor) |
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for more information.
+Apache License 2.0 — see [LICENSE](LICENSE).

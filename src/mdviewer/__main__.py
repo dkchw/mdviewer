@@ -22,6 +22,140 @@ import socket
 import random
 import concurrent.futures
 import collections
+import mimetypes
+import tempfile
+
+try:
+    from .anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename
+except ImportError:
+    from mdviewer.anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename
+
+try:
+    from .rust_core import (
+        is_rust_available, get_rust_info, rust_index_library,
+        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder
+    )
+except ImportError:
+    from mdviewer.rust_core import (
+        is_rust_available, get_rust_info, rust_index_library,
+        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder
+    )
+
+import unicodedata
+
+def serve_static_media(handler, directory, rel_path):
+    if not rel_path:
+        return False
+    # Strip any query parameters or hash fragments
+    unquoted = urllib.parse.unquote(rel_path.lstrip('/\\')).replace('\\', '/')
+    clean_path = urllib.parse.urlsplit(unquoted).path
+    target = safe_rel_path(directory, clean_path)
+
+    # Check direct target with Unicode normalization variants (NFC, NFD, NFKC)
+    if not target or not os.path.isfile(target):
+        for norm in ('NFC', 'NFD', 'NFKC'):
+            cand_path = unicodedata.normalize(norm, clean_path)
+            cand_target = safe_rel_path(directory, cand_path)
+            if cand_target and os.path.isfile(cand_target):
+                target = cand_target
+                break
+
+    # If not found directly, check if the file exists inside any assets/ directory in workspace
+    if not target or not os.path.isfile(target):
+        fname = os.path.basename(clean_path)
+        fname_nfc = unicodedata.normalize('NFC', fname)
+        fname_lower = fname_nfc.lower()
+        candidate = None
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.obsidian', '.venv')]
+            if os.path.basename(root) == 'assets':
+                # Direct match
+                if fname in files:
+                    candidate = os.path.join(root, fname)
+                    break
+                # Unicode-normalized & case-insensitive match
+                for f in files:
+                    f_nfc = unicodedata.normalize('NFC', f)
+                    if f_nfc == fname_nfc or f_nfc.lower() == fname_lower:
+                        candidate = os.path.join(root, f)
+                        break
+                if candidate:
+                    break
+        if candidate and os.path.isfile(candidate):
+            target = candidate
+        else:
+            return False
+
+    mime_type, _ = mimetypes.guess_type(target)
+    if not mime_type:
+        ext = os.path.splitext(target)[1].lower()
+        mime_map = {
+            '.mp3': 'audio/mpeg',
+            '.wav': 'audio/wav',
+            '.ogg': 'audio/ogg',
+            '.m4a': 'audio/mp4',
+            '.opus': 'audio/opus',
+            '.aac': 'audio/aac',
+            '.flac': 'audio/flac',
+            '.webp': 'image/webp',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.bmp': 'image/bmp',
+            '.avif': 'image/avif',
+            '.ico': 'image/x-icon',
+            '.woff2': 'font/woff2',
+            '.woff': 'font/woff',
+            '.ttf': 'font/ttf',
+        }
+        mime_type = mime_map.get(ext, 'application/octet-stream')
+
+    file_size = os.path.getsize(target)
+    range_header = handler.headers.get('Range')
+    if range_header and range_header.startswith('bytes='):
+        try:
+            ranges = range_header[6:].split('-')
+            start = int(ranges[0]) if ranges[0] else 0
+            end = int(ranges[1]) if ranges[1] else file_size - 1
+            if end >= file_size:
+                end = file_size - 1
+            length = end - start + 1
+
+            handler.send_response(206)
+            handler.send_header('Content-Type', mime_type)
+            handler.send_header('Content-Range', f'bytes {start}-{end}/{file_size}')
+            handler.send_header('Content-Length', str(length))
+            handler.send_header('Accept-Ranges', 'bytes')
+            handler.send_header('Cache-Control', 'public, max-age=86400')
+            handler.end_headers()
+
+            with open(target, 'rb') as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = f.read(min(remaining, 65536))
+                    if not chunk:
+                        break
+                    handler.wfile.write(chunk)
+                    remaining -= len(chunk)
+            return True
+        except Exception:
+            return False
+
+    try:
+        handler.send_response(200)
+        handler.send_header('Content-Type', mime_type)
+        handler.send_header('Content-Length', str(file_size))
+        handler.send_header('Accept-Ranges', 'bytes')
+        handler.send_header('Cache-Control', 'public, max-age=86400')
+        handler.end_headers()
+        with open(target, 'rb') as f:
+            shutil.copyfileobj(f, handler.wfile)
+        return True
+    except Exception:
+        return False
 
 def safe_rel_path(directory, rel_path):
     if not rel_path or rel_path == '.':
@@ -1519,6 +1653,10 @@ def exec_terminal_command(directory, cwd, cmd_line):
             "  ai status        Show AI supplement statistics and database info\n"
             "  ai cleanup [f]   Clean up stored AI supplements (file or all)\n"
             "  ai export <file> Export AI supplements to <file>.supplement.md\n\n"
+            "Anki Deck Import (.apkg):\n"
+            "  anki recent      List detected .apkg decks in workspace or Downloads\n"
+            "  anki inspect <f> Inspect deck structure, card count, and media\n"
+            "  anki import <f>  Convert deck to Markdown format for mdviewer\n\n"
             "Navigation & Exploration:\n"
             "  ls [dir]         List files & folders in current directory\n"
             "  cd <dir>         Change working directory (cd ~ or cd ..)\n"
@@ -1769,6 +1907,99 @@ def exec_terminal_command(directory, cwd, cmd_line):
         else:
             return {"status": "error", "cwd": cwd, "output": f"ai: unknown subcommand '{subcmd}'. Usage: ai [status | cleanup [file] | export <file>]"}
 
+    elif cmd == "anki":
+        sub = args[0].lower() if args else "help"
+        if sub == "recent":
+            apkgs = find_recent_apkgs(directory)
+            if not apkgs:
+                return {"status": "ok", "cwd": cwd, "output": "No .apkg files found in workspace or Downloads."}
+            lines = ["Found Anki Decks (.apkg):"]
+            for a in apkgs:
+                mb = a['size'] / (1024 * 1024)
+                src = "workspace" if a['in_workspace'] else "downloads"
+                lines.append(f"  • {a['name']} ({mb:.1f} MB) [{src}]\n    Path: {a['path']}")
+            return {"status": "ok", "cwd": cwd, "output": "\n".join(lines)}
+        elif sub == "inspect":
+            if len(args) < 2:
+                return {"status": "error", "cwd": cwd, "output": "Usage: anki inspect <path/to/deck.apkg>"}
+            apkg_target = args[1]
+            if os.path.isabs(apkg_target) and os.path.exists(apkg_target):
+                apkg_abs = apkg_target
+            else:
+                apkg_abs = safe_rel_path(directory, apkg_target) or os.path.abspath(apkg_target)
+            try:
+                meta = inspect_apkg(apkg_abs)
+                decks_summary = "\n".join(f"  • {d['name']} ({d['note_count']} notes, {d['card_count']} cards)" for d in meta.get("decks", []))
+                out = (
+                    f"Anki Deck Inspection: {meta['filename']}\n"
+                    f"=========================================\n"
+                    f"Total Notes: {meta['total_notes']}\n"
+                    f"Total Cards: {meta['total_cards']}\n"
+                    f"Media: {meta['media']['total']} files ({meta['media']['audio']} audio, {meta['media']['images']} images)\n"
+                    f"Decks:\n{decks_summary}\n"
+                )
+                return {"status": "ok", "cwd": cwd, "output": out}
+            except Exception as e:
+                return {"status": "error", "cwd": cwd, "output": f"Inspection error: {e}"}
+        elif sub == "import":
+            if len(args) < 2:
+                return {"status": "error", "cwd": cwd, "output": "Usage: anki import <path/to/deck.apkg> [output_dir] [--level 2] [--no-media] [--no-number]"}
+            apkg_target = args[1]
+            if os.path.isabs(apkg_target) and os.path.exists(apkg_target):
+                apkg_abs = apkg_target
+            else:
+                apkg_abs = safe_rel_path(directory, apkg_target) or os.path.abspath(apkg_target)
+            out_target = cur_dir_abs
+            level = 2
+            extract_m = True
+            num_cards = True
+
+            i = 2
+            while i < len(args):
+                arg = args[i]
+                if arg in ("--level", "-l") and i + 1 < len(args):
+                    try:
+                        level = int(args[i+1])
+                    except:
+                        pass
+                    i += 2
+                elif arg == "--no-media":
+                    extract_m = False
+                    i += 1
+                elif arg == "--no-number":
+                    num_cards = False
+                    i += 1
+                else:
+                    cand = safe_rel_path(directory, arg) or os.path.abspath(arg)
+                    out_target = cand
+                    i += 1
+
+            try:
+                res = import_apkg(
+                    apkg_abs,
+                    out_target,
+                    options={
+                        "heading_level": level,
+                        "number_cards": num_cards,
+                        "extract_media": extract_m,
+                    }
+                )
+                rel_out = os.path.relpath(out_target, directory) if os.path.abspath(out_target).startswith(os.path.abspath(directory)) else out_target
+                files_summary = "\n".join(f"  • {f}" for f in res.get("imported_files", []))
+                out = (
+                    f"✓ Anki Import Successful!\n"
+                    f"-----------------------------------------\n"
+                    f"Output Directory: {rel_out or '.'}\n"
+                    f"Imported Notes:   {res.get('total_notes')}\n"
+                    f"Extracted Media:  {res.get('extracted_media_count')} files\n"
+                    f"Files Created:\n{files_summary}\n"
+                )
+                return {"status": "ok", "cwd": cwd, "output": out}
+            except Exception as e:
+                return {"status": "error", "cwd": cwd, "output": f"Import error: {e}"}
+        else:
+            return {"status": "ok", "cwd": cwd, "output": "Anki Subcommands:\n  anki recent              List detected .apkg files\n  anki inspect <deck.apkg> Inspect deck details & counts\n  anki import <deck.apkg>  Import and convert deck to Markdown"}
+
     elif cmd == "echo":
         return {"status": "ok", "cwd": cwd, "output": " ".join(args)}
 
@@ -1782,8 +2013,261 @@ def exec_terminal_command(directory, cwd, cmd_line):
             "output": f"{cmd}: command not found. Type 'help' for available commands."
         }
 
+DEFAULT_LIBRARY_PATH = os.path.expanduser("~/.local/share/mdviewer/library")
+
+def init_default_library(lib_dir: str):
+    """Initializes Notes/, Decks/, assets/ and Welcome.md if library is empty."""
+    notes_dir = os.path.join(lib_dir, "Notes")
+    decks_dir = os.path.join(lib_dir, "Decks")
+    assets_dir = os.path.join(lib_dir, "assets")
+    os.makedirs(notes_dir, exist_ok=True)
+    os.makedirs(decks_dir, exist_ok=True)
+    os.makedirs(assets_dir, exist_ok=True)
+
+    has_md = False
+    for root, dirs, files in os.walk(lib_dir):
+        if any(f.endswith('.md') or f.endswith('.markdown') for f in files):
+            has_md = True
+            break
+    if not has_md:
+        welcome_file = os.path.join(lib_dir, "Welcome.md")
+        welcome_content = """# Welcome to mdviewer 🚀
+
+> [!NOTE]
+> mdviewer is your unified, ultra-fast Markdown workstation, Document reader, and Spaced Repetition Flashcard system, accelerated by a native Rust engine.
+
+## 🎯 Quick Mode Switching
+Switch effortlessly between views at any time:
+- **📑 Outline Mode** `[1]`: Virtualized, O(viewport) outline reader built for massive 100k+ line documents with instant folding and line numbers.
+- **📖 Document Mode** `[2]`: Beautiful GitHub-style prose reader with Double-Page book layout, wide layout toggle, and interactive checklists.
+- **🎴 Flashcards Mode** `[3]`: Spaced repetition study deck with 3D flip card, audio autoplay, and AI supplements.
+
+## ✅ Interactive Checklists
+Checklists in Document Mode sync directly to disk in real-time:
+- [x] Launch mdviewer standalone library vault
+- [x] Verify native Rust acceleration engine
+- [ ] Import your existing markdown notes or Anki decks
+- [ ] Try Double-Page mode with horizontal book paging
+- [ ] Study flashcard decks with spaced repetition
+
+## 💡 Obsidian Features
+- Obsidian Callouts: `> [!TIP]`, `> [!WARNING]`, `> [!IMPORTANT]`
+- Highlights: ==highlighted text==
+- Wikilinks & Embeds: `[[Welcome]]`
+- KaTeX Math formulas: $E = mc^2$ and $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$
+
+## 1. What makes mdviewer so fast?
+mdviewer utilizes an aggressive native Rust core with Rayon parallelism and SIMD parsing, delivering sub-millisecond markdown rendering, instant card extraction, and multi-threaded library indexing.
+
+## 2. How to import your existing notes or decks?
+Click the **📁 Import Folder** or **🎴 Import Anki** button in the sidebar header to bring your existing folders and cards directly into your standalone library.
+"""
+        with open(welcome_file, "w", encoding="utf-8") as f:
+            f.write(welcome_content)
+
+def get_library_dir(custom_path=None) -> tuple[str, bool]:
+    """
+    Returns (library_dir, is_standalone).
+    is_standalone is True when operating in standalone vault mode.
+    """
+    if custom_path and os.path.exists(custom_path):
+        return os.path.abspath(custom_path), False
+
+    env_dir = os.environ.get("MDVIEWER_LIBRARY_DIR")
+    if env_dir:
+        abs_env = os.path.abspath(os.path.expanduser(env_dir))
+        os.makedirs(abs_env, exist_ok=True)
+        init_default_library(abs_env)
+        return abs_env, True
+
+    config_path = os.path.expanduser("~/.mdviewer_config.json")
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                if "library_dir" in cfg and os.path.exists(cfg["library_dir"]):
+                    abs_cfg = os.path.abspath(cfg["library_dir"])
+                    init_default_library(abs_cfg)
+                    return abs_cfg, True
+        except Exception:
+            pass
+
+    os.makedirs(DEFAULT_LIBRARY_PATH, exist_ok=True)
+    init_default_library(DEFAULT_LIBRARY_PATH)
+    return os.path.abspath(DEFAULT_LIBRARY_PATH), True
+
+def toggle_markdown_checkbox(file_path: str, target_idx: int) -> tuple[bool, str]:
+    if not os.path.isfile(file_path):
+        return False, "File not found"
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        in_code_block = False
+        cb_idx = 0
+        modified = False
+        cb_pattern = re.compile(r'^(\s*[-*+]\s+|\s*\d+\.\s+)\[([ xX])\]')
+        new_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_code_block = not in_code_block
+                new_lines.append(line)
+                continue
+            if not in_code_block:
+                m = cb_pattern.match(line)
+                if m:
+                    if cb_idx == target_idx:
+                        prefix = m.group(1)
+                        val = m.group(2)
+                        new_val = " " if val.lower() == "x" else "x"
+                        start_idx = len(prefix) + 1
+                        line = line[:start_idx] + new_val + line[start_idx+1:]
+                        modified = True
+                    cb_idx += 1
+            new_lines.append(line)
+        if modified:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+            return True, ""
+        return False, "Checkbox index not found"
+    except Exception as e:
+        return False, str(e)
+
+def toggle_all_checkboxes(file_path: str, check_all: bool) -> tuple[bool, str]:
+    if not os.path.isfile(file_path):
+        return False, "File not found"
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        target_val = "x" if check_all else " "
+        in_code_block = False
+        modified = False
+        cb_pattern = re.compile(r'^(\s*[-*+]\s+|\s*\d+\.\s+)\[([ xX])\]')
+        new_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_code_block = not in_code_block
+                new_lines.append(line)
+                continue
+            if not in_code_block:
+                m = cb_pattern.match(line)
+                if m:
+                    prefix = m.group(1)
+                    val = m.group(2)
+                    if val != target_val:
+                        start_idx = len(prefix) + 1
+                        line = line[:start_idx] + target_val + line[start_idx+1:]
+                        modified = True
+            new_lines.append(line)
+        if modified:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+def pure_python_import_folder(src_dir: str, dst_dir: str) -> dict:
+    t0 = time.time()
+    abs_src = os.path.abspath(src_dir)
+    abs_dst = os.path.abspath(dst_dir)
+    os.makedirs(abs_dst, exist_ok=True)
+    files_copied = 0
+    assets_copied = 0
+    total_cards = 0
+    imported_files = []
+    
+    for root, dirs, files in os.walk(abs_src):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.venv', '__pycache__', 'target', 'dist')]
+        for f in files:
+            src_file = os.path.join(root, f)
+            rel = os.path.relpath(src_file, abs_src)
+            target_file = os.path.join(abs_dst, rel)
+            os.makedirs(os.path.dirname(target_file), exist_ok=True)
+            shutil.copy2(src_file, target_file)
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ('.md', '.markdown'):
+                files_copied += 1
+                try:
+                    with open(target_file, 'r', encoding='utf-8', errors='replace') as mf:
+                        for line in mf:
+                            tl = line.strip()
+                            if tl.startswith('# ') or tl.startswith('## ') or tl.startswith('### '):
+                                total_cards += 1
+                except Exception:
+                    pass
+                imported_files.append(rel.replace('\\', '/'))
+            else:
+                assets_copied += 1
+
+    duration_ms = (time.time() - t0) * 1000.0
+    return {
+        "status": "ok",
+        "src_dir": abs_src,
+        "dst_dir": abs_dst,
+        "files_copied": files_copied,
+        "assets_copied": assets_copied,
+        "total_cards": total_cards,
+        "imported_files": imported_files,
+        "duration_ms": duration_ms
+    }
+
+def import_folder_into_library(src_dir: str, dst_dir: str, use_rust: bool = True) -> dict:
+    if use_rust and is_rust_available():
+        res = rust_import_folder(src_dir, dst_dir)
+        if res and res.get("status") == "ok":
+            return res
+    return pure_python_import_folder(src_dir, dst_dir)
+
 def main():
-    directory = sys.argv[1] if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]) else os.getcwd()
+    if len(sys.argv) > 1 and sys.argv[1] == 'import-anki':
+        import argparse
+        parser = argparse.ArgumentParser(description="Import and convert Anki .apkg deck to Markdown for mdviewer")
+        parser.add_argument("apkg", help="Path to .apkg file")
+        parser.add_argument("--output-dir", "-o", default=None, help="Output directory for generated markdown and assets (default: current directory)")
+        parser.add_argument("--level", "-l", type=int, default=2, help="Heading level for cards (default: 2 -> ##)")
+        parser.add_argument("--no-number", action="store_true", help="Do not prefix cards with numbers")
+        parser.add_argument("--no-media", action="store_true", help="Skip extracting media files")
+        args = parser.parse_args(sys.argv[2:])
+
+        out = os.path.abspath(args.output_dir or os.getcwd())
+        print(f"Importing {args.apkg} into {out}...")
+        try:
+            res = import_apkg(
+                args.apkg,
+                out,
+                options={
+                    "heading_level": args.level,
+                    "number_cards": not args.no_number,
+                    "extract_media": not args.no_media,
+                }
+            )
+            print(f"✓ Successfully imported {res.get('total_notes')} notes into {out}")
+            print(f"  Media extracted: {res.get('extracted_media_count')} files")
+            for f in res.get("imported_files", []):
+                print(f"  • {f}")
+        except Exception as e:
+            print(f"Error importing Anki deck: {e}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'import-folder':
+        import argparse
+        parser = argparse.ArgumentParser(description="Import external folder into mdviewer standalone library")
+        parser.add_argument("folder", help="Path to folder to import")
+        parser.add_argument("--dest", "-d", default=None, help="Destination subfolder in library (default: folder name)")
+        args = parser.parse_args(sys.argv[2:])
+
+        lib_dir, _ = get_library_dir()
+        sub = args.dest or os.path.basename(os.path.abspath(args.folder))
+        target_dir = os.path.join(lib_dir, "Notes", sub) if not sub.startswith("Notes") else os.path.join(lib_dir, sub)
+        print(f"Importing {args.folder} into library at {target_dir}...")
+        res = import_folder_into_library(args.folder, target_dir)
+        print(f"✓ Imported {res.get('files_copied', 0)} notes and {res.get('assets_copied', 0)} assets in {res.get('duration_ms', 0):.1f}ms")
+        sys.exit(0)
+
+    custom_dir = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('-') and os.path.isdir(sys.argv[1]) else None
+    directory, is_standalone = get_library_dir(custom_dir)
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def send_json(self, status_code, obj):
@@ -2051,7 +2535,70 @@ def main():
                     "status": "ok",
                     "active_batches": res.get("active_batches", [])
                 })
+            elif parsed.path == '/api/anki/recent':
+                recent = find_recent_apkgs(directory)
+                self.send_json(200, {"status": "ok", "recent_apkgs": recent})
+            elif parsed.path == '/api/engine/info':
+                rust_info = get_rust_info()
+                self.send_json(200, {
+                    "status": "ok",
+                    "rust": rust_info,
+                    "is_standalone": is_standalone,
+                    "library_dir": directory
+                })
+            elif parsed.path == '/api/library/search':
+                query_params = urllib.parse.parse_qs(parsed.query)
+                query = query_params.get('q', [''])[0].strip()
+                if not query:
+                    self.send_json(200, {"status": "ok", "query": "", "matches": [], "total_matches": 0})
+                else:
+                    res = None
+                    if is_rust_available():
+                        res = rust_search_library(directory, query)
+                    if not res:
+                        t0 = time.time()
+                        matches = []
+                        q_lower = query.lower()
+                        for root, dirs, files in os.walk(directory):
+                            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.venv', '__pycache__')]
+                            for f in files:
+                                if f.endswith('.md') or f.endswith('.markdown'):
+                                    fp = os.path.join(root, f)
+                                    try:
+                                        with open(fp, 'r', encoding='utf-8', errors='replace') as mf:
+                                            for l_idx, line in enumerate(mf):
+                                                if q_lower in line.lower():
+                                                    rel = os.path.relpath(fp, directory).replace('\\', '/')
+                                                    matches.append({
+                                                        "rel_path": rel,
+                                                        "file_name": f,
+                                                        "line": l_idx + 1,
+                                                        "line_text": line.strip()[:180],
+                                                        "is_heading": line.strip().startswith('#'),
+                                                        "level": len(line.strip()) - len(line.strip().lstrip('#'))
+                                                    })
+                                                    if len(matches) >= 300:
+                                                        break
+                                    except Exception:
+                                        pass
+                        res = {
+                            "status": "ok",
+                            "query": query,
+                            "matches": matches,
+                            "total_matches": len(matches),
+                            "duration_ms": (time.time() - t0) * 1000.0
+                        }
+                    self.send_json(200, res)
+            elif parsed.path == '/api/raw':
+                query = urllib.parse.parse_qs(parsed.query)
+                rel_path = query.get('path', [''])[0]
+                if not serve_static_media(self, directory, rel_path):
+                    self.send_response(404)
+                    self.end_headers()
             else:
+                rel_clean = urllib.parse.unquote(parsed.path.lstrip('/'))
+                if rel_clean and serve_static_media(self, directory, rel_clean):
+                    return
                 self.send_response(404)
                 self.end_headers()
 
@@ -2087,13 +2634,16 @@ def main():
                 post_data = self.rfile.read(content_length)
                 try:
                     payload = json.loads(post_data.decode('utf-8'))
-                    rel_path = payload.get('path', '')
+                    rel_path = payload.get('path') or payload.get('file', '')
                     content = payload.get('content', '')
                     target_file = safe_rel_path(directory, rel_path)
-                    if not target_file:
-                        self.send_response(403)
+                    if not target_file or os.path.isdir(target_file):
+                        self.send_response(400)
+                        self.send_header('Content-type', 'application/json')
                         self.end_headers()
+                        self.wfile.write(json.dumps({"status": "error", "message": "Invalid target file path"}).encode('utf-8'))
                         return
+                    os.makedirs(os.path.dirname(target_file), exist_ok=True)
                     with open(target_file, 'w', encoding='utf-8') as f:
                         f.write(content)
                     self.send_response(200)
@@ -2102,7 +2652,9 @@ def main():
                     self.wfile.write(b'{"status":"ok"}')
                 except Exception as e:
                     self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
                     self.end_headers()
+                    self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
             elif parsed.path == '/api/terminal/exec':
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
@@ -2563,6 +3115,260 @@ def main():
                     self.send_json(200, res)
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/anki/inspect':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    target_path = payload.get('path', '').strip()
+                    if not target_path:
+                        self.send_json(400, {"status": "error", "message": "Missing path parameter"})
+                        return
+                    if os.path.isabs(target_path) and os.path.exists(target_path):
+                        resolved = target_path
+                    else:
+                        resolved = safe_rel_path(directory, target_path) or os.path.abspath(target_path)
+                    if not os.path.isfile(resolved):
+                        self.send_json(404, {"status": "error", "message": f"File not found: {target_path}"})
+                        return
+                    meta = inspect_apkg(resolved)
+                    self.send_json(200, meta)
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/anki/upload':
+                content_length = int(self.headers.get('Content-Length', 0))
+                client_fname = self.headers.get('X-Filename', 'deck.apkg')
+                client_fname = urllib.parse.unquote(client_fname)
+                clean_name = sanitize_filename(os.path.splitext(client_fname)[0]) + ".apkg"
+
+                temp_f = tempfile.NamedTemporaryFile(suffix='_' + clean_name, delete=False)
+                try:
+                    remaining = content_length
+                    while remaining > 0:
+                        chunk_size = min(remaining, 65536)
+                        chunk = self.rfile.read(chunk_size)
+                        if not chunk:
+                            break
+                        temp_f.write(chunk)
+                        remaining -= len(chunk)
+                    temp_f.close()
+
+                    meta = inspect_apkg(temp_f.name)
+                    meta["temp_path"] = temp_f.name
+                    meta["uploaded_name"] = client_fname
+                    self.send_json(200, meta)
+                except Exception as e:
+                    try:
+                        os.remove(temp_f.name)
+                    except Exception:
+                        pass
+                    self.send_json(500, {"status": "error", "message": f"Upload failed: {e}"})
+
+            elif parsed.path == '/api/anki/import':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    apkg_path = payload.get('path', '').strip()
+                    if not apkg_path:
+                        self.send_json(400, {"status": "error", "message": "Missing path parameter"})
+                        return
+
+                    if os.path.isabs(apkg_path) and os.path.exists(apkg_path):
+                        resolved_apkg = apkg_path
+                    else:
+                        resolved_apkg = safe_rel_path(directory, apkg_path) or os.path.abspath(apkg_path)
+                    if not os.path.isfile(resolved_apkg):
+                        self.send_json(404, {"status": "error", "message": f"APKG file not found: {apkg_path}"})
+                        return
+
+                    target_folder_rel = payload.get('output_dir', '').strip()
+                    if target_folder_rel:
+                        resolved_out = safe_rel_path(directory, target_folder_rel) or os.path.abspath(os.path.join(directory, target_folder_rel))
+                    else:
+                        resolved_out = os.path.abspath(directory)
+
+                    opts = payload.get('options', {})
+                    res = import_apkg(resolved_apkg, resolved_out, options=opts)
+                    rel_files = []
+                    for f in res.get("imported_files", []):
+                        full_f = os.path.join(resolved_out, f)
+                        if full_f.startswith(os.path.abspath(directory)):
+                            rel_files.append(os.path.relpath(full_f, directory).replace('\\', '/'))
+                        else:
+                            rel_files.append(full_f)
+                    res["workspace_files"] = rel_files
+                    self.send_json(200, res)
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/document/render':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_file = payload.get('file', '').strip()
+                    content = payload.get('content', '')
+                    resolved = None
+                    if rel_file:
+                        resolved = safe_rel_path(directory, rel_file)
+                        if not content and (not resolved or not os.path.isfile(resolved)):
+                            self.send_json(404, {"status": "error", "message": f"File not found: {rel_file}"})
+                            return
+
+                    res = None
+                    if is_rust_available():
+                        if content:
+                            res = rust_render_markdown(content)
+                        elif resolved and os.path.isfile(resolved):
+                            res = rust_render_markdown(resolved)
+
+                    if not res:
+                        if resolved and os.path.isfile(resolved) and not content:
+                            with open(resolved, 'r', encoding='utf-8', errors='replace') as f:
+                                content = f.read()
+                        import html as py_html
+                        toc = []
+                        for idx, line in enumerate(content.splitlines()):
+                            tl = line.strip()
+                            if tl.startswith('#'):
+                                hashes = len(tl) - len(tl.lstrip('#'))
+                                if 1 <= hashes <= 6 and len(tl) > hashes and tl[hashes].isspace():
+                                    text = tl[hashes:].strip()
+                                    toc.append({"line": idx, "level": hashes, "text": text, "slug": f"H{hashes}::{text}"})
+                        res = {
+                            "status": "ok",
+                            "html": f"<div class=\"rendered-prose\">{py_html.escape(content)}</div>",
+                            "toc": toc,
+                            "engine": "python",
+                            "render_duration_ms": 1.0
+                        }
+                    else:
+                        res["engine"] = "rust"
+                    self.send_json(200, res)
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/document/checkbox':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_file = payload.get('file', '').strip()
+                    idx = payload.get('index')
+                    if not rel_file or idx is None:
+                        self.send_json(400, {"status": "error", "message": "Missing file or index parameter"})
+                        return
+                    resolved = safe_rel_path(directory, rel_file)
+                    if not resolved or not os.path.isfile(resolved):
+                        self.send_json(404, {"status": "error", "message": f"File not found: {rel_file}"})
+                        return
+                    success, msg = toggle_markdown_checkbox(resolved, int(idx))
+                    if success:
+                        self.send_json(200, {"status": "ok", "success": True})
+                    else:
+                        self.send_json(500, {"status": "error", "message": msg})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/document/toggle_all':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_file = payload.get('file', '').strip()
+                    check_all = payload.get('check_all', True)
+                    resolved = safe_rel_path(directory, rel_file)
+                    if not resolved or not os.path.isfile(resolved):
+                        self.send_json(404, {"status": "error", "message": f"File not found: {rel_file}"})
+                        return
+                    success, msg = toggle_all_checkboxes(resolved, bool(check_all))
+                    if success:
+                        self.send_json(200, {"status": "ok", "success": True})
+                    else:
+                        self.send_json(500, {"status": "error", "message": msg})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/library/import_folder':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    src_path = payload.get('path', '').strip()
+                    subfolder = payload.get('subfolder', '').strip()
+                    use_rust = payload.get('use_rust', True)
+                    if not src_path or not os.path.isdir(src_path):
+                        self.send_json(400, {"status": "error", "message": f"Directory not found: {src_path}"})
+                        return
+                    if not subfolder:
+                        subfolder = os.path.basename(os.path.abspath(src_path))
+                    target_dst = safe_rel_path(directory, subfolder) or os.path.join(directory, subfolder)
+                    res = import_folder_into_library(src_path, target_dst, use_rust=use_rust)
+                    self.send_json(200, res)
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/file/create':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_p = payload.get('path', '').strip()
+                    is_dir = payload.get('is_dir', False)
+                    initial_content = payload.get('content', '')
+                    if not rel_p:
+                        self.send_json(400, {"status": "error", "message": "Missing path"})
+                        return
+                    target = safe_rel_path(directory, rel_p) or os.path.join(directory, rel_p)
+                    if is_dir:
+                        os.makedirs(target, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(target), exist_ok=True)
+                        if not os.path.exists(target):
+                            with open(target, 'w', encoding='utf-8') as f:
+                                f.write(initial_content or f"# {os.path.splitext(os.path.basename(target))[0]}\n\n")
+                    self.send_json(200, {"status": "ok", "path": rel_p})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/file/delete':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_p = payload.get('path', '').strip()
+                    target = safe_rel_path(directory, rel_p)
+                    if not target or not os.path.exists(target):
+                        self.send_json(404, {"status": "error", "message": "File not found"})
+                        return
+                    if os.path.isdir(target):
+                        shutil.rmtree(target)
+                    else:
+                        os.remove(target)
+                    self.send_json(200, {"status": "ok"})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/file/rename':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    old_rel = payload.get('old_path', '').strip()
+                    new_rel = payload.get('new_path', '').strip()
+                    target_old = safe_rel_path(directory, old_rel)
+                    target_new = safe_rel_path(directory, new_rel) or os.path.join(directory, new_rel)
+                    if not target_old or not os.path.exists(target_old):
+                        self.send_json(404, {"status": "error", "message": "Source not found"})
+                        return
+                    os.makedirs(os.path.dirname(target_new), exist_ok=True)
+                    os.rename(target_old, target_new)
+                    self.send_json(200, {"status": "ok"})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -2581,7 +3387,7 @@ def main():
                 return
             super().handle_error(request, client_address)
 
-    port = 2026
+    port = int(os.environ.get("PORT", 2026))
     try:
         httpd = ReusableTCPServer(("127.0.0.1", port), Handler)
     except OSError:
@@ -2592,10 +3398,11 @@ def main():
     with httpd:
         port = httpd.server_address[1]
         url = f"http://127.0.0.1:{port}"
-        print(f"Serving {directory} at {url}")
+        print(f"Serving {directory} at {url}", flush=True)
         
-        # Start browser after a tiny delay to ensure server is fully up
-        threading.Timer(0.1, lambda: webbrowser.open(url)).start()
+        # Start browser after a tiny delay if not disabled
+        if not os.environ.get("MDVIEWER_NO_BROWSER"):
+            threading.Timer(0.1, lambda: webbrowser.open(url)).start()
         
         try:
             httpd.serve_forever()
