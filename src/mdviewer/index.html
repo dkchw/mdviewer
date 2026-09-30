@@ -7953,11 +7953,18 @@
 
     if(fcCardCount) fcCardCount.textContent = flashcardList.length;
 
+    // Performance Optimization: If overview sidebar is closed, skip expensive DOM generation entirely
+    if (fcRightSidebar && fcRightSidebar.classList.contains('collapsed')) {
+      if(fcSbCount) fcSbCount.textContent = `${flashcardList.length}`;
+      return;
+    }
+
     const query = fcSearchQuery.trim();
     const lowerQ = query.toLowerCase();
 
     const items = [];
     let matchCount = 0;
+    const MAX_VISIBLE_OVERVIEW = 100; // Cap DOM elements at 100 for instant 60 FPS rendering
 
     for(let i = 0; i < flashcardList.length; i++){
       const h = flashcardList[i];
@@ -7987,27 +7994,29 @@
 
       if(isMatch){
         matchCount++;
-        const snippet = getCardBackSnippet(h, query);
-        const titleHtml = highlightMatches(h.text, query);
-        const bcHtml = breadcrumb ? highlightMatches(breadcrumb, query) : '';
-        const snipHtml = highlightMatches(snippet, query);
-        const isActive = (i === currentCardIndex);
-        const aiBadge = hasAi ? '<span class="fc-item-ai-badge" title="Has saved AI supplement">✨</span>' : '';
-        const deleteAiBtn = hasAi ? `<button type="button" class="fc-item-delete-ai-btn" data-card-index="${i}" data-slug="${escapeHtml(slug)}" title="Delete AI output for this card">🗑️</button>` : '';
+        if (items.length < MAX_VISIBLE_OVERVIEW) {
+          const snippet = getCardBackSnippet(h, query);
+          const titleHtml = highlightMatches(h.text, query);
+          const bcHtml = breadcrumb ? highlightMatches(breadcrumb, query) : '';
+          const snipHtml = highlightMatches(snippet, query);
+          const isActive = (i === currentCardIndex);
+          const aiBadge = hasAi ? '<span class="fc-item-ai-badge" title="Has saved AI supplement">✨</span>' : '';
+          const deleteAiBtn = hasAi ? `<button type="button" class="fc-item-delete-ai-btn" data-card-index="${i}" data-slug="${escapeHtml(slug)}" title="Delete AI output for this card">🗑️</button>` : '';
 
-        items.push(`
-          <div class="fc-card-item${isActive ? ' active' : ''}" data-card-index="${i}">
-            <div class="fc-item-top">
-              <span class="fc-item-num">#${i + 1}</span>
-              <span class="fc-item-badge" style="color:var(--h${h.level});border-color:var(--h${h.level});">H${h.level}</span>
-              <span class="fc-item-title" style="color:var(--h${h.level});">${titleHtml}</span>
-              ${aiBadge}
-              ${deleteAiBtn}
+          items.push(`
+            <div class="fc-card-item${isActive ? ' active' : ''}" data-card-index="${i}">
+              <div class="fc-item-top">
+                <span class="fc-item-num">#${i + 1}</span>
+                <span class="fc-item-badge" style="color:var(--h${h.level});border-color:var(--h${h.level});">H${h.level}</span>
+                <span class="fc-item-title" style="color:var(--h${h.level});">${titleHtml}</span>
+                ${aiBadge}
+                ${deleteAiBtn}
+              </div>
+              ${bcHtml ? `<div class="fc-item-breadcrumb">${bcHtml}</div>` : ''}
+              <div class="fc-item-snippet">${snipHtml}</div>
             </div>
-            ${bcHtml ? `<div class="fc-item-breadcrumb">${bcHtml}</div>` : ''}
-            <div class="fc-item-snippet">${snipHtml}</div>
-          </div>
-        `);
+          `);
+        }
       }
     }
 
@@ -8018,25 +8027,26 @@
     if(items.length === 0){
       fcCardList.innerHTML = '<div class="fc-no-cards">No cards match your search.</div>';
     } else {
-      fcCardList.innerHTML = items.join('');
+      let html = items.join('');
+      if (matchCount > MAX_VISIBLE_OVERVIEW) {
+        html += `<div style="padding:12px;text-align:center;font-size:11.5px;color:var(--muted);background:rgba(255,255,255,0.02);border-top:1px solid var(--border);">Showing 100 of ${matchCount.toLocaleString()} cards. Use search to filter.</div>`;
+      }
+      fcCardList.innerHTML = html;
     }
   }
 
   function updateOverviewActiveItem(){
     if(!fcCardList) return;
-    const items = fcCardList.querySelectorAll('.fc-card-item');
-    let activeEl = null;
-    items.forEach(el => {
-      const idx = parseInt(el.dataset.cardIndex, 10);
-      if(idx === currentCardIndex){
-        el.classList.add('active');
-        activeEl = el;
-      } else {
-        el.classList.remove('active');
-      }
-    });
-    if(activeEl && fcRightSidebar && !fcRightSidebar.classList.contains('collapsed')){
-      activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if(fcRightSidebar && fcRightSidebar.classList.contains('collapsed')) return;
+    const prevActive = fcCardList.querySelector('.fc-card-item.active');
+    if (prevActive) {
+      if (parseInt(prevActive.dataset.cardIndex, 10) === currentCardIndex) return;
+      prevActive.classList.remove('active');
+    }
+    const newActive = fcCardList.querySelector(`.fc-card-item[data-card-index="${currentCardIndex}"]`);
+    if(newActive){
+      newActive.classList.add('active');
+      newActive.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
 
@@ -10503,7 +10513,13 @@
     });
   }
 
-  function updateAiBadgesAndCounts() {
+  let cachedMissingCount = null;
+  function invalidateAiCounts() {
+    cachedMissingCount = null;
+    updateAiBadgesAndCounts(true);
+  }
+
+  function updateAiBadgesAndCounts(forceRecount = false) {
     let totalWorkspaceAi = 0;
     if (aiSummaryMap) {
       totalWorkspaceAi = Object.values(aiSummaryMap).reduce((acc, item) => acc + (item.count || 0), 0);
@@ -10521,16 +10537,22 @@
       aiToolbarCount.title = `${fileAiCount} AI note${fileAiCount === 1 ? '' : 's'} in active document (Workspace total: ${totalWorkspaceAi.toLocaleString()})`;
     }
 
-    let missingCount = 0;
-    if (flashcardList && flashcardList.length > 0) {
-      missingCount = flashcardList.filter(h => {
-        const slug = getCardSlug(h);
-        const textKey = h.text ? `text::${h.text.trim().toLowerCase()}` : '';
-        const levelKey = `H${h.level || 2}::${(h.text || '').trim()}`;
-        return !currentFileAiCards || (!currentFileAiCards.has(slug) && !currentFileAiCards.has(levelKey) && (!textKey || !currentFileAiCards.has(textKey)));
-      }).length;
+    if (forceRecount) cachedMissingCount = null;
+
+    if (cachedMissingCount === null) {
+      if (flashcardList && flashcardList.length > 0) {
+        cachedMissingCount = flashcardList.filter(h => {
+          const slug = getCardSlug(h);
+          const textKey = h.text ? `text::${h.text.trim().toLowerCase()}` : '';
+          const levelKey = `H${h.level || 2}::${(h.text || '').trim()}`;
+          return !currentFileAiCards || (!currentFileAiCards.has(slug) && !currentFileAiCards.has(levelKey) && (!textKey || !currentFileAiCards.has(textKey)));
+        }).length;
+      } else {
+        cachedMissingCount = 0;
+      }
     }
 
+    const missingCount = cachedMissingCount || 0;
     if (fcHeaderMissingCount) fcHeaderMissingCount.textContent = missingCount;
     if (fcHeaderGenMissingBtn) {
       fcHeaderGenMissingBtn.style.display = (missingCount > 0) ? 'inline-flex' : 'none';
@@ -13651,6 +13673,7 @@
       };
       folderDeckAllCards = data.cards.slice();
       flashcardList = data.cards.slice();
+      cachedMissingCount = null;
       currentCardIndex = 0;
 
       // Switch into flashcard view
@@ -13819,6 +13842,7 @@
       };
       folderDeckAllCards = data.cards.slice();
       flashcardList = data.cards.slice();
+      cachedMissingCount = null;
       currentCardIndex = 0;
 
       // Switch into flashcard view
@@ -16553,6 +16577,7 @@
     applyFcZoom();
     updateFcAnimationUI();
     window.openFile = openFile;
+    window.loadFolderDeck = loadFolderDeck;
     window.startBatchGeneration = startBatchGeneration;
     window.activeBatches = activeBatches;
     window.getHeadings = () => headings;

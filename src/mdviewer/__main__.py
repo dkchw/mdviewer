@@ -949,21 +949,28 @@ def collect_folder_flashcards(directory, folder_rel_path="", target_level="all",
         return {"status": "error", "message": "Folder not found", "cards": []}
 
     md_files = []
+    ignored_dir_names = {
+        'node_modules', '.obsidian', '.vscode', '.git', '.idea',
+        'assets', 'archive', 'backup', '_archive', '_backup', '_full_deck', '.trash'
+    }
     if recursive:
         for root, dirs, files in os.walk(folder_abs):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d.lower() not in ('node_modules', '.obsidian', '.vscode', '.git', '.idea')]
+            dirs[:] = [d for d in dirs if not d.startswith(('.', '_')) and d.lower() not in ignored_dir_names]
             for f in sorted(files):
+                if f.startswith(('.', '_')):
+                    continue
                 if f.lower().endswith(('.md', '.markdown')):
                     abs_p = os.path.join(root, f)
                     rel_p = os.path.relpath(abs_p, directory).replace('\\', '/')
                     md_files.append((abs_p, rel_p))
     else:
         for entry in sorted(os.scandir(folder_abs), key=lambda e: e.name):
-            if entry.is_file() and entry.name.lower().endswith(('.md', '.markdown')):
+            if entry.is_file() and not entry.name.startswith(('.', '_')) and entry.name.lower().endswith(('.md', '.markdown')):
                 rel_p = os.path.relpath(entry.path, directory).replace('\\', '/')
                 md_files.append((entry.path, rel_p))
 
     all_cards = []
+    seen_card_signatures = set()
     target_int = int(target_level) if str(target_level).isdigit() and int(target_level) > 0 else 0
 
     for file_abs, file_rel in md_files:
@@ -998,6 +1005,13 @@ def collect_folder_flashcards(directory, folder_rel_path="", target_level="all",
         for h in file_headings:
             if target_int > 0 and h["level"] != target_int:
                 continue
+
+            # Deduplicate cards with identical heading level and text within the folder deck
+            clean_text = h["text"].strip().lower()
+            card_sig = (h["level"], clean_text)
+            if card_sig in seen_card_signatures:
+                continue
+            seen_card_signatures.add(card_sig)
 
             start_l = h["line"] + 1
             end_l = h["end"]

@@ -737,6 +737,17 @@ def split_markdown_deck(
                 "end_card": card_end_num
             })
 
+    orig_dir = os.path.dirname(os.path.abspath(md_file_path))
+    if os.path.abspath(target_dir) == orig_dir and keep_original:
+        full_backup_dir = os.path.join(target_dir, "_full_deck")
+        os.makedirs(full_backup_dir, exist_ok=True)
+        backup_path = os.path.join(full_backup_dir, os.path.basename(md_file_path))
+        if os.path.abspath(md_file_path) != os.path.abspath(backup_path) and os.path.isfile(md_file_path):
+            try:
+                shutil.move(md_file_path, backup_path)
+            except Exception:
+                pass
+
     return {
         "status": "ok",
         "total_cards": total_cards,
