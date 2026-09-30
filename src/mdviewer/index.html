@@ -3536,11 +3536,18 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
+    padding: 0 10px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    box-sizing: border-box;
     background: #1a1b26;
     border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
     gap: 6px;
+    flex-shrink: 0;
     z-index: 10;
   }
   .doc-editor-btn-group {
@@ -3599,6 +3606,7 @@
     min-width: 280px;
     height: 100%;
     display: flex;
+    flex-direction: column;
     overflow: hidden;
     position: relative;
     background: #16161e;
@@ -3673,7 +3681,11 @@
   }
 
   .doc-live-header {
-    padding: 6px 14px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    box-sizing: border-box;
+    padding: 0 12px;
     background: #1a1b26;
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -3867,46 +3879,113 @@
     color: #7aa2f7;
   }
 
-  /* Sidebar header action buttons */
-  .sb-header-btn {
+  /* Sidebar header & action buttons */
+  #sidebarHeader {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid var(--border);
+    gap: 6px;
+    box-sizing: border-box;
+  }
+  .sb-header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+  }
+  .sb-quick-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .sb-header-icon-btn {
     background: #242737;
     color: var(--fg);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 5px;
     font-size: 11px;
-    padding: 2px 6px;
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    line-height: 1.5;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
   }
-  .sb-header-btn:hover { background: #2c3040; color: #7aa2f7; border-color: #7aa2f7; }
+  .sb-header-icon-btn:hover {
+    background: #2c3040;
+    color: #7aa2f7;
+    border-color: #7aa2f7;
+  }
+  .sb-header-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .sb-action-pill {
+    flex: 1 1 50%;
+    background: #191b29;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+  .sb-action-pill:hover {
+    background: #24283b;
+    border-color: #7aa2f7;
+    color: #7aa2f7;
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="sidebar">
     <div id="sidebarHeader">
-      <div class="sb-workspace-dropdown" id="workspaceDropdownContainer">
-        <button id="sidebarWorkspaceBtn" class="sb-workspace-btn" title="Switch active workspace or linked folder">
-          <span style="font-size:12px;">📁</span>
-          <span id="sidebarWorkspaceTitle" style="font-weight:600;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Workspace</span>
-          <span style="font-size:9px;color:var(--muted);margin-left:1px;">▾</span>
-        </button>
-        <div class="sb-workspace-menu" id="workspaceMenu" style="display:none;">
-          <div class="sb-menu-title">LINKED WORKSPACES</div>
-          <div id="workspaceLinkedFoldersList"></div>
-          <div class="sb-menu-divider"></div>
-          <div class="sb-menu-action" id="menuActionLinkFolder"><span>🔗</span> <span>Link Existing Folder...</span></div>
-          <div class="sb-menu-action" id="menuActionOpenFolder"><span>📂</span> <span>Open in File Manager</span></div>
-          <div class="sb-menu-action" id="menuActionImportAnki"><span>📥</span> <span>Import Anki Deck...</span></div>
-          <div class="sb-menu-action" id="menuActionDefaultLib"><span>🏠</span> <span>Central Library</span></div>
+      <!-- Top Row: Workspace title & quick folder action icons -->
+      <div class="sb-header-top-row">
+        <div class="sb-workspace-dropdown" id="workspaceDropdownContainer" style="flex:1 1 auto;min-width:0;">
+          <button id="sidebarWorkspaceBtn" class="sb-workspace-btn" style="width:100%;max-width:100%;" title="Switch active workspace or linked folder">
+            <span style="font-size:12px;">📁</span>
+            <span id="sidebarWorkspaceTitle" style="font-weight:600;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;">Workspace</span>
+            <span style="font-size:9px;color:var(--muted);margin-left:2px;">▾</span>
+          </button>
+          <div class="sb-workspace-menu" id="workspaceMenu" style="display:none;">
+            <div class="sb-menu-title">LINKED WORKSPACES</div>
+            <div id="workspaceLinkedFoldersList"></div>
+            <div class="sb-menu-divider"></div>
+            <div class="sb-menu-action" id="menuActionLinkFolder"><span>🔗</span> <span>Link Existing Folder...</span></div>
+            <div class="sb-menu-action" id="menuActionOpenFolder"><span>📂</span> <span>Open in File Manager</span></div>
+            <div class="sb-menu-action" id="menuActionImportAnki"><span>📥</span> <span>Import Anki Deck...</span></div>
+            <div class="sb-menu-action" id="menuActionDefaultLib"><span>🏠</span> <span>Central Library</span></div>
+          </div>
+        </div>
+        <div class="sb-quick-actions">
+          <button id="newNoteBtn" class="sb-header-icon-btn" title="New Note">➕</button>
+          <button id="newFolderBtn" class="sb-header-icon-btn" title="New Folder">📁+</button>
+          <button id="explorerCollapseAll" class="sb-header-icon-btn" title="Collapse All Folders">▲</button>
         </div>
       </div>
-      <div style="display:flex;gap:3px;align-items:center;">
-        <button id="importFolderBtn" class="sb-header-btn" title="Link an existing folder (in-place, no duplication)" onclick="if(window.openFolderImportModal) window.openFolderImportModal();">🔗 Link</button>
-        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Anki</button>
-        <button id="newNoteBtn" class="sb-header-btn" title="New Note">➕</button>
-        <button id="newFolderBtn" class="sb-header-btn" title="New Folder">📁+</button>
-        <button id="explorerCollapseAll" class="sb-header-btn" title="Collapse All Folders">▲</button>
+      <!-- Secondary Actions: Link Folder and Import Anki with zero compression -->
+      <div class="sb-header-actions-row">
+        <button id="importFolderBtn" class="sb-action-pill" title="Link an existing folder (in-place, no duplication)" onclick="if(window.openFolderImportModal) window.openFolderImportModal();">🔗 Link Folder</button>
+        <button id="ankiImportSidebarBtn" class="sb-action-pill" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Anki Deck</button>
       </div>
     </div>
     <!-- Sidebar Quick Search & Filter -->
@@ -4030,12 +4109,11 @@
       <div id="docContentWrap" class="doc-content-wrap">
         <div class="doc-floating-bar" id="docFloatingBar">
           <div style="display:flex;align-items:center;gap:8px;">
-            <div class="doc-view-mode-tabs">
+            <div class="doc-view-mode-tabs" style="display:none !important;">
               <button id="docFloatSubReadingBtn" class="doc-mode-tab active" title="Reading View (Ctrl+E)">📖 Reading</button>
               <button id="docFloatSubLiveBtn" class="doc-mode-tab" title="Live Preview (Ctrl+E)">⚡ Live Preview</button>
               <button id="docFloatSubSourceBtn" class="doc-mode-tab" title="Edit Note (Ctrl+E)">✏️ Edit</button>
             </div>
-            <div class="sep"></div>
             <button id="docFloatDoubleBtn" class="doc-tool-btn" title="Toggle Double-Page Book Reader">📖 Double-Page</button>
             <button id="docFloatWideBtn" class="doc-tool-btn" title="Toggle Wide Edge-to-Edge Layout">↔ Wide</button>
             <div class="sep"></div>
@@ -4056,58 +4134,6 @@
 
         <!-- 2. Obsidian-like Live Preview & Document Editor Container -->
         <div id="docEditorContainer" class="doc-editor-container" style="display:none;">
-          <!-- Editor Formatting Toolbar -->
-          <div id="docEditorToolbar" class="doc-editor-toolbar">
-            <div class="doc-editor-btn-group">
-              <button class="doc-ed-btn" id="edBtnBold" title="Bold (Ctrl+B)"><b>B</b></button>
-              <button class="doc-ed-btn" id="edBtnItalic" title="Italic (Ctrl+I)"><i>I</i></button>
-              <button class="doc-ed-btn" id="edBtnStrike" title="Strikethrough"><s>S</s></button>
-              <div class="sep" style="height:16px;"></div>
-              <button class="doc-ed-btn" id="edBtnH1" title="Heading 1" style="font-weight:700;color:#7aa2f7;">H1</button>
-              <button class="doc-ed-btn" id="edBtnH2" title="Heading 2" style="font-weight:700;color:#bb9af7;">H2</button>
-              <button class="doc-ed-btn" id="edBtnH3" title="Heading 3" style="font-weight:700;color:#7dcfff;">H3</button>
-              <div class="sep" style="height:16px;"></div>
-              <button class="doc-ed-btn" id="edBtnTask" title="Task List item (Ctrl+L)">☑ Task</button>
-              <button class="doc-ed-btn" id="edBtnBullet" title="Bullet List">• List</button>
-              <button class="doc-ed-btn" id="edBtnNumList" title="Numbered List">1. List</button>
-              <div class="sep" style="height:16px;"></div>
-              <button class="doc-ed-btn" id="edBtnQuote" title="Blockquote">” Quote</button>
-              <select id="edCalloutSelect" class="doc-ed-select" title="Insert Obsidian Callout">
-                <option value="" disabled selected>✨ Callout ▾</option>
-                <option value="NOTE">ℹ️ Note</option>
-                <option value="TIP">💡 Tip</option>
-                <option value="IMPORTANT">⚡ Important</option>
-                <option value="WARNING">⚠️ Warning</option>
-                <option value="CAUTION">🛑 Caution</option>
-              </select>
-              <div class="sep" style="height:16px;"></div>
-              <button class="doc-ed-btn" id="edBtnCode" title="Code Block / Inline">&lt;/&gt;</button>
-              <button class="doc-ed-btn" id="edBtnLink" title="Insert Link (Ctrl+K)">🔗 Link</button>
-              <button class="doc-ed-btn" id="edBtnWiki" title="Obsidian Wikilink">[[ ]]</button>
-              <button class="doc-ed-btn" id="edBtnMath" title="KaTeX Math ($ or $$)">∑ Math</button>
-              <button class="doc-ed-btn" id="edBtnTable" title="Insert Table">⊞ Table</button>
-              <button class="doc-ed-btn" id="edBtnHr" title="Horizontal Divider">—</button>
-            </div>
-
-            <div class="doc-editor-btn-group">
-              <div class="doc-view-mode-tabs" style="margin-right:6px;">
-                <button id="edSubReadingBtn" class="doc-mode-tab" title="Reading View [Ctrl+E]">📖 Reading</button>
-                <button id="edSubLiveBtn" class="doc-mode-tab" title="Live Preview [Ctrl+E]">⚡ Live Preview</button>
-                <button id="edSubSourceBtn" class="doc-mode-tab" title="Edit — Full Editor">✏️ Edit</button>
-              </div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;margin-right:4px;" title="Toggle word wrapping">
-                <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
-                <span>Wrap</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;margin-right:6px;">
-                <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
-                <span>Auto-save</span>
-              </label>
-              <span id="edSaveStatusPill" class="doc-status-pill saved">✓ Saved</span>
-              <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:3px 10px;" title="Save to disk (Ctrl+S)">💾 Save</button>
-            </div>
-          </div>
-
           <!-- Massive File Shield Banner (Protects from 1M Line Files) -->
           <div id="massiveFileShieldBanner" class="massive-shield-banner" style="display:none;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -4131,12 +4157,69 @@
 
           <!-- Split Workspace Area -->
           <div id="docEditorSplitArea" class="doc-editor-split-area">
-            <!-- Left Pane: Editor with Gutter -->
+            <!-- Left Pane: Editor with Gutter and Independent Editor Toolbar -->
             <div id="docEditorPane" class="doc-editor-pane">
-              <div id="docGutter" class="doc-gutter">
-                <div id="docLineNumbers" class="doc-line-numbers">1</div>
+              <!-- Editor Formatting Toolbar INDEPENDENT to the editor pane -->
+              <div id="docEditorToolbar" class="doc-editor-toolbar">
+                <div class="doc-editor-btn-group">
+                  <button class="doc-ed-btn" id="edBtnBold" title="Bold (Ctrl+B)"><b>B</b></button>
+                  <button class="doc-ed-btn" id="edBtnItalic" title="Italic (Ctrl+I)"><i>I</i></button>
+                  <button class="doc-ed-btn" id="edBtnStrike" title="Strikethrough"><s>S</s></button>
+                  <div class="sep" style="height:14px;"></div>
+                  <button class="doc-ed-btn" id="edBtnH1" title="Heading 1" style="font-weight:700;color:#7aa2f7;">H1</button>
+                  <button class="doc-ed-btn" id="edBtnH2" title="Heading 2" style="font-weight:700;color:#bb9af7;">H2</button>
+                  <button class="doc-ed-btn" id="edBtnH3" title="Heading 3" style="font-weight:700;color:#7dcfff;">H3</button>
+                  <div class="sep" style="height:14px;"></div>
+                  <button class="doc-ed-btn" id="edBtnTask" title="Task List item (Ctrl+L)">☑</button>
+                  <button class="doc-ed-btn" id="edBtnBullet" title="Bullet List">•</button>
+                  <button class="doc-ed-btn" id="edBtnNumList" title="Numbered List">1.</button>
+                  <div class="sep" style="height:14px;"></div>
+                  <button class="doc-ed-btn" id="edBtnQuote" title="Blockquote">”</button>
+                  <select id="edCalloutSelect" class="doc-ed-select" title="Insert Obsidian Callout">
+                    <option value="" disabled selected>✨ Callout ▾</option>
+                    <option value="NOTE">ℹ️ Note</option>
+                    <option value="TIP">💡 Tip</option>
+                    <option value="IMPORTANT">⚡ Important</option>
+                    <option value="WARNING">⚠️ Warning</option>
+                    <option value="CAUTION">🛑 Caution</option>
+                  </select>
+                  <div class="sep" style="height:14px;"></div>
+                  <button class="doc-ed-btn" id="edBtnCode" title="Code Block / Inline">&lt;/&gt;</button>
+                  <button class="doc-ed-btn" id="edBtnLink" title="Insert Link (Ctrl+K)">🔗</button>
+                  <button class="doc-ed-btn" id="edBtnWiki" title="Obsidian Wikilink">[[ ]]</button>
+                  <button class="doc-ed-btn" id="edBtnMath" title="KaTeX Math ($ or $$)">∑</button>
+                  <button class="doc-ed-btn" id="edBtnTable" title="Insert Table">⊞</button>
+                  <button class="doc-ed-btn" id="edBtnHr" title="Horizontal Divider">—</button>
+                </div>
+
+                <div class="doc-editor-btn-group">
+                  <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle word wrapping">
+                    <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
+                    <span>Wrap</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle auto-saving">
+                    <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
+                    <span>Auto</span>
+                  </label>
+                  <span id="edSaveStatusPill" class="doc-status-pill saved" style="font-size:10px;padding:1px 5px;">✓ Saved</span>
+                  <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 7px;font-size:11px;" title="Save to disk (Ctrl+S)">💾 Save</button>
+                </div>
+
+                <!-- Hidden stub elements for backward compatibility -->
+                <div style="display:none !important;">
+                  <button id="edSubReadingBtn"></button>
+                  <button id="edSubLiveBtn"></button>
+                  <button id="edSubSourceBtn"></button>
+                </div>
               </div>
-              <textarea id="docTextarea" class="doc-textarea" spellcheck="false" placeholder="Write markdown content here..."></textarea>
+
+              <!-- Editor Workspace Area (Gutter + Textarea) -->
+              <div class="doc-editor-edit-zone" style="display:flex;flex:1 1 auto;min-height:0;overflow:hidden;position:relative;">
+                <div id="docGutter" class="doc-gutter">
+                  <div id="docLineNumbers" class="doc-line-numbers">1</div>
+                </div>
+                <textarea id="docTextarea" class="doc-textarea" spellcheck="false" placeholder="Write markdown content here..."></textarea>
+              </div>
             </div>
 
             <!-- Resizable Split Divider -->
