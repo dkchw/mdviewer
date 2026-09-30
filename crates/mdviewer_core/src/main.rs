@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::env;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::io::{self, Read};
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
@@ -372,9 +372,70 @@ fn render_markdown_to_html(markdown_str: &str) -> RenderResult {
         }
     });
 
+    let line_starts: Vec<usize> = std::iter::once(0)
+        .chain(markdown_str.match_indices('\n').map(|(i, _)| i + 1))
+        .collect();
+
+    let get_line_num = |offset: usize| -> usize {
+        match line_starts.binary_search(&offset) {
+            Ok(idx) => idx + 1,
+            Err(idx) => idx,
+        }
+    };
+
     let parser = Parser::new_ext(&preprocessed_embeds, options);
+    let mut transformed_events = Vec::new();
+
+    for (event, range) in parser.into_offset_iter() {
+        let line_num = get_line_num(range.start);
+        match event {
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::Paragraph) => {
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<p data-line=\"{}\">", line_num).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Paragraph) => {
+                transformed_events.push(pulldown_cmark::Event::Html("</p>\n".into()));
+            }
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, id, .. }) => {
+                let id_attr = id.map(|s| format!(" id=\"{}\"", s)).unwrap_or_default();
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<h{} data-line=\"{}\"{}>", level as usize, line_num, id_attr).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(level)) => {
+                transformed_events.push(pulldown_cmark::Event::Html(format!("</h{}>\n", level as usize).into()));
+            }
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::BlockQuote(..)) => {
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<blockquote data-line=\"{}\">", line_num).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::BlockQuote(..)) => {
+                transformed_events.push(pulldown_cmark::Event::Html("</blockquote>\n".into()));
+            }
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::Item) => {
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<li data-line=\"{}\">", line_num).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Item) => {
+                transformed_events.push(pulldown_cmark::Event::Html("</li>\n".into()));
+            }
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::Table(..)) => {
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<table data-line=\"{}\">", line_num).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Table) => {
+                transformed_events.push(pulldown_cmark::Event::Html("</table>\n".into()));
+            }
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(ref kind)) => {
+                let class_attr = match kind {
+                    pulldown_cmark::CodeBlockKind::Fenced(lang) if !lang.is_empty() => format!(" class=\"language-{}\"", lang),
+                    _ => String::new(),
+                };
+                transformed_events.push(pulldown_cmark::Event::Html(format!("<pre data-line=\"{}\"><code{}>", line_num, class_attr).into()));
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::CodeBlock) => {
+                transformed_events.push(pulldown_cmark::Event::Html("</code></pre>\n".into()));
+            }
+            other => transformed_events.push(other),
+        }
+    }
+
     let mut html_output = String::with_capacity(markdown_str.len() * 3 / 2);
-    html::push_html(&mut html_output, parser);
+    html::push_html(&mut html_output, transformed_events.into_iter());
 
     // Post-process Obsidian highlights ==text== -> <mark>text</mark>
     let re_mark = Regex::new(r"==([^=]+)==").unwrap();
@@ -401,11 +462,12 @@ fn render_markdown_to_html(markdown_str: &str) -> RenderResult {
     });
 
     // Post-process callouts > [!NOTE], > [!TIP], > [!WARNING], > [!IMPORTANT], > [!CAUTION]
-    let re_callout = Regex::new(r#"(?s)<blockquote>\s*<p>\[!([A-Za-z_-]+)\][ \t]*(.*?)(?:</p>|\n)(.*?)</blockquote>"#).unwrap();
+    let re_callout = Regex::new(r#"(?s)<blockquote(?:\s+data-line="(\d+)")?>\s*<p(?:\s+data-line="\d+")?>\[!([A-Za-z_-]+)\][ \t]*(.*?)(?:</p>|\n)(.*?)</blockquote>"#).unwrap();
     let final_html = re_callout.replace_all(&processed_wiki, |caps: &regex::Captures| {
-        let kind = caps.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_else(|| "note".to_string());
-        let raw_title = caps.get(2).map(|m| m.as_str().trim()).unwrap_or("");
-        let body = caps.get(3).map(|m| m.as_str().trim()).unwrap_or("");
+        let line_attr = caps.get(1).map(|m| format!(" data-line=\"{}\"", m.as_str())).unwrap_or_default();
+        let kind = caps.get(2).map(|m| m.as_str().to_lowercase()).unwrap_or_else(|| "note".to_string());
+        let raw_title = caps.get(3).map(|m| m.as_str().trim()).unwrap_or("");
+        let body = caps.get(4).map(|m| m.as_str().trim()).unwrap_or("");
         let title = if !raw_title.is_empty() {
             raw_title.to_string()
         } else {
@@ -434,8 +496,8 @@ fn render_markdown_to_html(markdown_str: &str) -> RenderResult {
             format!("<p>{}</p>", body.replace("</p>", ""))
         };
         format!(
-            r#"<div class="callout callout-{}"><div class="callout-title"><span class="callout-icon">{}</span> <span class="callout-title-inner">{}</span></div><div class="callout-content">{}</div></div>"#,
-            kind, icon, title, content_html
+            r#"<div class="callout callout-{}"{}><div class="callout-title"><span class="callout-icon">{}</span> <span class="callout-title-inner">{}</span></div><div class="callout-content">{}</div></div>"#,
+            kind, line_attr, icon, title, content_html
         )
     });
 

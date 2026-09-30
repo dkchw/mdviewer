@@ -2725,6 +2725,44 @@
     background: #1a1b26;
     border-bottom: 1px solid #292e42;
   }
+  .ai-modal-close,
+  .ai-modal-header .term-action-btn.close,
+  .buf-header .term-action-btn.close,
+  .image-modal-close {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #9aa5ce !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    line-height: 1 !important;
+    user-select: none !important;
+  }
+  .ai-modal-close:hover,
+  .ai-modal-header .term-action-btn.close:hover,
+  .buf-header .term-action-btn.close:hover,
+  .image-modal-close:hover {
+    background: rgba(247, 118, 142, 0.22) !important;
+    color: #f7768e !important;
+    border-color: rgba(247, 118, 142, 0.5) !important;
+    transform: scale(1.08) !important;
+  }
+  .ai-modal-close:active,
+  .ai-modal-header .term-action-btn.close:active,
+  .buf-header .term-action-btn.close:active,
+  .image-modal-close:active {
+    transform: scale(0.94) !important;
+  }
   .ai-modal-title {
     font-size: 13px;
     font-weight: 700;
@@ -3597,7 +3635,7 @@
           <div id="workspaceLinkedFoldersList"></div>
           <div class="sb-menu-divider"></div>
           <div class="sb-menu-action" id="menuActionLinkFolder"><span>🔗</span> <span>Link Existing Folder...</span></div>
-          <div class="sb-menu-action" id="menuActionOpenDolphin"><span>🐬</span> <span>Open in Dolphin</span></div>
+          <div class="sb-menu-action" id="menuActionOpenFolder"><span>📂</span> <span>Open in File Manager</span></div>
           <div class="sb-menu-action" id="menuActionImportAnki"><span>📥</span> <span>Import Anki Deck...</span></div>
           <div class="sb-menu-action" id="menuActionDefaultLib"><span>🏠</span> <span>Central Library</span></div>
         </div>
@@ -3619,7 +3657,7 @@
 
     <!-- Unified 3-Mode Switcher -->
     <div class="mode-switcher-container" id="modeSwitcher">
-      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Line-by-Line & Outline Reader [1]">📑 Line-by-Line</button>
+      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
       <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
       <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
     </div>
@@ -3675,7 +3713,7 @@
     </div>
 
     <div class="sep"></div>
-    <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;" title="Explore and manage AI supplements across document outlines">✨ AI Notes (<span id="aiToolbarCount">0</span>)</button>
+    <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:6px;" title="Explore and manage AI supplements across document outlines">✨ AI Notes <span id="aiToolbarCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;">0</span></button>
     <button id="terminalToggleBtn" title="Toggle In-Browser Sandboxed Terminal (`)">🖥️ Terminal</button>
 
     <div class="sep"></div>
@@ -3817,7 +3855,7 @@
               <button type="button" class="fc-btn-secondary" id="shieldNextChunkBtn" style="padding:2px 8px;font-size:11px;" title="Next 1,000 lines">Next 1k ▶</button>
               <input type="number" id="shieldJumpLineInput" class="ai-modal-input" placeholder="Line #" style="width:70px;padding:2px 6px;font-size:11px;" />
               <button type="button" class="fc-btn-secondary" id="shieldJumpBtn" style="padding:2px 8px;font-size:11px;">Jump</button>
-              <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Line-by-Line Outline View">⚡ Line-by-Line (60 FPS Full)</button>
+              <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Outline View">⚡ Outline (60 FPS Full)</button>
             </div>
           </div>
 
@@ -4492,7 +4530,7 @@
         <span class="ai-modal-title">📑 AI Supplements & Outline Explorer</span>
         <span id="fcSuppModalCount" style="font-size:11px;background:#24283b;color:var(--accent);padding:2px 8px;border-radius:12px;border:1px solid rgba(122,162,247,0.3);">0 items</span>
       </div>
-      <button class="term-action-btn close" id="fcCleanupCloseBtn">✕</button>
+      <button class="term-action-btn close ai-modal-close" id="fcCleanupCloseBtn" title="Close (Esc)">✕</button>
     </div>
 
     <!-- Modal Navigation Tabs -->
@@ -4974,7 +5012,7 @@
         <div style="display:flex;gap:6px;">
           <input type="text" id="importFolderPathInput" class="ai-modal-input" placeholder="e.g. /home/dkchw/Documents/Notes or ~/Notes..." style="flex:1;font-size:12.5px;font-family:monospace;" />
           <button type="button" id="workspaceVerifyBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 12px;white-space:nowrap;">Check</button>
-          <button type="button" id="workspaceOpenDolphinBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 10px;white-space:nowrap;display:flex;align-items:center;gap:4px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Open folder in Dolphin file manager"><span>🐬 Open Dolphin</span></button>
+          <button type="button" id="workspaceOpenFolderBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 10px;white-space:nowrap;display:flex;align-items:center;gap:4px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Open folder in system default file manager"><span>📂 Open Folder</span></button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">Enter any folder path on your computer. mdviewer will work directly in it without copying or duplicating files.</div>
       </div>
@@ -10416,11 +10454,24 @@
     updateAiBadgesAndCounts();
   }
 
+  function getAiSummaryItem(p) {
+    if (!aiSummaryMap || !p) return null;
+    if (aiSummaryMap[p]) return aiSummaryMap[p];
+    const clean = p.replace(/\\/g, '/').replace(/^\/+/, '');
+    for (const [k, v] of Object.entries(aiSummaryMap)) {
+      const cleanK = k.replace(/\\/g, '/').replace(/^\/+/, '');
+      if (clean === cleanK || clean.endsWith('/' + cleanK) || cleanK.endsWith('/' + clean)) {
+        return v;
+      }
+    }
+    return null;
+  }
+
   function updateTreeAiBadges() {
     document.querySelectorAll('.tree-row[data-path]').forEach(row => {
       const p = row.dataset.path;
       let badge = row.querySelector('.tree-ai-badge');
-      const item = aiSummaryMap[p];
+      const item = getAiSummaryItem(p);
       const count = item?.count || 0;
       if (count > 0) {
         if (!badge) {
@@ -10453,7 +10504,7 @@
     if (fcFilterAiCount) fcFilterAiCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
     if (fcAiTopCount) fcAiTopCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
     if (fcSearchAiCount) fcSearchAiCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
-    if (aiToolbarCount) aiToolbarCount.textContent = totalWorkspaceAi ? `(${totalWorkspaceAi})` : '';
+    if (aiToolbarCount) aiToolbarCount.textContent = totalWorkspaceAi ? `${totalWorkspaceAi}` : '0';
 
     let missingCount = 0;
     if (flashcardList && flashcardList.length > 0) {
@@ -14442,7 +14493,7 @@
         docBody.innerHTML = `
           <div style="background:rgba(122,162,247,0.12);border:1px solid rgba(122,162,247,0.3);border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
             <span>🛡️ <strong style="color:#7aa2f7;">Massive File Shield Active</strong>: Showing lines ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()}.</span>
-            <button type="button" class="fc-btn-secondary" onclick="setAppMode('outline')" style="font-size:11px;padding:2px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);">⚡ Line-by-Line (60 FPS Full)</button>
+            <button type="button" class="fc-btn-secondary" onclick="setAppMode('outline')" style="font-size:11px;padding:2px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);">⚡ Outline (60 FPS Full)</button>
           </div>
         ` + (data.html || '');
       } else {
@@ -14782,45 +14833,86 @@
     if (!liveGutter || !liveLineNums || !liveBody || !textarea) return;
     if (liveGutter.style.display === 'none') return;
 
-    const rawLines = textarea.value.split('\n');
-    const children = Array.from(liveBody.children);
-    if (!children.length) {
-      liveLineNums.innerHTML = '<div style="padding-top:16px;">1</div>';
-      return;
-    }
-
     const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
-    let currentLine = 0;
+    const rawLines = textarea.value.split('\n');
     let markersHtml = '';
+    let maxDisplayLine = baseLine;
 
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      const topPos = child.offsetTop;
+    // 1. Check if rendered elements have exact data-line tags from Rust/Python accelerator
+    const taggedElements = liveBody.querySelectorAll('[data-line]');
+    if (taggedElements.length > 0) {
+      const seenTops = new Set();
+      taggedElements.forEach(el => {
+        const rawLineAttr = parseInt(el.getAttribute('data-line'), 10);
+        if (isNaN(rawLineAttr)) return;
+        const displayLine = baseLine + rawLineAttr - 1;
+        if (displayLine > maxDisplayLine) maxDisplayLine = displayLine;
 
-      while (currentLine < rawLines.length && !rawLines[currentLine].trim()) {
-        currentLine++;
-      }
+        const topPos = el.offsetTop;
+        if (!seenTops.has(topPos)) {
+          seenTops.add(topPos);
+          markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#7aa2f7;user-select:none;font-family:ui-monospace,monospace;line-height:22px;" title="Line ${displayLine}">${displayLine}</div>`;
+        }
 
-      const displayLine = baseLine + currentLine;
-      markersHtml += `<div class="live-line-marker" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#565f89;user-select:none;font-family:ui-monospace,monospace;" title="Line ${displayLine}">${displayLine}</div>`;
+        // If code block <pre>, render sequential line numbers for lines inside it
+        if (el.tagName === 'PRE') {
+          const codeEl = el.querySelector('code') || el;
+          const codeText = codeEl.textContent || '';
+          const codeLines = codeText.split('\n');
+          if (codeLines.length > 1) {
+            const LINE_H = 20; // standard pre line height
+            for (let k = 1; k < codeLines.length; k++) {
+              if (k === codeLines.length - 1 && !codeLines[k].trim()) continue;
+              const innerLine = displayLine + k;
+              if (innerLine > maxDisplayLine) maxDisplayLine = innerLine;
+              const innerTop = topPos + (k * LINE_H);
+              markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${innerTop}px;right:8px;font-size:11px;color:#565f89;user-select:none;font-family:ui-monospace,monospace;line-height:${LINE_H}px;" title="Line ${innerLine}">${innerLine}</div>`;
+            }
+          }
+        }
+      });
+    } else {
+      // 2. Fallback for untagged elements: scan top-level children
+      const children = Array.from(liveBody.children);
+      let currentLine = 0;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        const topPos = child.offsetTop;
 
-      if (child.tagName === 'PRE') {
-        const codeLines = child.textContent.split('\n').length;
-        currentLine += Math.max(1, codeLines);
-      } else if (child.tagName === 'UL' || child.tagName === 'OL') {
-        const lis = child.querySelectorAll('li').length;
-        currentLine += Math.max(1, lis);
-      } else if (child.tagName === 'TABLE') {
-        const rows = child.querySelectorAll('tr').length;
-        currentLine += Math.max(1, rows);
-      } else {
-        currentLine++;
+        while (currentLine < rawLines.length && !rawLines[currentLine].trim()) {
+          currentLine++;
+        }
+        const displayLine = baseLine + currentLine;
+        if (displayLine > maxDisplayLine) maxDisplayLine = displayLine;
+
+        markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#7aa2f7;user-select:none;font-family:ui-monospace,monospace;line-height:22px;" title="Line ${displayLine}">${displayLine}</div>`;
+
+        if (child.tagName === 'PRE') {
+          const codeLines = child.textContent.split('\n').length;
+          currentLine += Math.max(1, codeLines);
+        } else if (child.tagName === 'UL' || child.tagName === 'OL') {
+          const lis = child.querySelectorAll('li').length;
+          currentLine += Math.max(1, lis);
+        } else if (child.tagName === 'TABLE') {
+          const rows = child.querySelectorAll('tr').length;
+          currentLine += Math.max(1, rows);
+        } else {
+          currentLine++;
+        }
       }
     }
+
+    // Dynamically adjust gutter width based on maximum line number
+    const digits = String(maxDisplayLine).length;
+    const neededWidth = Math.max(44, digits * 8 + 18);
+    liveGutter.style.width = `${neededWidth}px`;
 
     liveLineNums.style.position = 'relative';
     liveLineNums.style.height = `${liveBody.scrollHeight}px`;
     liveLineNums.innerHTML = markersHtml;
+
+    // Immediately sync scroll transform
+    liveLineNums.style.transform = `translateY(-${liveBody.scrollTop}px)`;
   }
 
   function updateEditorStats() {
@@ -15308,9 +15400,10 @@
       });
     }
 
-    // Live preview line numbers toggle
+    // Live preview line numbers toggle & scroll synchronization
     const toggleLiveNumsBtn = document.getElementById('docToggleLiveLineNums');
     const liveGutter = document.getElementById('docLiveGutter');
+    const liveBody = document.getElementById('docLiveBody');
     if (toggleLiveNumsBtn && liveGutter) {
       toggleLiveNumsBtn.addEventListener('click', () => {
         const isHidden = liveGutter.style.display === 'none';
@@ -15321,6 +15414,14 @@
           updateLivePreviewLineNumbers();
         }
       });
+    }
+    if (liveBody) {
+      liveBody.addEventListener('scroll', () => {
+        const liveLineNums = document.getElementById('docLiveLineNumbers');
+        if (liveLineNums) {
+          liveLineNums.style.transform = `translateY(-${liveBody.scrollTop}px)`;
+        }
+      }, { passive: true });
     }
 
     // Massive File Shield Banner navigation buttons
@@ -15370,8 +15471,6 @@
 
     textarea.addEventListener('click', updateEditorStats);
     textarea.addEventListener('keyup', updateEditorStats);
-
-    const liveBody = document.getElementById('docLiveBody');
 
     // Synchronized scroll between Textarea, Gutter, and Live Preview
     textarea.addEventListener('scroll', () => {
@@ -15688,24 +15787,25 @@
       }
     }
 
-    async function triggerOpenDolphin(targetPath = '') {
+    async function triggerOpenFolder(targetPath = '') {
       try {
-        const res = await fetch('/api/workspace/open_dolphin', {
+        const res = await fetch('/api/workspace/open_folder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: targetPath || '' })
         });
         const data = await res.json();
         if (data.status === 'ok') {
-          showAppToast(`🐬 Opened Dolphin: ${data.opened_path || targetPath || 'folder'}`, 3000);
+          showAppToast(`📂 Opened file manager: ${data.path || targetPath || 'folder'}`, 3000);
         } else {
-          alert('Could not launch Dolphin: ' + (data.message || 'Unknown error'));
+          alert('Could not launch file manager: ' + (data.message || 'Unknown error'));
         }
       } catch(e) {
-        alert('Failed to trigger Dolphin: ' + e.message);
+        alert('Failed to trigger file manager: ' + e.message);
       }
     }
-    window.triggerOpenDolphin = triggerOpenDolphin;
+    window.triggerOpenFolder = triggerOpenFolder;
+    window.triggerOpenDolphin = triggerOpenFolder;
 
     function renderLinkedFoldersDropdown(linkedFolders, activeDir, defaultLib) {
       const list = document.getElementById('workspaceLinkedFoldersList');
@@ -15725,14 +15825,14 @@
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${f.name}</span>
             <span style="font-size:10px;color:var(--muted);margin-left:auto;padding-right:6px;">${f.md_count}</span>
           </div>
-          <button type="button" class="fc-btn-secondary dolphin-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#7aa2f7;" title="Open in Dolphin">🐬</button>
+          <button type="button" class="fc-btn-secondary dolphin-btn folder-open-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#7aa2f7;" title="Open in File Manager">📂</button>
           <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#f7768e;" title="Unlink folder">✕</button>
         `;
-        const dolphinBtn = item.querySelector('.dolphin-btn');
+        const dolphinBtn = item.querySelector('.folder-open-btn') || item.querySelector('.dolphin-btn');
         if (dolphinBtn) {
           dolphinBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            triggerOpenDolphin(f.resolved_path);
+            triggerOpenFolder(f.resolved_path);
           });
         }
 
@@ -15774,10 +15874,10 @@
     const menuActionLinkFolder = document.getElementById('menuActionLinkFolder');
     if (menuActionLinkFolder) menuActionLinkFolder.addEventListener('click', () => { closeWorkspaceDropdown(); openModal(); });
 
-    const menuActionOpenDolphin = document.getElementById('menuActionOpenDolphin');
-    if (menuActionOpenDolphin) menuActionOpenDolphin.addEventListener('click', async () => {
+    const menuActionOpenFolder = document.getElementById('menuActionOpenFolder') || document.getElementById('menuActionOpenDolphin');
+    if (menuActionOpenFolder) menuActionOpenFolder.addEventListener('click', async () => {
       closeWorkspaceDropdown();
-      await triggerOpenDolphin();
+      await triggerOpenFolder();
     });
 
     const menuActionImportAnki = document.getElementById('menuActionImportAnki');
@@ -15833,16 +15933,16 @@
                     <span style="font-size:10px;color:var(--muted);">(${f.md_count} notes)</span>
                   </div>
                   <div style="display:flex;gap:4px;">
-                    <button type="button" class="fc-btn-secondary dolphin-btn" style="padding:1px 6px;font-size:10.5px;color:#7aa2f7;" title="Open folder in Dolphin">🐬</button>
+                    <button type="button" class="fc-btn-secondary dolphin-btn folder-open-btn" style="padding:1px 6px;font-size:10.5px;color:#7aa2f7;" title="Open folder in File Manager">📂</button>
                     <button type="button" class="fc-btn-secondary switch-btn" style="padding:1px 6px;font-size:10.5px;">${isActive ? 'Active' : 'Open'}</button>
                     <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 6px;font-size:10.5px;color:#f7768e;" title="Unlink folder">✕</button>
                   </div>
                 `;
-                const dBtn = b.querySelector('.dolphin-btn');
+                const dBtn = b.querySelector('.folder-open-btn') || b.querySelector('.dolphin-btn');
                 if (dBtn) {
                   dBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    triggerOpenDolphin(f.resolved_path);
+                    triggerOpenFolder(f.resolved_path);
                   });
                 }
                 b.querySelector('.switch-btn').addEventListener('click', async () => {
@@ -15951,11 +16051,11 @@
 
     if (verifyBtn) verifyBtn.addEventListener('click', validatePath);
 
-    const workspaceOpenDolphinBtn = document.getElementById('workspaceOpenDolphinBtn');
-    if (workspaceOpenDolphinBtn) {
-      workspaceOpenDolphinBtn.addEventListener('click', async () => {
+    const workspaceOpenFolderBtn = document.getElementById('workspaceOpenFolderBtn') || document.getElementById('workspaceOpenDolphinBtn');
+    if (workspaceOpenFolderBtn) {
+      workspaceOpenFolderBtn.addEventListener('click', async () => {
         const val = pathInput ? pathInput.value.trim() : '';
-        await triggerOpenDolphin(val);
+        await triggerOpenFolder(val);
       });
     }
 
@@ -16086,6 +16186,40 @@
 
     // Auto load workspace info on page load
     loadWorkspaceInfo();
+    initUniversalModalBackdropHandler();
+  }
+
+  function initUniversalModalBackdropHandler() {
+    // Backdrop click dismisses any modal when clicking directly on overlay
+    document.querySelectorAll('.ai-modal-overlay, #bufferEditorModal, #imageModal').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          const closeBtn = overlay.querySelector('.ai-modal-close, .term-action-btn.close, #bufModalCloseTopBtn, #imageModalCloseBtn');
+          if (closeBtn) {
+            closeBtn.click();
+          } else {
+            overlay.classList.remove('active');
+            overlay.style.display = 'none';
+          }
+        }
+      });
+    });
+
+    // Universal Escape key listener to close active modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const activeModal = document.querySelector('.ai-modal-overlay.active, .ai-modal-overlay[style*="display: flex"], .ai-modal-overlay[style*="display: block"], #bufferEditorModal.active, #bufferEditorModal[style*="display: block"], #imageModal.active, #imageModal[style*="display: flex"]');
+        if (activeModal) {
+          const closeBtn = activeModal.querySelector('.ai-modal-close, .term-action-btn.close, #bufModalCloseTopBtn, #imageModalCloseBtn');
+          if (closeBtn) {
+            closeBtn.click();
+          } else {
+            activeModal.classList.remove('active');
+            activeModal.style.display = 'none';
+          }
+        }
+      }
+    });
   }
 
   async function initEngineInfo() {

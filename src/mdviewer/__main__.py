@@ -331,13 +331,19 @@ DEFAULT_PROMPTS = [
     }
 ]
 
-def get_supplement_db_path(directory):
-    ws_hash = hashlib.sha256(os.path.abspath(directory).encode('utf-8')).hexdigest()[:16]
-    base_dir = os.path.abspath(os.path.join(os.path.expanduser("~/.mdviewer_supplements"), ws_hash))
-    os.makedirs(base_dir, exist_ok=True)
-    return os.path.join(base_dir, "flashcards.db")
+MASTER_SUPPLEMENT_DB_PATH = os.path.abspath(os.path.join(os.path.expanduser("~/.mdviewer_supplements"), "master_flashcards.db"))
 
-def get_db_connection(directory):
+def get_supplement_db_path(directory=None):
+    """Returns the unified master supplement DB path, or workspace-local DB if present."""
+    if directory:
+        local_db = os.path.abspath(os.path.join(directory, ".mdviewer", "flashcards.db"))
+        if os.path.isfile(local_db):
+            return local_db
+    base_dir = os.path.dirname(MASTER_SUPPLEMENT_DB_PATH)
+    os.makedirs(base_dir, exist_ok=True)
+    return MASTER_SUPPLEMENT_DB_PATH
+
+def get_db_connection(directory=None):
     db_path = get_supplement_db_path(directory)
     conn = sqlite3.connect(db_path, timeout=60.0)
     conn.execute("PRAGMA journal_mode=WAL;")
@@ -345,7 +351,7 @@ def get_db_connection(directory):
     conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
 
-def init_supplement_db(directory):
+def init_supplement_db(directory=None):
     db_path = get_supplement_db_path(directory)
     conn = get_db_connection(directory)
     try:
@@ -475,6 +481,38 @@ def init_supplement_db(directory):
                   AND value IN ('true', 'True', '1')
                   AND NOT EXISTS (SELECT 1 FROM ai_settings WHERE key = 'auto_next_explicit' AND value = 'true')
             """)
+
+            # Auto-consolidate all legacy hash DBs in ~/.mdviewer_supplements into master DB
+            base_dir = os.path.expanduser("~/.mdviewer_supplements")
+            if os.path.isdir(base_dir):
+                for entry in os.listdir(base_dir):
+                    sub_path = os.path.join(base_dir, entry)
+                    cand_db = os.path.join(sub_path, "flashcards.db") if os.path.isdir(sub_path) else (sub_path if (sub_path.endswith('.db') and os.path.abspath(sub_path) != os.path.abspath(db_path)) else None)
+                    if cand_db and os.path.isfile(cand_db) and os.path.abspath(cand_db) != os.path.abspath(db_path):
+                        try:
+                            cur.execute("ATTACH DATABASE ? AS legacy_db", (os.path.abspath(cand_db),))
+                            cur.execute("SELECT name FROM legacy_db.sqlite_master WHERE type='table' AND name='card_supplements'")
+                            if cur.fetchone():
+                                cur.execute("PRAGMA legacy_db.table_info(card_supplements)")
+                                legacy_cols = [r[1] for r in cur.fetchall()]
+                                prov_col = "provider" if "provider" in legacy_cols else "'openrouter'"
+                                ver_col = "version" if "version" in legacy_cols else "1"
+                                cur.execute(f"""
+                                INSERT OR IGNORE INTO card_supplements (
+                                    file_path, heading_slug, heading_level, heading_text, breadcrumb,
+                                    prompt_id, prompt_name, provider, model, content, raw_front, raw_back, liked, version, created_at, updated_at
+                                )
+                                SELECT
+                                    file_path, heading_slug, heading_level, heading_text, breadcrumb,
+                                    prompt_id, prompt_name, {prov_col}, model, content, raw_front, raw_back, liked, {ver_col}, created_at, updated_at
+                                FROM legacy_db.card_supplements
+                                """)
+                            cur.execute("DETACH DATABASE legacy_db")
+                        except Exception:
+                            try:
+                                cur.execute("DETACH DATABASE legacy_db")
+                            except Exception:
+                                pass
     finally:
         conn.close()
     return db_path
@@ -492,13 +530,14 @@ def get_card_supplements(directory, file_path=None, heading_slug=None, prompt_id
             query += " AND provider = ?"
             params.append(provider)
         if file_path:
-            query += " AND file_path = ?"
-            params.append(file_path)
+            clean_fp = file_path.strip().replace('\\', '/')
+            query += " AND (file_path = ? OR ? LIKE ('%/' || file_path) OR file_path LIKE ('%/' || ?))"
+            params.extend([clean_fp, clean_fp, clean_fp])
         elif folder_path:
-            clean_folder = folder_path.strip().strip('/')
+            clean_folder = folder_path.strip().strip('/').replace('\\', '/')
             if clean_folder:
-                query += " AND (file_path = ? OR file_path LIKE ?)"
-                params.extend([clean_folder, clean_folder + '/%'])
+                query += " AND (file_path = ? OR file_path LIKE ? OR file_path LIKE ('%/' || ?))"
+                params.extend([clean_folder, clean_folder + '/%', clean_folder + '/%'])
         if heading_slug:
             m = re.match(r'^H\d+::(.*)', heading_slug)
             if m:
@@ -544,9 +583,16 @@ def save_card_supplement(directory, file_path, heading_slug, heading_level, head
             with conn:
                 cur = conn.cursor()
                 prov = (provider or 'openrouter').strip().lower()
-                cur.execute("SELECT MAX(version) FROM card_supplements WHERE file_path = ? AND heading_slug = ? AND prompt_id = ? AND provider = ?", (file_path, heading_slug, prompt_id, prov))
+                clean_fp = file_path.strip().replace('\\', '/')
+                cur.execute("""
+                    SELECT file_path, MAX(version) FROM card_supplements
+                    WHERE (file_path = ? OR ? LIKE ('%/' || file_path) OR file_path LIKE ('%/' || ?))
+                      AND heading_slug = ? AND prompt_id = ? AND provider = ?
+                    GROUP BY file_path
+                """, (clean_fp, clean_fp, clean_fp, heading_slug, prompt_id, prov))
                 row = cur.fetchone()
-                max_v = row[0] if (row and row[0] is not None) else 0
+                effective_fp = row[0] if (row and row[0]) else clean_fp
+                max_v = row[1] if (row and row[1] is not None) else 0
 
                 if create_new_version:
                     v = max_v + 1
@@ -571,8 +617,8 @@ def save_card_supplement(directory, file_path, heading_slug, heading_level, head
                     raw_back = excluded.raw_back,
                     liked = CASE WHEN excluded.liked IS NOT NULL AND excluded.liked != 0 THEN excluded.liked ELSE card_supplements.liked END,
                     updated_at = CURRENT_TIMESTAMP;
-                """, (file_path, heading_slug, heading_level, heading_text, breadcrumb, prompt_id, prompt_name, prov, model, content, raw_front, raw_back, liked, v))
-                cur.execute("SELECT * FROM card_supplements WHERE file_path = ? AND heading_slug = ? AND prompt_id = ? AND provider = ? AND version = ?", (file_path, heading_slug, prompt_id, prov, v))
+                """, (effective_fp, heading_slug, heading_level, heading_text, breadcrumb, prompt_id, prompt_name, prov, model, content, raw_front, raw_back, liked, v))
+                cur.execute("SELECT * FROM card_supplements WHERE file_path = ? AND heading_slug = ? AND prompt_id = ? AND provider = ? AND version = ?", (effective_fp, heading_slug, prompt_id, prov, v))
                 row = cur.fetchone()
                 return dict(row) if row else {}
         finally:
@@ -589,8 +635,9 @@ def delete_card_supplement(directory, file_path=None, heading_slug=None, prompt_
                 return True
             if not file_path or not heading_slug:
                 return False
-            query = "DELETE FROM card_supplements WHERE file_path = ? AND heading_slug = ?"
-            params = [file_path, heading_slug]
+            clean_fp = file_path.strip().replace('\\', '/')
+            query = "DELETE FROM card_supplements WHERE (file_path = ? OR ? LIKE ('%/' || file_path) OR file_path LIKE ('%/' || ?)) AND heading_slug = ?"
+            params = [clean_fp, clean_fp, clean_fp, heading_slug]
             if provider and provider != 'all':
                 query += " AND provider = ?"
                 params.append(provider)
@@ -613,21 +660,25 @@ def toggle_card_like(directory, file_path, heading_slug, prompt_id=None, version
             cur = conn.cursor()
             prov_clause = " AND provider = ?" if (provider and provider != 'all') else ""
             prov_params = [provider] if (provider and provider != 'all') else []
+            clean_fp = file_path.strip().replace('\\', '/')
+            fp_clause = "(file_path = ? OR ? LIKE ('%/' || file_path) OR file_path LIKE ('%/' || ?))"
+            fp_params = [clean_fp, clean_fp, clean_fp]
             if prompt_id and version is not None:
-                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE file_path = ? AND heading_slug = ? AND prompt_id = ? AND version = ?{prov_clause}", [file_path, heading_slug, prompt_id, int(version)] + prov_params)
-                cur.execute(f"SELECT liked FROM card_supplements WHERE file_path = ? AND heading_slug = ? AND prompt_id = ? AND version = ?{prov_clause}", [file_path, heading_slug, prompt_id, int(version)] + prov_params)
+                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE {fp_clause} AND heading_slug = ? AND prompt_id = ? AND version = ?{prov_clause}", fp_params + [heading_slug, prompt_id, int(version)] + prov_params)
+                cur.execute(f"SELECT liked FROM card_supplements WHERE {fp_clause} AND heading_slug = ? AND prompt_id = ? AND version = ?{prov_clause}", fp_params + [heading_slug, prompt_id, int(version)] + prov_params)
             elif prompt_id:
-                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE file_path = ? AND heading_slug = ? AND prompt_id = ?{prov_clause}", [file_path, heading_slug, prompt_id] + prov_params)
-                cur.execute(f"SELECT MAX(liked) FROM card_supplements WHERE file_path = ? AND heading_slug = ? AND prompt_id = ?{prov_clause}", [file_path, heading_slug, prompt_id] + prov_params)
+                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE {fp_clause} AND heading_slug = ? AND prompt_id = ?{prov_clause}", fp_params + [heading_slug, prompt_id] + prov_params)
+                cur.execute(f"SELECT MAX(liked) FROM card_supplements WHERE {fp_clause} AND heading_slug = ? AND prompt_id = ?{prov_clause}", fp_params + [heading_slug, prompt_id] + prov_params)
             else:
-                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE file_path = ? AND heading_slug = ?{prov_clause}", [file_path, heading_slug] + prov_params)
-                cur.execute(f"SELECT MAX(liked) FROM card_supplements WHERE file_path = ? AND heading_slug = ?{prov_clause}", [file_path, heading_slug] + prov_params)
+                cur.execute(f"UPDATE card_supplements SET liked = 1 - liked WHERE {fp_clause} AND heading_slug = ?{prov_clause}", fp_params + [heading_slug] + prov_params)
+                cur.execute(f"SELECT MAX(liked) FROM card_supplements WHERE {fp_clause} AND heading_slug = ?{prov_clause}", fp_params + [heading_slug] + prov_params)
             row = cur.fetchone()
             return bool(row[0]) if row and row[0] is not None else False
     finally:
         conn.close()
 
 def get_workspace_supplements_summary(directory):
+    init_supplement_db(directory)
     db_path = get_supplement_db_path(directory)
     if not os.path.exists(db_path):
         return {}
@@ -641,18 +692,40 @@ def get_workspace_supplements_summary(directory):
         GROUP BY file_path
         """)
         summary = {}
+        ws_files_map = {}
+        if directory and os.path.isdir(directory):
+            try:
+                for root, _, files in os.walk(directory):
+                    for f in files:
+                        if f.endswith('.md'):
+                            full = os.path.join(root, f)
+                            rel = os.path.relpath(full, directory).replace('\\', '/')
+                            ws_files_map[os.path.basename(f)] = rel
+                            ws_files_map[rel] = rel
+            except Exception:
+                pass
+
         for row in cur.fetchall():
-            summary[row[0]] = {
+            fp = row[0]
+            val = {
                 "count": row[1],
                 "liked_count": row[2] or 0,
                 "last_updated": row[3],
                 "providers": (row[4] or "").split(',')
             }
+            summary[fp] = val
+            base = os.path.basename(fp)
+            if base in ws_files_map and ws_files_map[base] != fp:
+                summary[ws_files_map[base]] = val
+            for ws_rel in ws_files_map.values():
+                if ws_rel.endswith('/' + fp) or fp.endswith('/' + ws_rel):
+                    summary[ws_rel] = val
         return summary
     finally:
         conn.close()
 
 def get_file_saved_cards(directory, file_path, provider=None):
+    init_supplement_db(directory)
     db_path = get_supplement_db_path(directory)
     if not os.path.exists(db_path):
         return []
@@ -662,20 +735,22 @@ def get_file_saved_cards(directory, file_path, provider=None):
         cur = conn.cursor()
         prov_clause = " AND provider = ?" if (provider and provider != 'all') else ""
         prov_params = [provider] if (provider and provider != 'all') else []
+        clean_fp = file_path.strip().replace('\\', '/')
         cur.execute(f"""
         SELECT heading_slug, heading_level, heading_text, breadcrumb, MAX(liked) as liked,
                COUNT(DISTINCT prompt_id) as prompts_count, COUNT(id) as total_versions, MAX(updated_at) as last_updated,
                GROUP_CONCAT(DISTINCT provider) as providers
         FROM card_supplements
-        WHERE file_path = ? {prov_clause}
+        WHERE (file_path = ? OR ? LIKE ('%/' || file_path) OR file_path LIKE ('%/' || ?)) {prov_clause}
         GROUP BY heading_slug
         ORDER BY heading_level, heading_text
-        """, [file_path] + prov_params)
+        """, [clean_fp, clean_fp, clean_fp] + prov_params)
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
 
 def get_folder_saved_cards(directory, folder_path="", provider=None):
+    init_supplement_db(directory)
     db_path = get_supplement_db_path(directory)
     if not os.path.exists(db_path):
         return []
@@ -683,7 +758,7 @@ def get_folder_saved_cards(directory, folder_path="", provider=None):
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.cursor()
-        clean_folder = folder_path.strip().strip('/')
+        clean_folder = folder_path.strip().strip('/').replace('\\', '/')
         prov_clause = " AND provider = ?" if (provider and provider != 'all') else ""
         prov_params = [provider] if (provider and provider != 'all') else []
         if clean_folder:
@@ -693,10 +768,10 @@ def get_folder_saved_cards(directory, folder_path="", provider=None):
                    COUNT(DISTINCT prompt_id) as prompts_count, COUNT(id) as total_versions, MAX(updated_at) as last_updated,
                    GROUP_CONCAT(DISTINCT provider) as providers
             FROM card_supplements
-            WHERE (file_path = ? OR file_path LIKE ?) {prov_clause}
+            WHERE (file_path = ? OR file_path LIKE ? OR file_path LIKE ('%/' || ?)) {prov_clause}
             GROUP BY file_path, heading_slug
             ORDER BY file_path, heading_level
-            """, [clean_folder, pattern] + prov_params)
+            """, [clean_folder, pattern, pattern] + prov_params)
         else:
             cur.execute(f"""
             SELECT file_path, heading_slug, heading_level, heading_text, breadcrumb, MAX(liked) as liked,
@@ -2176,7 +2251,7 @@ def find_dolphin_bin() -> Optional[str]:
     return None
 
 def trigger_open_folder(path: str) -> dict:
-    """Triggers Dolphin or default file manager on the system/host to open the specified folder."""
+    """Triggers the default system file manager on the system/host to open the specified folder."""
     target = path.strip() if path else ""
     if not target:
         target = os.path.expanduser("~")
@@ -2184,23 +2259,48 @@ def trigger_open_folder(path: str) -> dict:
     resolved, _ = resolve_fs_path(target)
     final_path = resolved if resolved and os.path.exists(resolved) else target
     
-    dolphin = find_dolphin_bin()
-    if dolphin:
-        try:
-            subprocess.Popen([dolphin, final_path], start_new_session=True)
-            return {"status": "ok", "app": "dolphin", "path": final_path, "message": f"Opened in Dolphin: {final_path}"}
-        except Exception as e:
-            pass
+    host_path = final_path
+    if host_path.startswith('/run/host/'):
+        host_path = host_path[len('/run/host'):]
 
-    xdg = shutil.which("xdg-open")
-    if xdg:
+    # 1. Use default file manager launcher: xdg-open (or distrobox host bridge)
+    for xdg in ("/usr/local/bin/xdg-open", shutil.which("xdg-open")):
+        if xdg and os.path.isfile(xdg) and os.access(xdg, os.X_OK):
+            try:
+                subprocess.Popen([xdg, host_path], start_new_session=True)
+                return {"status": "ok", "app": "default", "path": host_path, "message": f"Opened in default file manager: {host_path}"}
+            except Exception:
+                pass
+
+    # 2. gio open fallback
+    gio = shutil.which("gio")
+    if gio:
         try:
-            subprocess.Popen([xdg, final_path], start_new_session=True)
-            return {"status": "ok", "app": "xdg-open", "path": final_path, "message": f"Opened with xdg-open: {final_path}"}
+            subprocess.Popen([gio, "open", host_path], start_new_session=True)
+            return {"status": "ok", "app": "gio", "path": host_path, "message": f"Opened in file manager: {host_path}"}
         except Exception:
             pass
 
-    return {"status": "error", "message": "Neither Dolphin nor xdg-open could be launched"}
+    # 3. macOS open fallback
+    mac_open = shutil.which("open")
+    if mac_open:
+        try:
+            subprocess.Popen([mac_open, host_path], start_new_session=True)
+            return {"status": "ok", "app": "open", "path": host_path, "message": f"Opened in file manager: {host_path}"}
+        except Exception:
+            pass
+
+    # 4. Fallback to any installed file manager
+    for fm in ("nautilus", "dolphin", "thunar", "nemo", "pcmanfm"):
+        cand = shutil.which(fm)
+        if cand:
+            try:
+                subprocess.Popen([cand, final_path], start_new_session=True)
+                return {"status": "ok", "app": fm, "path": final_path, "message": f"Opened in {fm}: {final_path}"}
+            except Exception:
+                pass
+
+    return {"status": "error", "message": f"Could not launch default file manager for {host_path}"}
 
 def count_directory_markdown_files(directory: str) -> tuple[int, int]:
     """Fast scan of markdown files and assets in directory accelerated by Rust."""
@@ -3975,7 +4075,7 @@ def main():
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
 
-            elif parsed.path == '/api/workspace/open_dolphin':
+            elif parsed.path in ('/api/workspace/open_folder', '/api/workspace/open_dolphin'):
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
                 try:
