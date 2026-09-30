@@ -3463,23 +3463,51 @@
     display: flex;
   }
   .doc-live-gutter {
-    width: 44px;
+    width: 46px;
     flex-shrink: 0;
     background: #14151f;
     border-right: 1px solid var(--border);
-    padding: 16px 0;
+    padding: 0;
     overflow: hidden;
     user-select: none;
+    position: relative;
+    box-sizing: border-box;
   }
   .doc-live-line-numbers {
-    display: flex;
-    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    will-change: transform;
+    pointer-events: auto;
+  }
+  .live-line-marker {
+    position: absolute;
+    right: 8px;
+    font-size: 11.5px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 22px;
     color: #444b6a;
+    cursor: pointer;
+    line-height: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 3px;
     text-align: right;
-    padding-right: 8px;
+    user-select: none;
+    box-sizing: border-box;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+  .live-line-marker:hover {
+    color: #7aa2f7;
+    background: rgba(122, 162, 247, 0.18);
+    font-weight: 600;
+  }
+  .live-line-marker.active-line {
+    color: #ff9e64;
+    background: rgba(255, 158, 100, 0.2);
+    font-weight: 700;
+    box-shadow: 0 0 0 1px rgba(255, 158, 100, 0.35);
   }
   .massive-shield-banner {
     display: flex;
@@ -3698,7 +3726,7 @@
       <div class="doc-view-mode-tabs" id="docViewModeTabs">
         <button id="docSubViewReadingBtn" class="doc-mode-tab active" title="Reading View — Rendered GitHub prose & double-page [Ctrl+E]">📖 Reading</button>
         <button id="docSubViewLiveBtn" class="doc-mode-tab" title="Live Preview — Obsidian-style split editor with real-time live preview [Ctrl+E]">⚡ Live Preview</button>
-        <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Source Editor — Full-width focused markdown editor">📝 Source</button>
+        <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Edit — Full-width focused markdown editor">✏️ Edit</button>
       </div>
 
       <div class="sep"></div>
@@ -3775,7 +3803,7 @@
             <div class="doc-view-mode-tabs">
               <button id="docFloatSubReadingBtn" class="doc-mode-tab active" title="Reading View (Ctrl+E)">📖 Reading</button>
               <button id="docFloatSubLiveBtn" class="doc-mode-tab" title="Live Preview (Ctrl+E)">⚡ Live Preview</button>
-              <button id="docFloatSubSourceBtn" class="doc-mode-tab" title="Source Editor">📝 Source</button>
+              <button id="docFloatSubSourceBtn" class="doc-mode-tab" title="Edit Note (Ctrl+E)">✏️ Edit</button>
             </div>
             <div class="sep"></div>
             <button id="docFloatDoubleBtn" class="doc-tool-btn" title="Toggle Double-Page Book Reader">📖 Double-Page</button>
@@ -3785,7 +3813,6 @@
             <button id="docFloatUncheckAllBtn" class="doc-tool-btn" title="Uncheck All Tasks">☐ Uncheck All</button>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <button id="docFloatEditBtn" class="doc-tool-btn" style="background:rgba(122,162,247,0.18);color:#7aa2f7;border-color:rgba(122,162,247,0.4);font-weight:600;" title="Edit Note (Ctrl+E)">✏️ Edit Note</button>
             <span id="docWordCount" style="font-size:11.5px;color:var(--muted);">0 words</span>
             <span id="docReadingTime" style="font-size:11.5px;color:var(--muted);">1 min read</span>
             <span id="docRenderSpeed" style="font-size:11px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ 0ms</span>
@@ -3833,6 +3860,11 @@
             </div>
 
             <div class="doc-editor-btn-group">
+              <div class="doc-view-mode-tabs" style="margin-right:6px;">
+                <button id="edSubReadingBtn" class="doc-mode-tab" title="Reading View [Ctrl+E]">📖 Reading</button>
+                <button id="edSubLiveBtn" class="doc-mode-tab" title="Live Preview [Ctrl+E]">⚡ Live Preview</button>
+                <button id="edSubSourceBtn" class="doc-mode-tab" title="Edit — Full Editor">✏️ Edit</button>
+              </div>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;margin-right:4px;" title="Toggle word wrapping">
                 <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
                 <span>Wrap</span>
@@ -3843,7 +3875,6 @@
               </label>
               <span id="edSaveStatusPill" class="doc-status-pill saved">✓ Saved</span>
               <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:3px 10px;" title="Save to disk (Ctrl+S)">💾 Save</button>
-              <button class="doc-tool-btn" id="edBackToReadingBtn" title="Back to Reading Mode (Ctrl+E)">📖 Read</button>
             </div>
           </div>
 
@@ -15111,6 +15142,66 @@
     lineNumbersEl.innerHTML = nums;
   }
 
+  function getCurrentCursorLine() {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return 1;
+    const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
+    const pos = textarea.selectionStart || 0;
+    const textBefore = textarea.value.substring(0, pos);
+    const lineIndex = textBefore.split('\n').length - 1;
+    return baseLine + lineIndex;
+  }
+
+  function highlightActiveLiveLine(targetLine) {
+    const markers = document.querySelectorAll('.live-line-marker');
+    markers.forEach(m => {
+      const line = parseInt(m.getAttribute('data-target-line'), 10);
+      m.classList.toggle('active-line', line === targetLine);
+    });
+  }
+
+  function jumpEditorToLine(targetLine) {
+    const textarea = document.getElementById('docTextarea');
+    if (!textarea) return;
+    const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
+    const localLine = Math.max(1, targetLine - baseLine + 1);
+    const rawLines = textarea.value.split('\n');
+    if (localLine > rawLines.length) return;
+
+    let charIdx = 0;
+    for (let i = 0; i < localLine - 1; i++) {
+      charIdx += rawLines[i].length + 1;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(charIdx, charIdx);
+
+    const LINE_H = 22;
+    const targetScroll = Math.max(0, (localLine - 1) * LINE_H - (textarea.clientHeight / 2) + LINE_H);
+    textarea.scrollTo({ top: targetScroll, behavior: 'smooth' });
+
+    updateDocLineNumbers();
+    updateEditorStats();
+    highlightActiveLiveLine(targetLine);
+  }
+
+  window.openFileByTarget = function(targetName) {
+    if (!targetName) return;
+    const cleanTarget = targetName.trim().replace(/\.md$/i, '');
+    let found = null;
+    if (Array.isArray(allFiles)) {
+      found = allFiles.find(f => {
+        const fn = f.split('/').pop().replace(/\.md$/i, '');
+        return fn.toLowerCase() === cleanTarget.toLowerCase() || f.toLowerCase() === targetName.toLowerCase() || f.toLowerCase() === (cleanTarget + '.md').toLowerCase();
+      });
+    }
+    if (found && typeof openFile === 'function') {
+      openFile(found);
+    } else {
+      showToast(`Note not found: "${targetName}"`, 2500);
+    }
+  };
+
   function updateLivePreviewLineNumbers() {
     const liveGutter = document.getElementById('docLiveGutter');
     const liveLineNums = document.getElementById('docLiveLineNumbers');
@@ -15120,84 +15211,104 @@
     if (liveGutter.style.display === 'none') return;
 
     const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
-    const rawLines = textarea.value.split('\n');
-    let markersHtml = '';
+    const bodyRect = liveBody.getBoundingClientRect();
+    const scrollTop = liveBody.scrollTop;
+
+    // Collect tagged elements with [data-line]
+    const taggedElements = Array.from(liveBody.querySelectorAll('[data-line]'));
+    const lineMap = new Map(); // lineNum -> pixelTop
     let maxDisplayLine = baseLine;
 
-    // 1. Check if rendered elements have exact data-line tags from Rust/Python accelerator
-    const taggedElements = liveBody.querySelectorAll('[data-line]');
     if (taggedElements.length > 0) {
-      const seenTops = new Set();
       taggedElements.forEach(el => {
         const rawLineAttr = parseInt(el.getAttribute('data-line'), 10);
         if (isNaN(rawLineAttr)) return;
         const displayLine = baseLine + rawLineAttr - 1;
         if (displayLine > maxDisplayLine) maxDisplayLine = displayLine;
 
-        const topPos = el.offsetTop;
-        if (!seenTops.has(topPos)) {
-          seenTops.add(topPos);
-          markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#7aa2f7;user-select:none;font-family:ui-monospace,monospace;line-height:22px;" title="Line ${displayLine}">${displayLine}</div>`;
-        }
+        const elRect = el.getBoundingClientRect();
+        if (elRect.height === 0 && elRect.width === 0) return;
+        let topPos = Math.round((elRect.top - bodyRect.top) + scrollTop);
 
-        // If code block <pre>, render sequential line numbers for lines inside it
+        // Heading baseline alignment adjustment
+        if (el.tagName === 'H1') topPos += 4;
+        else if (el.tagName === 'H2') topPos += 3;
+        else if (el.tagName === 'H3') topPos += 2;
+
         if (el.tagName === 'PRE') {
           const codeEl = el.querySelector('code') || el;
           const codeText = codeEl.textContent || '';
           const codeLines = codeText.split('\n');
-          if (codeLines.length > 1) {
-            const LINE_H = 20; // standard pre line height
-            for (let k = 1; k < codeLines.length; k++) {
-              if (k === codeLines.length - 1 && !codeLines[k].trim()) continue;
-              const innerLine = displayLine + k;
-              if (innerLine > maxDisplayLine) maxDisplayLine = innerLine;
-              const innerTop = topPos + (k * LINE_H);
-              markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${innerTop}px;right:8px;font-size:11px;color:#565f89;user-select:none;font-family:ui-monospace,monospace;line-height:${LINE_H}px;" title="Line ${innerLine}">${innerLine}</div>`;
+          const cs = window.getComputedStyle(codeEl);
+          const lh = parseFloat(cs.lineHeight) || 20;
+          const padTop = parseFloat(cs.paddingTop) || 12;
+
+          for (let k = 0; k < codeLines.length; k++) {
+            if (k === codeLines.length - 1 && !codeLines[k].trim()) continue;
+            const innerLine = displayLine + k;
+            if (innerLine > maxDisplayLine) maxDisplayLine = innerLine;
+            const innerTop = Math.round(topPos + padTop + (k * lh));
+            if (!lineMap.has(innerLine)) {
+              lineMap.set(innerLine, innerTop);
             }
+          }
+        } else {
+          if (!lineMap.has(displayLine)) {
+            lineMap.set(displayLine, topPos);
           }
         }
       });
     } else {
-      // 2. Fallback for untagged elements: scan top-level children
+      // Fallback for elements without data-line
       const children = Array.from(liveBody.children);
-      let currentLine = 0;
+      const rawLines = textarea.value.split('\n');
+      let curLine = 0;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const topPos = child.offsetTop;
+        const elRect = child.getBoundingClientRect();
+        if (elRect.height === 0 && elRect.width === 0) continue;
+        const topPos = Math.round((elRect.top - bodyRect.top) + scrollTop);
 
-        while (currentLine < rawLines.length && !rawLines[currentLine].trim()) {
-          currentLine++;
+        while (curLine < rawLines.length && !rawLines[curLine].trim()) {
+          curLine++;
         }
-        const displayLine = baseLine + currentLine;
+        const displayLine = baseLine + curLine;
         if (displayLine > maxDisplayLine) maxDisplayLine = displayLine;
-
-        markersHtml += `<div class="live-line-marker live-line-num" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#7aa2f7;user-select:none;font-family:ui-monospace,monospace;line-height:22px;" title="Line ${displayLine}">${displayLine}</div>`;
+        if (!lineMap.has(displayLine)) {
+          lineMap.set(displayLine, topPos);
+        }
 
         if (child.tagName === 'PRE') {
-          const codeLines = child.textContent.split('\n').length;
-          currentLine += Math.max(1, codeLines);
+          const count = child.textContent.split('\n').length;
+          curLine += Math.max(1, count);
         } else if (child.tagName === 'UL' || child.tagName === 'OL') {
           const lis = child.querySelectorAll('li').length;
-          currentLine += Math.max(1, lis);
+          curLine += Math.max(1, lis);
         } else if (child.tagName === 'TABLE') {
           const rows = child.querySelectorAll('tr').length;
-          currentLine += Math.max(1, rows);
+          curLine += Math.max(1, rows);
         } else {
-          currentLine++;
+          curLine++;
         }
       }
     }
 
-    // Dynamically adjust gutter width based on maximum line number
+    // Dynamic gutter sizing
     const digits = String(maxDisplayLine).length;
-    const neededWidth = Math.max(44, digits * 8 + 18);
+    const neededWidth = Math.max(46, digits * 8 + 18);
     liveGutter.style.width = `${neededWidth}px`;
 
-    liveLineNums.style.position = 'relative';
+    const cursorLine = getCurrentCursorLine();
+    let markersHtml = '';
+    const sortedLines = Array.from(lineMap.entries()).sort((a, b) => a[0] - b[0]);
+    for (const [lineNum, topPx] of sortedLines) {
+      const isActive = (lineNum === cursorLine);
+      const activeClass = isActive ? ' active-line' : '';
+      markersHtml += `<div class="live-line-marker${activeClass}" data-target-line="${lineNum}" style="top:${topPx}px;" title="Jump to line ${lineNum} [Click]">${lineNum}</div>`;
+    }
+
     liveLineNums.style.height = `${liveBody.scrollHeight}px`;
     liveLineNums.innerHTML = markersHtml;
-
-    // Immediately sync scroll transform
     liveLineNums.style.transform = `translateY(-${liveBody.scrollTop}px)`;
   }
 
@@ -15255,7 +15366,9 @@
       const data = await res.json();
       const dur = (performance.now() - t0).toFixed(1);
 
+      const prevScroll = liveBody.scrollTop;
       liveBody.innerHTML = data.html || '';
+      liveBody.scrollTop = prevScroll;
 
       if (speedBadge) {
         const engineLabel = data.engine === 'rust' ? '⚡ Rust' : '🐍 Py';
@@ -15310,9 +15423,11 @@
         });
       });
 
-      if (typeof updateLivePreviewLineNumbers === 'function') {
-        updateLivePreviewLineNumbers();
-      }
+      requestAnimationFrame(() => {
+        if (typeof updateLivePreviewLineNumbers === 'function') {
+          updateLivePreviewLineNumbers();
+        }
+      });
 
     } catch (err) {
       console.error('Live preview error:', err);
@@ -15413,11 +15528,14 @@
     const livePane = document.getElementById('docLivePreviewPane');
     const textarea = document.getElementById('docTextarea');
 
-    // Update Tab Buttons in Top Toolbar and Floating Bar
+    // Update Tab Buttons in Top Toolbar, Floating Bar, and Editor Toolbar
     const topTabs = [
       { id: 'docSubViewReadingBtn', mode: 'reading' },
       { id: 'docSubViewLiveBtn', mode: 'live' },
-      { id: 'docSubViewSourceBtn', mode: 'source' }
+      { id: 'docSubViewSourceBtn', mode: 'source' },
+      { id: 'edSubReadingBtn', mode: 'reading' },
+      { id: 'edSubLiveBtn', mode: 'live' },
+      { id: 'edSubSourceBtn', mode: 'source' }
     ];
     const floatTabs = [
       { id: 'docFloatSubReadingBtn', mode: 'reading' },
@@ -15433,9 +15551,14 @@
       if (el) el.classList.toggle('active', t.mode === subMode);
     });
 
+    const docFloatingBar = document.getElementById('docFloatingBar');
+    if (docFloatingBar) {
+      docFloatingBar.style.display = (subMode === 'reading') ? 'flex' : 'none';
+    }
+
     const floatEditBtn = document.getElementById('docFloatEditBtn');
     if (floatEditBtn) {
-      floatEditBtn.textContent = (subMode === 'reading') ? '✏️ Edit Note' : '📖 Reading View';
+      floatEditBtn.textContent = (subMode === 'reading') ? '✏️ Edit' : '📖 Reading View';
     }
 
     if (subMode === 'reading') {
@@ -15584,6 +15707,14 @@
     if (flTabLive) flTabLive.addEventListener('click', () => setDocSubMode('live'));
     if (flTabSource) flTabSource.addEventListener('click', () => setDocSubMode('source'));
 
+    // Sub-mode tabs in editor toolbar
+    const edTabReading = document.getElementById('edSubReadingBtn');
+    const edTabLive = document.getElementById('edSubLiveBtn');
+    const edTabSource = document.getElementById('edSubSourceBtn');
+    if (edTabReading) edTabReading.addEventListener('click', () => setDocSubMode('reading'));
+    if (edTabLive) edTabLive.addEventListener('click', () => setDocSubMode('live'));
+    if (edTabSource) edTabSource.addEventListener('click', () => setDocSubMode('source'));
+
     const floatEditBtn = document.getElementById('docFloatEditBtn');
     if (floatEditBtn) floatEditBtn.addEventListener('click', toggleDocEditMode);
 
@@ -15686,10 +15817,11 @@
       });
     }
 
-    // Live preview line numbers toggle & scroll synchronization
+    // Live preview line numbers toggle & click-to-jump
     const toggleLiveNumsBtn = document.getElementById('docToggleLiveLineNums');
     const liveGutter = document.getElementById('docLiveGutter');
     const liveBody = document.getElementById('docLiveBody');
+    const liveLineNums = document.getElementById('docLiveLineNumbers');
     if (toggleLiveNumsBtn && liveGutter) {
       toggleLiveNumsBtn.addEventListener('click', () => {
         const isHidden = liveGutter.style.display === 'none';
@@ -15701,13 +15833,16 @@
         }
       });
     }
-    if (liveBody) {
-      liveBody.addEventListener('scroll', () => {
-        const liveLineNums = document.getElementById('docLiveLineNumbers');
-        if (liveLineNums) {
-          liveLineNums.style.transform = `translateY(-${liveBody.scrollTop}px)`;
+    if (liveLineNums) {
+      liveLineNums.addEventListener('click', (e) => {
+        const marker = e.target.closest('.live-line-marker');
+        if (marker) {
+          const targetLine = parseInt(marker.getAttribute('data-target-line'), 10);
+          if (!isNaN(targetLine)) {
+            jumpEditorToLine(targetLine);
+          }
         }
-      }, { passive: true });
+      });
     }
 
     // Massive File Shield Banner navigation buttons
@@ -15792,10 +15927,17 @@
       scheduleDocAutoSave();
     });
 
-    textarea.addEventListener('click', updateEditorStats);
-    textarea.addEventListener('keyup', updateEditorStats);
+    const onTextareaCursorChange = () => {
+      updateEditorStats();
+      if (docSubMode === 'live') {
+        const curLine = getCurrentCursorLine();
+        highlightActiveLiveLine(curLine);
+      }
+    };
+    textarea.addEventListener('click', onTextareaCursorChange);
+    textarea.addEventListener('keyup', onTextareaCursorChange);
 
-    // Synchronized scroll between Textarea, Gutter, and Live Preview
+    // Synchronized scroll between Textarea and Live Preview (Single-source GPU transform)
     textarea.addEventListener('scroll', () => {
       updateDocLineNumbers();
       if (docSubMode === 'live' && liveBody && !isSyncingScroll) {
@@ -15805,15 +15947,17 @@
           const ratio = textarea.scrollTop / maxSrc;
           const maxTgt = liveBody.scrollHeight - liveBody.clientHeight;
           liveBody.scrollTop = ratio * maxTgt;
-          if (liveGutter) liveGutter.scrollTop = liveBody.scrollTop;
         }
-        setTimeout(() => { isSyncingScroll = false; }, 40);
+        setTimeout(() => { isSyncingScroll = false; }, 30);
       }
     }, { passive: true });
 
     if (liveBody) {
       liveBody.addEventListener('scroll', () => {
-        if (liveGutter) liveGutter.scrollTop = liveBody.scrollTop;
+        const liveLineNums = document.getElementById('docLiveLineNumbers');
+        if (liveLineNums) {
+          liveLineNums.style.transform = `translateY(-${liveBody.scrollTop}px)`;
+        }
         if (docSubMode === 'live' && !isSyncingScroll) {
           isSyncingScroll = true;
           const maxSrc = liveBody.scrollHeight - liveBody.clientHeight;
@@ -15823,7 +15967,7 @@
             textarea.scrollTop = ratio * maxTgt;
             updateDocLineNumbers();
           }
-          setTimeout(() => { isSyncingScroll = false; }, 40);
+          setTimeout(() => { isSyncingScroll = false; }, 30);
         }
       }, { passive: true });
     }
