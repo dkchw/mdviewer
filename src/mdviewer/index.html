@@ -3448,6 +3448,88 @@
     border: 1px solid rgba(255, 158, 100, 0.3);
   }
 
+  /* Sidebar Workspace Dropdown */
+  .sb-workspace-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .sb-workspace-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 5px;
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 11.5px;
+    max-width: 125px;
+  }
+  .sb-workspace-btn:hover {
+    background: #24283b;
+    border-color: var(--border);
+  }
+  .sb-workspace-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    width: 250px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #1a1b26;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 1000;
+    padding: 6px 0;
+  }
+  .sb-menu-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    padding: 4px 10px;
+  }
+  .sb-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .sb-menu-item:hover {
+    background: #24283b;
+    color: #7aa2f7;
+  }
+  .sb-menu-item.active {
+    font-weight: 600;
+    color: #7aa2f7;
+    background: rgba(122,162,247,0.1);
+  }
+  .sb-menu-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .sb-menu-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .sb-menu-action:hover {
+    background: #24283b;
+    color: #7aa2f7;
+  }
+
   /* Sidebar header action buttons */
   .sb-header-btn {
     background: #242737;
@@ -3466,10 +3548,24 @@
 <div id="app">
   <div id="sidebar">
     <div id="sidebarHeader">
-      <span class="sbTitle" id="sidebarWorkspaceTitle" title="Active Workspace">Workspace</span>
-      <div style="display:flex;gap:4px;align-items:center;">
-        <button id="importFolderBtn" class="sb-header-btn" title="Open or import folder workspace (in-place, no duplication)" onclick="if(window.openFolderImportModal) window.openFolderImportModal();">📁 Import Folder</button>
-        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Import Anki</button>
+      <div class="sb-workspace-dropdown" id="workspaceDropdownContainer">
+        <button id="sidebarWorkspaceBtn" class="sb-workspace-btn" title="Switch active workspace or linked folder">
+          <span style="font-size:12px;">📁</span>
+          <span id="sidebarWorkspaceTitle" style="font-weight:600;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Workspace</span>
+          <span style="font-size:9px;color:var(--muted);margin-left:1px;">▾</span>
+        </button>
+        <div class="sb-workspace-menu" id="workspaceMenu" style="display:none;">
+          <div class="sb-menu-title">LINKED WORKSPACES</div>
+          <div id="workspaceLinkedFoldersList"></div>
+          <div class="sb-menu-divider"></div>
+          <div class="sb-menu-action" id="menuActionLinkFolder"><span>🔗</span> <span>Link Existing Folder...</span></div>
+          <div class="sb-menu-action" id="menuActionImportAnki"><span>📥</span> <span>Import Anki Deck...</span></div>
+          <div class="sb-menu-action" id="menuActionDefaultLib"><span>🏠</span> <span>Central Library</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center;">
+        <button id="importFolderBtn" class="sb-header-btn" title="Link an existing folder (in-place, no duplication)" onclick="if(window.openFolderImportModal) window.openFolderImportModal();">🔗 Link</button>
+        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Anki</button>
         <button id="newNoteBtn" class="sb-header-btn" title="New Note">➕</button>
         <button id="newFolderBtn" class="sb-header-btn" title="New Folder">📁+</button>
         <button id="explorerCollapseAll" class="sb-header-btn" title="Collapse All Folders">▲</button>
@@ -4712,7 +4808,10 @@
 
       <!-- Step 3: Conversion Options -->
       <div id="ankiOptionsCard" style="display:none;background:#16161e;border:1px solid var(--border);border-radius:8px;padding:12px;flex-direction:column;gap:10px;">
-        <div style="font-size:12px;font-weight:700;color:var(--fg);">2. Conversion Settings</div>
+        <div style="font-size:12px;font-weight:700;color:var(--fg);display:flex;justify-content:space-between;align-items:center;">
+          <span>2. Conversion Settings</span>
+          <span style="font-size:11px;color:var(--muted);">Destination: <strong id="ankiActiveWorkspaceName" style="color:#7aa2f7;">Workspace</strong></span>
+        </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
@@ -4785,8 +4884,8 @@
   <div class="ai-modal-dialog" style="max-width:580px;">
     <div class="ai-modal-header" style="background:linear-gradient(90deg, #1f2335 0%, #24283b 100%);">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:18px;">📂</span>
-        <span class="ai-modal-title">Open / Import Folder as Workspace</span>
+        <span style="font-size:18px;">🔗</span>
+        <span class="ai-modal-title">Link / Open Folder as Workspace</span>
       </div>
       <button class="ai-modal-close" id="importFolderCloseBtn">✕</button>
     </div>
@@ -4871,10 +4970,10 @@
     </div>
 
     <div class="ai-modal-footer" style="padding:10px 18px;background:#16161e;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:11px;color:var(--muted);">All edits, checklists, and notes save directly to this folder in-place.</span>
+      <span style="font-size:11px;color:var(--muted);">All edits, checklists, and notes save directly to this folder in-place with zero file copying.</span>
       <div style="display:flex;gap:8px;">
         <button class="fc-btn-secondary" id="importFolderCancelBtn">Cancel</button>
-        <button class="fc-btn-primary" id="workspaceOpenInPlaceBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">📂 Open Folder (In-Place)</button>
+        <button class="fc-btn-primary" id="workspaceOpenInPlaceBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">🔗 Link Folder (In-Place)</button>
       </div>
     </div>
 </div>
@@ -13632,6 +13731,9 @@
     if (!ankiImportModal) return;
     ankiImportModal.style.display = 'flex';
     ankiImportModal.classList.add('active');
+    const wsTitle = document.getElementById('sidebarWorkspaceTitle')?.textContent || 'Workspace';
+    const ankiWs = document.getElementById('ankiActiveWorkspaceName');
+    if (ankiWs) ankiWs.textContent = wsTitle;
     resetAnkiModalState();
     loadRecentApkgs();
   }
@@ -15244,6 +15346,117 @@
 
     let debounceTimer = null;
 
+    async function switchWorkspace(path) {
+      try {
+        const res = await fetch('/api/workspace/switch', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({path})
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showAppToast(`✓ Switched to ${data.name} (${data.md_count} notes)`, 2200);
+          await loadWorkspaceInfo();
+          if (typeof initSidebar === 'function') await initSidebar();
+          if (data.default_file) await openFile(data.default_file);
+        } else {
+          alert('Failed to switch workspace: ' + (data.message || 'Unknown error'));
+        }
+      } catch(e) {
+        alert('Network or server error: ' + e.message);
+      }
+    }
+
+    async function unlinkWorkspace(path) {
+      try {
+        const res = await fetch('/api/workspace/unlink', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({path})
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showAppToast('✓ Unlinked folder', 2000);
+          await loadWorkspaceInfo();
+          if (typeof initSidebar === 'function') await initSidebar();
+        }
+      } catch(e) {
+        alert('Failed to unlink folder: ' + e.message);
+      }
+    }
+
+    function renderLinkedFoldersDropdown(linkedFolders, activeDir, defaultLib) {
+      const list = document.getElementById('workspaceLinkedFoldersList');
+      if (!list) return;
+      list.innerHTML = '';
+      if (!linkedFolders || linkedFolders.length === 0) {
+        list.innerHTML = '<div style="padding:6px 10px;font-size:11px;color:var(--muted);font-style:italic;">No external folders linked yet</div>';
+        return;
+      }
+      linkedFolders.forEach(f => {
+        const item = document.createElement('div');
+        const isActive = (f.resolved_path === activeDir);
+        item.className = 'sb-menu-item' + (isActive ? ' active' : '');
+        item.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px;overflow:hidden;flex:1;" title="${f.resolved_path}">
+            <span>${isActive ? '★' : '📁'}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${f.name}</span>
+            <span style="font-size:10px;color:var(--muted);margin-left:auto;padding-right:6px;">${f.md_count}</span>
+          </div>
+          <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#f7768e;" title="Unlink folder">✕</button>
+        `;
+        const unlinkBtn = item.querySelector('.unlink-btn');
+        unlinkBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Unlink "${f.name}" from mdviewer? (Files on disk will NOT be deleted)`)) return;
+          await unlinkWorkspace(f.resolved_path);
+        });
+
+        item.addEventListener('click', async () => {
+          closeWorkspaceDropdown();
+          if (!isActive) await switchWorkspace(f.resolved_path);
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    const workspaceBtn = document.getElementById('sidebarWorkspaceBtn');
+    const workspaceMenu = document.getElementById('workspaceMenu');
+    function toggleWorkspaceDropdown(e) {
+      if (e) e.stopPropagation();
+      if (!workspaceMenu) return;
+      const isShowing = workspaceMenu.style.display === 'block';
+      workspaceMenu.style.display = isShowing ? 'none' : 'block';
+      if (!isShowing) loadWorkspaceInfo();
+    }
+    function closeWorkspaceDropdown() {
+      if (workspaceMenu) workspaceMenu.style.display = 'none';
+    }
+    if (workspaceBtn) workspaceBtn.addEventListener('click', toggleWorkspaceDropdown);
+    document.addEventListener('click', (e) => {
+      if (workspaceMenu && !workspaceMenu.contains(e.target) && e.target !== workspaceBtn && !workspaceBtn?.contains(e.target)) {
+        closeWorkspaceDropdown();
+      }
+    });
+
+    const menuActionLinkFolder = document.getElementById('menuActionLinkFolder');
+    if (menuActionLinkFolder) menuActionLinkFolder.addEventListener('click', () => { closeWorkspaceDropdown(); openModal(); });
+
+    const menuActionImportAnki = document.getElementById('menuActionImportAnki');
+    if (menuActionImportAnki) menuActionImportAnki.addEventListener('click', () => { closeWorkspaceDropdown(); if(window.openAnkiImportModal) window.openAnkiImportModal(); });
+
+    const menuActionDefaultLib = document.getElementById('menuActionDefaultLib');
+    if (menuActionDefaultLib) menuActionDefaultLib.addEventListener('click', async () => {
+      closeWorkspaceDropdown();
+      try {
+        const info = await fetch('/api/workspace/info').then(r => r.json());
+        if (info.default_library) await switchWorkspace(info.default_library);
+      } catch(e) {
+        console.error(e);
+      }
+    });
+
     async function loadWorkspaceInfo() {
       try {
         const res = await fetch('/api/workspace/info');
@@ -15261,23 +15474,46 @@
           if (prefixInput && !prefixInput.value) {
             prefixInput.value = data.path_prefix || (data.is_distrobox ? '/run/host' : '');
           }
-          if (data.recent_directories && data.recent_directories.length > 0 && recentList) {
-            recentSection.style.display = 'block';
-            recentList.innerHTML = '';
-            data.recent_directories.forEach(dir => {
-              const b = document.createElement('button');
-              b.type = 'button';
-              b.className = 'fc-btn-secondary';
-              b.style.cssText = 'padding:3px 8px;font-size:11px;font-family:monospace;display:flex;align-items:center;gap:4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-              const baseName = dir.split(/[\/\\]/).filter(Boolean).pop() || dir;
-              b.innerHTML = `<span>📁</span> <span>${baseName}</span>`;
-              b.title = dir;
-              b.addEventListener('click', () => {
-                pathInput.value = dir;
-                validatePath();
+
+          // Populate linked folders into dropdown
+          renderLinkedFoldersDropdown(data.linked_folders || [], data.directory, data.default_library);
+
+          // Populate linked folders and recents in modal
+          if (recentSection && recentList) {
+            const linked = data.linked_folders || [];
+            if (linked.length > 0) {
+              recentSection.style.display = 'block';
+              recentList.innerHTML = '';
+              linked.forEach(f => {
+                const b = document.createElement('div');
+                b.className = 'fc-btn-secondary';
+                b.style.cssText = 'padding:4px 8px;font-size:11px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:4px;margin-bottom:4px;';
+                const isActive = (f.resolved_path === data.directory);
+                b.innerHTML = `
+                  <div style="display:flex;align-items:center;gap:6px;cursor:pointer;overflow:hidden;" title="${f.resolved_path}">
+                    <span>${isActive ? '★' : '📁'}</span>
+                    <strong style="color:${isActive ? '#7aa2f7' : 'var(--fg)'};">${f.name}</strong>
+                    <span style="font-size:10px;color:var(--muted);">(${f.md_count} notes)</span>
+                  </div>
+                  <div style="display:flex;gap:4px;">
+                    <button type="button" class="fc-btn-secondary switch-btn" style="padding:1px 6px;font-size:10.5px;">${isActive ? 'Active' : 'Open'}</button>
+                    <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 6px;font-size:10.5px;color:#f7768e;" title="Unlink folder">✕</button>
+                  </div>
+                `;
+                b.querySelector('.switch-btn').addEventListener('click', async () => {
+                  await switchWorkspace(f.resolved_path);
+                  closeModal();
+                });
+                b.querySelector('.unlink-btn').addEventListener('click', async (e) => {
+                  e.stopPropagation();
+                  if (!confirm(`Unlink "${f.name}"? (Files on disk will NOT be deleted)`)) return;
+                  await unlinkWorkspace(f.resolved_path);
+                });
+                recentList.appendChild(b);
               });
-              recentList.appendChild(b);
-            });
+            } else {
+              recentSection.style.display = 'none';
+            }
           }
         }
       } catch (err) {
@@ -15397,41 +15633,37 @@
       });
     }
 
-    // PRIMARY: Open Folder In-Place (No Copying)
+    // PRIMARY: Link / Open Folder In-Place (No Copying)
     if (openInPlaceBtn) {
       openInPlaceBtn.addEventListener('click', async () => {
         const rawPath = pathInput.value.trim();
         const prefix = prefixInput ? prefixInput.value.trim() : '';
 
         if (!rawPath) {
-          alert('Please enter a folder path to open.');
+          alert('Please enter a folder path to link.');
           return;
         }
 
         if (progressCard) {
           progressCard.style.display = 'block';
-          if (progressText) progressText.textContent = 'Opening workspace and indexing markdown files...';
+          if (progressText) progressText.textContent = 'Linking folder and indexing markdown files...';
         }
 
         try {
-          const res = await fetch('/api/workspace/switch', {
+          const res = await fetch('/api/workspace/link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: rawPath, prefix, save_as_default: true })
+            body: JSON.stringify({ path: rawPath, prefix })
           });
           const data = await res.json();
           if (progressCard) progressCard.style.display = 'none';
 
           if (data.status === 'ok') {
             closeModal();
-            showAppToast(`✓ Opened workspace: ${data.name} (${data.md_count} notes)`, 2600);
+            showAppToast(`✓ Linked workspace: ${data.name} (${data.md_count} notes)`, 2600);
 
-            // Update title
-            const sbTitle = document.getElementById('sidebarWorkspaceTitle');
-            if (sbTitle) {
-              sbTitle.textContent = data.name || 'Workspace';
-              sbTitle.title = data.directory || 'Active Workspace';
-            }
+            // Update title and linked list dropdown
+            await loadWorkspaceInfo();
 
             // Refresh tree
             if (typeof initSidebar === 'function') {
@@ -15443,7 +15675,7 @@
               await openFile(data.default_file);
             }
           } else {
-            alert('Failed to open folder: ' + (data.message || 'Unknown error'));
+            alert('Failed to link folder: ' + (data.message || 'Unknown error'));
           }
         } catch (err) {
           if (progressCard) progressCard.style.display = 'none';

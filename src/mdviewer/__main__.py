@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import shlex
 import re
+import signal
 from typing import Optional, Dict, Any, List, Tuple
 
 import difflib
@@ -2200,9 +2201,13 @@ class WorkspaceState:
         self.directory = os.path.abspath(directory)
         self.is_standalone = is_standalone
         self.path_prefix = path_prefix or get_default_path_prefix()
+        self.linked_folders = self.load_linked_folders()
         self.recent_directories = self.load_recent_directories()
         if self.directory not in self.recent_directories:
             self.recent_directories.insert(0, self.directory)
+        # Automatically register non-default directory into linked_folders
+        if os.path.abspath(self.directory) != os.path.abspath(DEFAULT_LIBRARY_PATH):
+            self.ensure_linked_folder(self.directory, path_prefix=self.path_prefix)
 
     def get_directory(self) -> str:
         with self.lock:
@@ -2228,9 +2233,127 @@ class WorkspaceState:
                 self.recent_directories.remove(abs_dir)
             self.recent_directories.insert(0, abs_dir)
             self.recent_directories = self.recent_directories[:15]
+            if os.path.abspath(abs_dir) != os.path.abspath(DEFAULT_LIBRARY_PATH):
+                self.ensure_linked_folder(abs_dir, path_prefix=self.path_prefix)
             self.save_config()
             init_supplement_db(self.directory)
             return True
+
+    def load_linked_folders(self) -> list:
+        config_path = os.path.expanduser("~/.mdviewer_config.json")
+        folders = []
+        if os.path.isfile(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    folders = cfg.get("linked_folders", [])
+            except Exception:
+                pass
+        valid_folders = []
+        seen = set()
+        for f in folders:
+            raw_p = f.get("path") or f.get("resolved_path")
+            if not raw_p:
+                continue
+            pr = f.get("prefix", "")
+            resolved, _ = resolve_fs_path(raw_p, pr)
+            if resolved and os.path.isdir(resolved):
+                abs_p = os.path.abspath(resolved)
+                if abs_p not in seen and abs_p != os.path.abspath(DEFAULT_LIBRARY_PATH):
+                    seen.add(abs_p)
+                    md_cnt, asset_cnt = count_directory_markdown_files(abs_p)
+                    valid_folders.append({
+                        "id": abs_p,
+                        "name": f.get("name") or os.path.basename(abs_p) or abs_p,
+                        "path": raw_p,
+                        "resolved_path": abs_p,
+                        "prefix": pr,
+                        "md_count": md_cnt,
+                        "asset_count": asset_cnt
+                    })
+        return valid_folders
+
+    def get_linked_folders(self) -> list:
+        with self.lock:
+            result = []
+            for f in self.linked_folders:
+                abs_p = f.get("resolved_path")
+                if abs_p and os.path.isdir(abs_p):
+                    md_cnt, asset_cnt = count_directory_markdown_files(abs_p)
+                    entry = dict(f)
+                    entry["md_count"] = md_cnt
+                    entry["asset_count"] = asset_cnt
+                    entry["is_active"] = (abs_p == self.directory)
+                    result.append(entry)
+            return result
+
+    def ensure_linked_folder(self, folder_path: str, name: Optional[str] = None, path_prefix: str = "") -> dict:
+        abs_p = os.path.abspath(folder_path)
+        for lf in self.linked_folders:
+            if lf.get("resolved_path") == abs_p:
+                if name:
+                    lf["name"] = name
+                return lf
+        md_cnt, asset_cnt = count_directory_markdown_files(abs_p)
+        entry = {
+            "id": abs_p,
+            "name": name or os.path.basename(abs_p) or abs_p,
+            "path": folder_path,
+            "resolved_path": abs_p,
+            "prefix": path_prefix,
+            "md_count": md_cnt,
+            "asset_count": asset_cnt
+        }
+        self.linked_folders.insert(0, entry)
+        return entry
+
+    def link_folder(self, raw_path: str, name: Optional[str] = None, prefix: Optional[str] = None) -> tuple[bool, Optional[dict], str]:
+        with self.lock:
+            resolved, applied_pr = resolve_fs_path(raw_path, prefix)
+            if not resolved or not os.path.isdir(resolved):
+                active_pr = prefix or self.path_prefix
+                return False, None, f"Directory not found: {raw_path} (checked with prefix: '{active_pr}')"
+            abs_p = os.path.abspath(resolved)
+            entry = self.ensure_linked_folder(abs_p, name=name, path_prefix=applied_pr or "")
+            self.directory = abs_p
+            self.is_standalone = False
+            if abs_p in self.recent_directories:
+                self.recent_directories.remove(abs_p)
+            self.recent_directories.insert(0, abs_p)
+            self.recent_directories = self.recent_directories[:15]
+            self.save_config()
+            init_supplement_db(self.directory)
+            return True, entry, "Folder linked successfully"
+
+    def unlink_folder(self, raw_path: str) -> tuple[bool, str]:
+        with self.lock:
+            resolved, _ = resolve_fs_path(raw_path, self.path_prefix)
+            target = resolved or os.path.abspath(raw_path)
+            self.linked_folders = [f for f in self.linked_folders if f.get("resolved_path") != target and f.get("path") != target]
+            if os.path.abspath(self.directory) == target:
+                if self.linked_folders:
+                    self.directory = self.linked_folders[0]["resolved_path"]
+                    self.is_standalone = False
+                else:
+                    self.directory = os.path.abspath(DEFAULT_LIBRARY_PATH)
+                    self.is_standalone = True
+            self.save_config()
+            init_supplement_db(self.directory)
+            return True, "Folder unlinked successfully"
+
+    def is_path_allowed(self, target_path: str) -> bool:
+        if not target_path:
+            return False
+        abs_target = os.path.abspath(target_path)
+        if abs_target.startswith(os.path.abspath(self.directory)):
+            return True
+        if abs_target.startswith(os.path.abspath(DEFAULT_LIBRARY_PATH)):
+            return True
+        for lf in self.linked_folders:
+            p = lf.get("resolved_path")
+            if p and abs_target.startswith(os.path.abspath(p)):
+                return True
+        return False
 
     def load_recent_directories(self) -> list:
         config_path = os.path.expanduser("~/.mdviewer_config.json")
@@ -2257,6 +2380,7 @@ class WorkspaceState:
             cfg["library_dir"] = self.directory
             cfg["path_prefix"] = self.path_prefix
             cfg["recent_directories"] = self.recent_directories
+            cfg["linked_folders"] = self.linked_folders
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, indent=2)
@@ -2473,6 +2597,29 @@ def import_folder_into_library(src_dir: str, dst_dir: str, use_rust: bool = True
             return res
     return pure_python_import_folder(src_dir, dst_dir)
 
+def free_port(port: int):
+    """Frees the specified port by killing lingering processes listening on it."""
+    try:
+        proc = subprocess.run(["lsof", "-ti", f":{port}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if proc.returncode == 0 and proc.stdout.strip():
+            pids = [int(x) for x in proc.stdout.strip().split() if x.isdigit() and int(x) != os.getpid()]
+            for pid in pids:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except Exception:
+                    pass
+            time.sleep(0.25)
+            proc2 = subprocess.run(["lsof", "-ti", f":{port}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if proc2.returncode == 0 and proc2.stdout.strip():
+                for pid in [int(x) for x in proc2.stdout.strip().split() if x.isdigit() and int(x) != os.getpid()]:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except Exception:
+                        pass
+                time.sleep(0.15)
+    except Exception:
+        pass
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'import-anki':
         import argparse
@@ -2520,12 +2667,43 @@ def main():
         print(f"✓ Imported {res.get('files_copied', 0)} notes and {res.get('assets_copied', 0)} assets in {res.get('duration_ms', 0):.1f}ms")
         sys.exit(0)
 
+    if len(sys.argv) > 1 and sys.argv[1] == 'link':
+        import argparse
+        parser = argparse.ArgumentParser(description="Link an external folder into mdviewer workspace")
+        parser.add_argument("folder", help="Path to folder to link")
+        parser.add_argument("--name", "-n", default=None, help="Display name for linked folder")
+        parser.add_argument("--prefix", default=None, help="Distrobox/container path prefix (e.g. /run/host)")
+        args = parser.parse_args(sys.argv[2:])
+
+        initial_dir, is_standalone = get_library_dir(None, args.prefix)
+        state = WorkspaceState(initial_dir, is_standalone, args.prefix)
+        ok, entry, msg = state.link_folder(args.folder, name=args.name, prefix=args.prefix)
+        if ok:
+            print(f"✓ Successfully linked folder: {entry['name']}")
+            print(f"  Path: {entry['resolved_path']}")
+            print(f"  Notes: {entry['md_count']}, Assets: {entry['asset_count']}")
+            sys.exit(0)
+        else:
+            print(f"Error: {msg}", file=sys.stderr)
+            sys.exit(1)
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'links':
+        initial_dir, is_standalone = get_library_dir()
+        state = WorkspaceState(initial_dir, is_standalone)
+        folders = state.get_linked_folders()
+        print(f"mdviewer Linked Folders ({len(folders)}):")
+        for f in folders:
+            active_marker = "★ [ACTIVE]" if f.get("resolved_path") == state.get_directory() else "  "
+            print(f"  {active_marker} {f['name']} -> {f['resolved_path']} ({f['md_count']} notes)")
+        sys.exit(0)
+
     import argparse
     parser = argparse.ArgumentParser(description="mdviewer - Ultra-Fast Markdown Workstation")
     parser.add_argument("directory", nargs="?", default=None, help="Directory containing markdown files to serve/edit (optional)")
     parser.add_argument("--port", "-p", type=int, default=None, help="Port to run server on (default: 2112 or PORT env var)")
     parser.add_argument("--prefix", default=None, help="Distrobox/container path prefix (e.g. /run/host)")
     parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
+    parser.add_argument("--version", "-v", action="version", version="mdviewer 1.3.0")
 
     args, unknown = parser.parse_known_args()
 
@@ -2554,40 +2732,48 @@ def main():
             
             if parsed.path == '/':
                 self.send_response(200)
-                self.send_header('Content-type', 'text/html')
+                self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.send_header('Pragma', 'no-cache')
                 self.send_header('Expires', '0')
                 self.end_headers()
                 
-                try:
-                    # For Python 3.9+
-                    html_content = importlib.resources.files('mdviewer').joinpath('index.html').read_bytes()
-                except AttributeError:
-                    # For Python 3.8
-                    html_content = importlib.resources.read_binary('mdviewer', 'index.html')
-                    
+                html_path = os.path.join(os.path.dirname(__file__), 'index.html')
+                if os.path.isfile(html_path):
+                    with open(html_path, 'rb') as f:
+                        html_content = f.read()
+                else:
+                    try:
+                        html_content = importlib.resources.files('mdviewer').joinpath('index.html').read_bytes()
+                    except Exception:
+                        html_content = importlib.resources.read_binary('mdviewer', 'index.html')
                 self.wfile.write(html_content)
                 
             elif parsed.path in ('/favicon.ico', '/icon.png'):
                 self.send_response(200)
                 self.send_header('Content-type', 'image/png')
                 self.end_headers()
-                try:
-                    # For Python 3.9+
-                    icon_content = importlib.resources.files('mdviewer').joinpath('icon.png').read_bytes()
-                except AttributeError:
-                    # For Python 3.8
-                    icon_content = importlib.resources.read_binary('mdviewer', 'icon.png')
+                icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
+                if os.path.isfile(icon_path):
+                    with open(icon_path, 'rb') as f:
+                        icon_content = f.read()
+                else:
+                    try:
+                        icon_content = importlib.resources.files('mdviewer').joinpath('icon.png').read_bytes()
+                    except Exception:
+                        icon_content = importlib.resources.read_binary('mdviewer', 'icon.png')
                 self.wfile.write(icon_content)
                 
             elif parsed.path == '/api/tree':
                 query = urllib.parse.parse_qs(parsed.query)
                 rel_path = query.get('path', [''])[0]
                 
-                # Make sure rel_path doesn't escape directory
-                target_dir = os.path.abspath(os.path.join(directory, rel_path))
-                if not target_dir.startswith(os.path.abspath(directory)):
+                # Check path safety against active directory or any linked folder
+                if rel_path.startswith('/'):
+                    target_dir = os.path.abspath(rel_path)
+                else:
+                    target_dir = os.path.abspath(os.path.join(directory, rel_path))
+                if not workspace_state.is_path_allowed(target_dir):
                     self.send_response(403)
                     self.end_headers()
                     return
@@ -2616,9 +2802,12 @@ def main():
             elif parsed.path == '/api/file':
                 query = urllib.parse.parse_qs(parsed.query)
                 rel_path = query.get('path', [''])[0]
-                target_file = os.path.abspath(os.path.join(directory, rel_path))
+                if rel_path.startswith('/'):
+                    target_file = os.path.abspath(rel_path)
+                else:
+                    target_file = os.path.abspath(os.path.join(directory, rel_path))
                 
-                if not target_file.startswith(os.path.abspath(directory)):
+                if not workspace_state.is_path_allowed(target_file):
                     self.send_response(403)
                     self.end_headers()
                     return
@@ -2826,10 +3015,20 @@ def main():
                     "name": os.path.basename(cur_dir) or cur_dir,
                     "path_prefix": cur_pr,
                     "is_distrobox": is_distrobox_environment(),
+                    "default_library": os.path.abspath(DEFAULT_LIBRARY_PATH),
+                    "is_default_library": (os.path.abspath(cur_dir) == os.path.abspath(DEFAULT_LIBRARY_PATH)),
+                    "linked_folders": workspace_state.get_linked_folders(),
                     "recent_directories": workspace_state.recent_directories,
                     "md_count": md_cnt,
                     "asset_count": asset_cnt,
                     "default_file": find_first_markdown_file(cur_dir)
+                })
+            elif parsed.path == '/api/workspace/linked_folders':
+                self.send_json(200, {
+                    "status": "ok",
+                    "active_directory": workspace_state.get_directory(),
+                    "default_library": os.path.abspath(DEFAULT_LIBRARY_PATH),
+                    "linked_folders": workspace_state.get_linked_folders()
                 })
             elif parsed.path == '/api/library/search':
                 query_params = urllib.parse.parse_qs(parsed.query)
@@ -3651,7 +3850,59 @@ def main():
                         "applied_prefix": applied_pr or "",
                         "md_count": md_cnt,
                         "asset_count": asset_cnt,
-                        "default_file": first_file
+                        "default_file": first_file,
+                        "linked_folders": workspace_state.get_linked_folders()
+                    })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/workspace/link':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    raw_p = payload.get('path', '').strip()
+                    prefix_p = payload.get('prefix', None)
+                    name = payload.get('name', None)
+                    if prefix_p is not None:
+                        workspace_state.set_prefix(prefix_p)
+
+                    ok, entry, msg = workspace_state.link_folder(raw_p, name=name, prefix=prefix_p)
+                    if not ok:
+                        self.send_json(400, {"status": "error", "message": msg})
+                        return
+
+                    rust_index_library(entry["resolved_path"])
+                    first_file = find_first_markdown_file(entry["resolved_path"])
+                    self.send_json(200, {
+                        "status": "ok",
+                        "folder": entry,
+                        "linked_folders": workspace_state.get_linked_folders(),
+                        "directory": entry["resolved_path"],
+                        "name": entry["name"],
+                        "default_file": first_file,
+                        "md_count": entry["md_count"],
+                        "asset_count": entry["asset_count"]
+                    })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/workspace/unlink':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    raw_p = payload.get('path', '').strip()
+                    ok, msg = workspace_state.unlink_folder(raw_p)
+                    cur_dir = workspace_state.get_directory()
+                    rust_index_library(cur_dir)
+                    self.send_json(200, {
+                        "status": "ok",
+                        "message": msg,
+                        "linked_folders": workspace_state.get_linked_folders(),
+                        "active_directory": cur_dir,
+                        "active_name": os.path.basename(cur_dir) or cur_dir,
+                        "default_file": find_first_markdown_file(cur_dir)
                     })
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
@@ -3766,14 +4017,22 @@ def main():
             super().handle_error(request, client_address)
 
     port = args.port if args.port is not None else int(os.environ.get("PORT", 2112))
-    try:
-        httpd = ReusableTCPServer(("127.0.0.1", port), Handler)
-    except OSError as e:
-        if args.port is not None:
-            print(f"Error: Specified port {port} is unavailable ({e}).", file=sys.stderr)
-            raise
-        print(f"Warning: Default port {port} is unavailable ({e}), trying fallback port...", file=sys.stderr)
-        httpd = ReusableTCPServer(("127.0.0.1", 0), Handler)
+    free_port(port)
+
+    httpd = None
+    last_err = None
+    for attempt in range(5):
+        try:
+            httpd = ReusableTCPServer(("127.0.0.1", port), Handler)
+            break
+        except OSError as e:
+            last_err = e
+            free_port(port)
+            time.sleep(0.2)
+
+    if httpd is None:
+        print(f"Error: Unable to bind to port {port} ({last_err}). Please close any process using port {port}.", file=sys.stderr)
+        sys.exit(1)
 
     with httpd:
         actual_port = httpd.server_address[1]
