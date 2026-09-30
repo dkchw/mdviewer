@@ -3466,9 +3466,9 @@
 <div id="app">
   <div id="sidebar">
     <div id="sidebarHeader">
-      <span class="sbTitle">Library</span>
+      <span class="sbTitle" id="sidebarWorkspaceTitle" title="Active Workspace">Workspace</span>
       <div style="display:flex;gap:4px;align-items:center;">
-        <button id="importFolderBtn" class="sb-header-btn" title="Import external folder into standalone library">📁 Import</button>
+        <button id="importFolderBtn" class="sb-header-btn" title="Open or switch workspace folder (in-place, no duplication)">📁 Open Folder</button>
         <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck">📥 Anki</button>
         <button id="newNoteBtn" class="sb-header-btn" title="New Note">➕</button>
         <button id="newFolderBtn" class="sb-header-btn" title="New Folder">📁+</button>
@@ -4780,40 +4780,107 @@
   </div>
 </div>
 
-<!-- Import Folder Modal -->
+<!-- Open / Switch Folder Workspace Modal -->
 <div id="importFolderModal" class="ai-modal-overlay" style="display:none;">
-  <div class="ai-modal-dialog" style="max-width:560px;">
+  <div class="ai-modal-dialog" style="max-width:580px;">
     <div class="ai-modal-header" style="background:linear-gradient(90deg, #1f2335 0%, #24283b 100%);">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:18px;">📁</span>
-        <span class="ai-modal-title">Import Folder into Library</span>
+        <span style="font-size:18px;">📂</span>
+        <span class="ai-modal-title">Open Folder as Workspace</span>
       </div>
       <button class="ai-modal-close" id="importFolderCloseBtn">✕</button>
     </div>
 
-    <div class="ai-modal-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="font-size:12px;font-weight:600;color:var(--fg);display:block;margin-bottom:6px;">Folder Path on Disk:</label>
-        <div style="display:flex;gap:6px;">
-          <input type="text" id="importFolderPathInput" class="ai-modal-input" placeholder="e.g. /home/user/Documents/Notes or relative path..." style="flex:1;font-size:12.5px;" />
+    <div class="ai-modal-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:13px;">
+      <!-- Active Workspace Callout -->
+      <div style="background:#16161e;border:1px solid var(--border);border-radius:6px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
+          <span>📍</span>
+          <span style="font-weight:600;color:var(--fg);">Active:</span>
+          <span id="workspaceCurrentPath" style="font-family:monospace;color:#7aa2f7;overflow:hidden;text-overflow:ellipsis;" title="">...</span>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Enter the path to any folder containing markdown notes and media.</div>
+        <span style="font-size:10px;background:rgba(122,162,247,0.15);color:#7aa2f7;padding:2px 6px;border-radius:4px;font-weight:600;white-space:nowrap;">IN-PLACE</span>
       </div>
 
+      <!-- Path Input -->
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--fg);display:block;margin-bottom:6px;">Target Subfolder in Library (optional):</label>
-        <input type="text" id="importFolderSubdirInput" class="ai-modal-input" placeholder="e.g. Notes/Work (leave blank for folder name under Notes/)" style="font-size:12.5px;width:100%;" />
+        <label style="font-size:12px;font-weight:600;color:var(--fg);display:block;margin-bottom:6px;">Folder Path to Open:</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="importFolderPathInput" class="ai-modal-input" placeholder="e.g. /home/dkchw/Documents/Notes or ~/Notes..." style="flex:1;font-size:12.5px;font-family:monospace;" />
+          <button type="button" id="workspaceVerifyBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 12px;white-space:nowrap;">Check</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Enter any folder path on your computer. mdviewer will work directly in it without copying or duplicating files.</div>
       </div>
 
-      <div style="background:#16161e;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;user-select:none;">
-          <input type="checkbox" id="importFolderUseRustCb" checked style="accent-color:#7aa2f7;" />
-          <span style="font-weight:600;color:#7aa2f7;">⚡ Accelerate with native Rust Rayon engine</span>
-        </label>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;padding-left:24px;">Multi-threaded directory traversal, parallel file copy, and sub-millisecond indexing.</div>
+      <!-- Distrobox / Container Path Prefix Config -->
+      <div style="background:#14151f;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="font-size:11.5px;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:6px;">
+            <span>📦</span>
+            <span>Distrobox / Container Path Prefix:</span>
+          </label>
+          <div style="display:flex;gap:4px;">
+            <button type="button" id="prefixAutoBtn" class="fc-btn-secondary" style="padding:2px 7px;font-size:10.5px;" title="Set /run/host prefix for Distrobox">/run/host</button>
+            <button type="button" id="prefixClearBtn" class="fc-btn-secondary" style="padding:2px 7px;font-size:10.5px;" title="Clear prefix">None</button>
+          </div>
+        </div>
+        <input type="text" id="importFolderPrefixInput" class="ai-modal-input" placeholder="/run/host" style="width:100%;font-size:12px;font-family:monospace;" />
+        <div style="font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.4;">
+          When running in Distrobox or Docker, host paths reside under a prefix like <code>/run/host</code>. Host paths will automatically resolve under this prefix.
+        </div>
       </div>
 
-      <!-- Import Progress Card -->
+      <!-- Live Path Status Card -->
+      <div id="workspaceValidationBox" style="display:none;border-radius:6px;padding:9px 12px;font-size:12px;"></div>
+
+      <!-- Recent Folders -->
+      <div id="workspaceRecentSection" style="display:none;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">Recent Folders:</label>
+        <div id="workspaceRecentList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <!-- Advanced / Optional Copy Mode Toggle -->
+      <div style="border-top:1px solid var(--border);padding-top:10px;">
+        <div id="workspaceToggleCopyLink" style="font-size:11.5px;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px;">
+          <span id="copyModeArrow">▸</span>
+          <span>Optional: Copy / duplicate files into current library instead</span>
+        </div>
+        <div id="workspaceCopyDetailsBox" style="display:none;margin-top:8px;background:#16161e;border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="font-size:11px;color:var(--fg);display:block;margin-bottom:4px;">Target Subfolder inside Current Library:</label>
+            <input type="text" id="importFolderSubdirInput" class="ai-modal-input" placeholder="e.g. Notes/Imported (leave blank for folder name)" style="font-size:12px;width:100%;" />
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;">
+            <input type="checkbox" id="importFolderUseRustCb" checked style="accent-color:#7aa2f7;" />
+            <span>Accelerate copy with native Rust Rayon engine</span>
+          </label>
+          <button type="button" id="importFolderStartBtn" class="fc-btn-secondary" style="align-self:flex-start;font-size:11.5px;padding:4px 12px;background:#24283b;color:#a9b1d6;border-color:var(--border);">📋 Duplicate & Copy Files</button>
+        </div>
+      </div>
+
+      <!-- Progress & Result Cards -->
+      <div id="importFolderProgressCard" style="display:none;background:#14151f;border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="fc-ai-thinking-spinner" style="border-top-color:#7aa2f7;"></div>
+          <span id="importFolderProgressText" style="font-size:12px;font-weight:600;color:#7aa2f7;">Opening workspace directory...</span>
+        </div>
+      </div>
+      <div id="importFolderSuccessCard" style="display:none;background:rgba(158,206,106,0.08);border:1px solid rgba(158,206,106,0.3);border-radius:8px;padding:12px;">
+        <div id="importFolderSuccessSummary" style="font-size:12px;color:var(--fg);"></div>
+      </div>
+    </div>
+
+    <div class="ai-modal-footer" style="padding:10px 18px;background:#16161e;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--muted);">All edits, checklists, and notes save directly to this folder in-place.</span>
+      <div style="display:flex;gap:8px;">
+        <button class="fc-btn-secondary" id="importFolderCancelBtn">Cancel</button>
+        <button class="fc-btn-primary" id="workspaceOpenInPlaceBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">📂 Open Folder (In-Place)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Progress Card -->
       <div id="importFolderProgressCard" style="display:none;background:#14151f;border:1px solid var(--border);border-radius:8px;padding:12px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="fc-ai-thinking-spinner" style="border-top-color:#7aa2f7;"></div>
@@ -9263,9 +9330,15 @@
       }
     } catch(err){
       console.error(err);
-      if(filePath !== 'Welcome.md' && !options.noFallback){
-        openFile('Welcome.md', { noFallback: true });
-        return;
+      if(!options.noFallback){
+        try {
+          const wRes = await fetch('/api/workspace/info');
+          const wData = await wRes.json();
+          if (wData && wData.default_file && wData.default_file !== filePath) {
+            openFile(wData.default_file, { noFallback: true });
+            return;
+          }
+        } catch(e) {}
       }
       if(options.interactive){
         alert('Could not read file: ' + filePath);
@@ -9338,7 +9411,15 @@
       try { targetFile = sessionStorage.getItem('mdv_tab_file'); } catch(e) {}
     }
     if(!targetFile && !isFromPopstate){
-      targetFile = savedConfig.lastOpenFile || 'Welcome.md';
+      targetFile = savedConfig.lastOpenFile;
+      if (!targetFile) {
+        try {
+          const wInfo = await fetch('/api/workspace/info').then(r => r.json());
+          targetFile = wInfo.default_file || 'Welcome.md';
+        } catch(e) {
+          targetFile = 'Welcome.md';
+        }
+      }
     }
     
     if(!targetFile) return;
@@ -15167,24 +15248,121 @@
     const openBtn = document.getElementById('importFolderBtn');
     const closeBtn = document.getElementById('importFolderCloseBtn');
     const cancelBtn = document.getElementById('importFolderCancelBtn');
-    const startBtn = document.getElementById('importFolderStartBtn');
+    const openInPlaceBtn = document.getElementById('workspaceOpenInPlaceBtn');
+    const copyStartBtn = document.getElementById('importFolderStartBtn');
     const pathInput = document.getElementById('importFolderPathInput');
+    const prefixInput = document.getElementById('importFolderPrefixInput');
+    const verifyBtn = document.getElementById('workspaceVerifyBtn');
+    const prefixAutoBtn = document.getElementById('prefixAutoBtn');
+    const prefixClearBtn = document.getElementById('prefixClearBtn');
+    const currentPathSpan = document.getElementById('workspaceCurrentPath');
+    const validationBox = document.getElementById('workspaceValidationBox');
+    const recentSection = document.getElementById('workspaceRecentSection');
+    const recentList = document.getElementById('workspaceRecentList');
+    const toggleCopyLink = document.getElementById('workspaceToggleCopyLink');
+    const copyDetailsBox = document.getElementById('workspaceCopyDetailsBox');
+    const copyModeArrow = document.getElementById('copyModeArrow');
     const subdirInput = document.getElementById('importFolderSubdirInput');
     const useRustCb = document.getElementById('importFolderUseRustCb');
     const progressCard = document.getElementById('importFolderProgressCard');
+    const progressText = document.getElementById('importFolderProgressText');
     const successCard = document.getElementById('importFolderSuccessCard');
     const successSummary = document.getElementById('importFolderSuccessSummary');
-    const openDocBtn = document.getElementById('importFolderOpenDocBtn');
-    const openOutlineBtn = document.getElementById('importFolderOpenOutlineBtn');
 
     if (!importModal) return;
+
+    let debounceTimer = null;
+
+    async function loadWorkspaceInfo() {
+      try {
+        const res = await fetch('/api/workspace/info');
+        const data = await res.json();
+        if (data.status === 'ok') {
+          if (currentPathSpan) {
+            currentPathSpan.textContent = data.directory || '...';
+            currentPathSpan.title = data.directory || '';
+          }
+          const sbTitle = document.getElementById('sidebarWorkspaceTitle');
+          if (sbTitle) {
+            sbTitle.textContent = data.name || 'Workspace';
+            sbTitle.title = data.directory || 'Active Workspace';
+          }
+          if (prefixInput && !prefixInput.value) {
+            prefixInput.value = data.path_prefix || (data.is_distrobox ? '/run/host' : '');
+          }
+          if (data.recent_directories && data.recent_directories.length > 0 && recentList) {
+            recentSection.style.display = 'block';
+            recentList.innerHTML = '';
+            data.recent_directories.forEach(dir => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'fc-btn-secondary';
+              b.style.cssText = 'padding:3px 8px;font-size:11px;font-family:monospace;display:flex;align-items:center;gap:4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+              const baseName = dir.split(/[\/\\]/).filter(Boolean).pop() || dir;
+              b.innerHTML = `<span>📁</span> <span>${baseName}</span>`;
+              b.title = dir;
+              b.addEventListener('click', () => {
+                pathInput.value = dir;
+                validatePath();
+              });
+              recentList.appendChild(b);
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load workspace info:', err);
+      }
+    }
+
+    async function validatePath() {
+      const rawPath = pathInput.value.trim();
+      const prefix = prefixInput ? prefixInput.value.trim() : '';
+      if (!rawPath) {
+        if (validationBox) validationBox.style.display = 'none';
+        return;
+      }
+      try {
+        const res = await fetch('/api/workspace/validate_path', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: rawPath, prefix })
+        });
+        const data = await res.json();
+        if (!validationBox) return;
+        validationBox.style.display = 'block';
+        if (data.valid) {
+          validationBox.style.background = 'rgba(158,206,106,0.12)';
+          validationBox.style.border = '1px solid rgba(158,206,106,0.3)';
+          validationBox.style.color = '#9ece6a';
+          validationBox.innerHTML = `
+            <div style="font-weight:600;margin-bottom:3px;">✓ Valid Folder Found</div>
+            <div style="font-size:11.5px;color:var(--fg);">
+              Found <strong>${data.md_count}</strong> notes & <strong>${data.asset_count}</strong> assets.
+              <div style="color:var(--muted);font-family:monospace;font-size:10.5px;margin-top:2px;">${data.resolved_path}</div>
+            </div>
+          `;
+        } else {
+          validationBox.style.background = 'rgba(247,118,142,0.12)';
+          validationBox.style.border = '1px solid rgba(247,118,142,0.3)';
+          validationBox.style.color = '#f7768e';
+          validationBox.innerHTML = `<div>✕ ${data.message || 'Directory not found'}</div>`;
+        }
+      } catch (err) {
+        if (validationBox) {
+          validationBox.style.display = 'block';
+          validationBox.style.color = '#f7768e';
+          validationBox.textContent = 'Validation error: ' + err.message;
+        }
+      }
+    }
 
     function openModal() {
       importModal.style.display = 'flex';
       importModal.classList.add('active');
       if (progressCard) progressCard.style.display = 'none';
       if (successCard) successCard.style.display = 'none';
-      if (startBtn) startBtn.style.display = 'inline-block';
+      if (validationBox) validationBox.style.display = 'none';
+      loadWorkspaceInfo();
       if (pathInput) pathInput.focus();
     }
 
@@ -15197,86 +15375,159 @@
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-    let lastImportedFile = '';
+    if (pathInput) {
+      pathInput.addEventListener('input', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(validatePath, 250);
+      });
+      pathInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (openInPlaceBtn) openInPlaceBtn.click();
+        }
+      });
+    }
 
-    if (startBtn) {
-      startBtn.addEventListener('click', async () => {
+    if (prefixInput) {
+      prefixInput.addEventListener('input', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(validatePath, 350);
+      });
+    }
+
+    if (verifyBtn) verifyBtn.addEventListener('click', validatePath);
+
+    if (prefixAutoBtn) {
+      prefixAutoBtn.addEventListener('click', () => {
+        if (prefixInput) {
+          prefixInput.value = '/run/host';
+          validatePath();
+        }
+      });
+    }
+
+    if (prefixClearBtn) {
+      prefixClearBtn.addEventListener('click', () => {
+        if (prefixInput) {
+          prefixInput.value = '';
+          validatePath();
+        }
+      });
+    }
+
+    if (toggleCopyLink && copyDetailsBox) {
+      toggleCopyLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isOpen = copyDetailsBox.style.display === 'flex';
+        copyDetailsBox.style.display = isOpen ? 'none' : 'flex';
+        if (copyModeArrow) copyModeArrow.textContent = isOpen ? '▸' : '▾';
+      });
+    }
+
+    // PRIMARY: Open Folder In-Place (No Copying)
+    if (openInPlaceBtn) {
+      openInPlaceBtn.addEventListener('click', async () => {
+        const rawPath = pathInput.value.trim();
+        const prefix = prefixInput ? prefixInput.value.trim() : '';
+
+        if (!rawPath) {
+          alert('Please enter a folder path to open.');
+          return;
+        }
+
+        if (progressCard) {
+          progressCard.style.display = 'block';
+          if (progressText) progressText.textContent = 'Opening workspace and indexing markdown files...';
+        }
+
+        try {
+          const res = await fetch('/api/workspace/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: rawPath, prefix, save_as_default: true })
+          });
+          const data = await res.json();
+          if (progressCard) progressCard.style.display = 'none';
+
+          if (data.status === 'ok') {
+            closeModal();
+            showAppToast(`✓ Opened workspace: ${data.name} (${data.md_count} notes)`, 2600);
+
+            // Update title
+            const sbTitle = document.getElementById('sidebarWorkspaceTitle');
+            if (sbTitle) {
+              sbTitle.textContent = data.name || 'Workspace';
+              sbTitle.title = data.directory || 'Active Workspace';
+            }
+
+            // Refresh tree
+            if (typeof initSidebar === 'function') {
+              await initSidebar();
+            }
+
+            // Open default note if available
+            if (data.default_file) {
+              await openFile(data.default_file);
+            }
+          } else {
+            alert('Failed to open folder: ' + (data.message || 'Unknown error'));
+          }
+        } catch (err) {
+          if (progressCard) progressCard.style.display = 'none';
+          alert('Network or server error: ' + err.message);
+        }
+      });
+    }
+
+    // SECONDARY: Optional Copy Files
+    if (copyStartBtn) {
+      copyStartBtn.addEventListener('click', async () => {
         const srcPath = pathInput.value.trim();
+        const prefix = prefixInput ? prefixInput.value.trim() : '';
         const subfolder = subdirInput ? subdirInput.value.trim() : '';
         const useRust = useRustCb ? useRustCb.checked : true;
 
         if (!srcPath) {
-          alert('Please enter a folder path to import.');
+          alert('Please enter a folder path to copy from.');
           return;
         }
 
-        if (progressCard) progressCard.style.display = 'block';
-        if (successCard) successCard.style.display = 'none';
-        startBtn.style.display = 'none';
+        if (progressCard) {
+          progressCard.style.display = 'block';
+          if (progressText) progressText.textContent = 'Copying files into library...';
+        }
 
         try {
           const res = await fetch('/api/library/import_folder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: srcPath, subfolder, use_rust: useRust })
+            body: JSON.stringify({ path: srcPath, prefix, subfolder, use_rust: useRust })
           });
           const data = await res.json();
           if (progressCard) progressCard.style.display = 'none';
 
           if (data.status === 'ok') {
             if (successCard) successCard.style.display = 'block';
-            const fileCount = data.files_copied || 0;
-            const assetCount = data.assets_copied || 0;
-            const cardCount = data.total_cards || 0;
-            const dur = data.duration_ms ? data.duration_ms.toFixed(1) : '0';
-            
             if (successSummary) {
               successSummary.innerHTML = `
-                <div><strong>${fileCount}</strong> Markdown notes imported (${cardCount} flashcard headings)</div>
-                <div><strong>${assetCount}</strong> media assets (audio & images) copied</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:4px;">Accelerated import finished in <strong>${dur}ms</strong></div>
+                <div><strong>${data.files_copied || 0}</strong> notes and <strong>${data.assets_copied || 0}</strong> assets copied into library.</div>
               `;
             }
-
             if (typeof initSidebar === 'function') {
               await initSidebar();
             }
-
-            if (data.imported_files && data.imported_files.length > 0) {
-              const destSub = subfolder || srcPath.split(/[/\\]/).filter(Boolean).pop();
-              lastImportedFile = destSub ? `${destSub}/${data.imported_files[0]}` : data.imported_files[0];
-            }
           } else {
-            alert('Import error: ' + (data.message || 'Unknown'));
-            startBtn.style.display = 'inline-block';
+            alert('Copy error: ' + (data.message || 'Unknown'));
           }
         } catch (err) {
           if (progressCard) progressCard.style.display = 'none';
-          startBtn.style.display = 'inline-block';
-          alert('Failed to import folder: ' + err.message);
+          alert('Failed to copy files: ' + err.message);
         }
       });
     }
 
-    if (openDocBtn) {
-      openDocBtn.addEventListener('click', async () => {
-        closeModal();
-        if (lastImportedFile) {
-          await openFile(lastImportedFile);
-        }
-        setAppMode('document');
-      });
-    }
-
-    if (openOutlineBtn) {
-      openOutlineBtn.addEventListener('click', async () => {
-        closeModal();
-        if (lastImportedFile) {
-          await openFile(lastImportedFile);
-        }
-        setAppMode('outline');
-      });
-    }
+    // Auto load workspace info on page load
+    loadWorkspaceInfo();
   }
 
   async function initEngineInfo() {
@@ -15429,7 +15680,15 @@
       try { initialFile = sessionStorage.getItem('mdv_tab_file'); } catch(e) {}
     }
     if(!initialFile){
-      initialFile = savedConfig.lastOpenFile || 'Welcome.md';
+      initialFile = savedConfig.lastOpenFile;
+      if (!initialFile) {
+        try {
+          const wInfo = await fetch('/api/workspace/info').then(r => r.json());
+          initialFile = wInfo.default_file || 'Welcome.md';
+        } catch(e) {
+          initialFile = 'Welcome.md';
+        }
+      }
     }
 
     if(initialFile){

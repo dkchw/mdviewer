@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import shlex
 import re
+from typing import Optional, Dict, Any, List, Tuple
 
 import difflib
 import hashlib
@@ -2015,8 +2016,207 @@ def exec_terminal_command(directory, cwd, cmd_line):
 
 DEFAULT_LIBRARY_PATH = os.path.expanduser("~/.local/share/mdviewer/library")
 
+def get_default_path_prefix() -> str:
+    """Detects or reads configured path prefix (e.g. /run/host for Distrobox/container)."""
+    env_p = os.environ.get("MDVIEWER_PATH_PREFIX")
+    if env_p and env_p.strip():
+        return env_p.strip()
+    config_path = os.path.expanduser("~/.mdviewer_config.json")
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                if "path_prefix" in cfg and cfg["path_prefix"]:
+                    return cfg["path_prefix"].strip()
+        except Exception:
+            pass
+    if os.path.isdir("/run/host"):
+        return "/run/host"
+    return ""
+
+def is_distrobox_environment() -> bool:
+    return (
+        os.path.isdir("/run/host")
+        or bool(os.environ.get("DISTROBOX_ENTER_PATH"))
+        or bool(os.environ.get("DISTROBOX_HOST_HOME"))
+        or os.environ.get("container") == "podman"
+    )
+
+def resolve_fs_path(raw_path: str, custom_prefix: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resolves a raw input path (which may be a host path or container path)
+    to a valid existing directory on the filesystem.
+    Returns (resolved_abs_path, applied_prefix).
+    """
+    if not raw_path or not str(raw_path).strip():
+        return None, None
+
+    cleaned = str(raw_path).strip().strip("'\"")
+    distro_host_home = os.environ.get("DISTROBOX_HOST_HOME", "").strip()
+
+    # Build prioritized list of candidate prefixes
+    prefixes = []
+    if custom_prefix is not None:
+        p = custom_prefix.strip()
+        if p and p not in prefixes:
+            prefixes.append(p)
+    default_p = get_default_path_prefix()
+    if default_p and default_p not in prefixes:
+        prefixes.append(default_p)
+    if os.path.isdir("/run/host") and "/run/host" not in prefixes:
+        prefixes.append("/run/host")
+    if "" not in prefixes:
+        prefixes.append("")
+
+    candidates = []
+
+    # Handle tilde expansion
+    if cleaned.startswith("~"):
+        rel_tilde = cleaned[1:].lstrip('/\\')
+        # 1. Standard container home
+        candidates.append((os.path.expanduser(cleaned), ""))
+        # 2. Distrobox host home
+        if distro_host_home:
+            host_cand = os.path.join(distro_host_home, rel_tilde)
+            candidates.append((host_cand, ""))
+            for pr in prefixes:
+                if pr:
+                    candidates.append((os.path.join(pr, host_cand.lstrip('/\\')), pr))
+        # 3. Direct prefixes with tilde stripped
+        for pr in prefixes:
+            if pr:
+                candidates.append((os.path.join(pr, rel_tilde), pr))
+    else:
+        # Candidate directly as given
+        candidates.append((cleaned, ""))
+        # Candidate with prefixes
+        for pr in prefixes:
+            if pr:
+                if not cleaned.startswith(pr):
+                    candidates.append((os.path.join(pr, cleaned.lstrip('/\\')), pr))
+
+    # Test all candidates
+    for cand_path, used_prefix in candidates:
+        try:
+            abs_cand = os.path.abspath(cand_path)
+            if os.path.exists(abs_cand) and os.path.isdir(abs_cand):
+                return abs_cand, used_prefix
+        except Exception:
+            continue
+
+    return None, None
+
+def count_directory_markdown_files(directory: str) -> tuple[int, int]:
+    """Fast scan of markdown files and assets in directory."""
+    md_count = 0
+    asset_count = 0
+    try:
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.venv', '__pycache__', 'target', 'dist', '.git')]
+            for f in files:
+                low = f.lower()
+                if low.endswith(('.md', '.markdown', '.txt')):
+                    md_count += 1
+                elif low.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.mp3', '.m4a', '.wav', '.ogg')):
+                    asset_count += 1
+    except Exception:
+        pass
+    return md_count, asset_count
+
+def find_first_markdown_file(directory: str) -> Optional[str]:
+    """Finds Welcome.md, README.md, or the first markdown file in the directory hierarchy."""
+    for priority in ("Welcome.md", "README.md", "index.md", "Home.md", "notes.md"):
+        cand = os.path.join(directory, priority)
+        if os.path.isfile(cand):
+            return priority
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_file() and entry.name.lower().endswith(('.md', '.markdown')):
+                return entry.name
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.venv', '__pycache__', 'target', 'dist', '.git')]
+            for f in files:
+                if f.lower().endswith(('.md', '.markdown')):
+                    return os.path.relpath(os.path.join(root, f), directory).replace('\\', '/')
+    except Exception:
+        pass
+    return None
+
+class WorkspaceState:
+    def __init__(self, directory: str, is_standalone: bool = True, path_prefix: str = ""):
+        self.lock = threading.Lock()
+        self.directory = os.path.abspath(directory)
+        self.is_standalone = is_standalone
+        self.path_prefix = path_prefix or get_default_path_prefix()
+        self.recent_directories = self.load_recent_directories()
+        if self.directory not in self.recent_directories:
+            self.recent_directories.insert(0, self.directory)
+
+    def get_directory(self) -> str:
+        with self.lock:
+            return self.directory
+
+    def get_prefix(self) -> str:
+        with self.lock:
+            return self.path_prefix
+
+    def set_prefix(self, prefix: str):
+        with self.lock:
+            self.path_prefix = prefix.strip()
+            self.save_config()
+
+    def set_directory(self, new_dir: str, is_standalone: bool = True) -> bool:
+        with self.lock:
+            abs_dir = os.path.abspath(new_dir)
+            if not os.path.isdir(abs_dir):
+                return False
+            self.directory = abs_dir
+            self.is_standalone = is_standalone
+            if abs_dir in self.recent_directories:
+                self.recent_directories.remove(abs_dir)
+            self.recent_directories.insert(0, abs_dir)
+            self.recent_directories = self.recent_directories[:15]
+            self.save_config()
+            init_supplement_db(self.directory)
+            return True
+
+    def load_recent_directories(self) -> list:
+        config_path = os.path.expanduser("~/.mdviewer_config.json")
+        if os.path.isfile(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    recents = cfg.get("recent_directories", [])
+                    return [d for d in recents if os.path.isdir(d)]
+            except Exception:
+                pass
+        return []
+
+    def save_config(self):
+        config_path = os.path.expanduser("~/.mdviewer_config.json")
+        try:
+            cfg = {}
+            if os.path.isfile(config_path):
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                except Exception:
+                    cfg = {}
+            cfg["library_dir"] = self.directory
+            cfg["path_prefix"] = self.path_prefix
+            cfg["recent_directories"] = self.recent_directories
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception as e:
+            sys.stderr.write(f"Failed to save config: {e}\n")
+
 def init_default_library(lib_dir: str):
-    """Initializes Notes/, Decks/, assets/ and Welcome.md if library is empty."""
+    """Initializes Notes/, Decks/, assets/ and Welcome.md ONLY if lib_dir is specifically DEFAULT_LIBRARY_PATH and completely empty."""
+    if os.path.abspath(lib_dir) != os.path.abspath(DEFAULT_LIBRARY_PATH):
+        return
+    if os.path.exists(lib_dir) and len(os.listdir(lib_dir)) > 0:
+        return
     notes_dir = os.path.join(lib_dir, "Notes")
     decks_dir = os.path.join(lib_dir, "Decks")
     assets_dir = os.path.join(lib_dir, "assets")
@@ -2031,7 +2231,7 @@ def init_default_library(lib_dir: str):
             break
     if not has_md:
         welcome_file = os.path.join(lib_dir, "Welcome.md")
-        welcome_content = """# Welcome to mdviewer 🚀
+        welcome_content = r"""# Welcome to mdviewer 🚀
 
 > [!NOTE]
 > mdviewer is your unified, ultra-fast Markdown workstation, Document reader, and Spaced Repetition Flashcard system, accelerated by a native Rust engine.
@@ -2054,41 +2254,43 @@ Checklists in Document Mode sync directly to disk in real-time:
 - Obsidian Callouts: `> [!TIP]`, `> [!WARNING]`, `> [!IMPORTANT]`
 - Highlights: ==highlighted text==
 - Wikilinks & Embeds: `[[Welcome]]`
-- KaTeX Math formulas: $E = mc^2$ and $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$
+- KaTeX Math formulas: $E = mc^2$ and $$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$
 
 ## 1. What makes mdviewer so fast?
 mdviewer utilizes an aggressive native Rust core with Rayon parallelism and SIMD parsing, delivering sub-millisecond markdown rendering, instant card extraction, and multi-threaded library indexing.
 
 ## 2. How to import your existing notes or decks?
-Click the **📁 Import Folder** or **🎴 Import Anki** button in the sidebar header to bring your existing folders and cards directly into your standalone library.
+Click the **📁 Open Folder** button in the sidebar header to open and work directly in your existing folder without copying or duplicating files.
 """
         with open(welcome_file, "w", encoding="utf-8") as f:
             f.write(welcome_content)
 
-def get_library_dir(custom_path=None) -> tuple[str, bool]:
+def get_library_dir(custom_path=None, custom_prefix=None) -> tuple[str, bool]:
     """
     Returns (library_dir, is_standalone).
     is_standalone is True when operating in standalone vault mode.
     """
-    if custom_path and os.path.exists(custom_path):
-        return os.path.abspath(custom_path), False
+    if custom_path:
+        resolved, _ = resolve_fs_path(custom_path, custom_prefix)
+        if resolved:
+            return resolved, False
 
     env_dir = os.environ.get("MDVIEWER_LIBRARY_DIR")
     if env_dir:
-        abs_env = os.path.abspath(os.path.expanduser(env_dir))
-        os.makedirs(abs_env, exist_ok=True)
-        init_default_library(abs_env)
-        return abs_env, True
+        resolved_env, _ = resolve_fs_path(env_dir, custom_prefix)
+        if resolved_env:
+            return resolved_env, True
 
     config_path = os.path.expanduser("~/.mdviewer_config.json")
     if os.path.isfile(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-                if "library_dir" in cfg and os.path.exists(cfg["library_dir"]):
-                    abs_cfg = os.path.abspath(cfg["library_dir"])
-                    init_default_library(abs_cfg)
-                    return abs_cfg, True
+                saved_lib = cfg.get("library_dir")
+                if saved_lib:
+                    resolved_cfg, _ = resolve_fs_path(saved_lib, custom_prefix or cfg.get("path_prefix"))
+                    if resolved_cfg:
+                        return resolved_cfg, True
         except Exception:
             pass
 
@@ -2266,8 +2468,20 @@ def main():
         print(f"✓ Imported {res.get('files_copied', 0)} notes and {res.get('assets_copied', 0)} assets in {res.get('duration_ms', 0):.1f}ms")
         sys.exit(0)
 
-    custom_dir = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('-') and os.path.isdir(sys.argv[1]) else None
-    directory, is_standalone = get_library_dir(custom_dir)
+    import argparse
+    parser = argparse.ArgumentParser(description="mdviewer - Ultra-Fast Markdown Workstation")
+    parser.add_argument("directory", nargs="?", default=None, help="Directory containing markdown files to serve/edit (optional)")
+    parser.add_argument("--port", "-p", type=int, default=None, help="Port to run server on (default: 2026 or PORT env var)")
+    parser.add_argument("--prefix", default=None, help="Distrobox/container path prefix (e.g. /run/host)")
+    parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
+
+    args, unknown = parser.parse_known_args()
+
+    custom_prefix = args.prefix or os.environ.get("MDVIEWER_PATH_PREFIX") or get_default_path_prefix()
+    initial_dir, is_standalone = get_library_dir(args.directory, custom_prefix)
+    workspace_state = WorkspaceState(initial_dir, is_standalone, custom_prefix)
+    directory = workspace_state.get_directory()
+    init_supplement_db(directory)
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def send_json(self, status_code, obj):
@@ -2283,6 +2497,7 @@ def main():
                 pass
 
         def do_GET(self):
+            directory = workspace_state.get_directory()
             parsed = urllib.parse.urlparse(self.path)
             
             if parsed.path == '/':
@@ -2540,11 +2755,29 @@ def main():
                 self.send_json(200, {"status": "ok", "recent_apkgs": recent})
             elif parsed.path == '/api/engine/info':
                 rust_info = get_rust_info()
+                cur_dir = workspace_state.get_directory()
                 self.send_json(200, {
                     "status": "ok",
                     "rust": rust_info,
-                    "is_standalone": is_standalone,
-                    "library_dir": directory
+                    "is_standalone": workspace_state.is_standalone,
+                    "library_dir": cur_dir,
+                    "path_prefix": workspace_state.get_prefix(),
+                    "is_distrobox": is_distrobox_environment()
+                })
+            elif parsed.path == '/api/workspace/info':
+                cur_dir = workspace_state.get_directory()
+                cur_pr = workspace_state.get_prefix()
+                md_cnt, asset_cnt = count_directory_markdown_files(cur_dir)
+                self.send_json(200, {
+                    "status": "ok",
+                    "directory": cur_dir,
+                    "name": os.path.basename(cur_dir) or cur_dir,
+                    "path_prefix": cur_pr,
+                    "is_distrobox": is_distrobox_environment(),
+                    "recent_directories": workspace_state.recent_directories,
+                    "md_count": md_cnt,
+                    "asset_count": asset_cnt,
+                    "default_file": find_first_markdown_file(cur_dir)
                 })
             elif parsed.path == '/api/library/search':
                 query_params = urllib.parse.parse_qs(parsed.query)
@@ -2603,6 +2836,7 @@ def main():
                 self.end_headers()
 
         def do_POST(self):
+            directory = workspace_state.get_directory()
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path == '/api/config':
                 content_length = int(self.headers.get('Content-Length', 0))
@@ -3292,17 +3526,92 @@ def main():
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
 
+            elif parsed.path == '/api/workspace/validate_path':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    raw_p = payload.get('path', '').strip()
+                    prefix_p = payload.get('prefix', None)
+                    resolved, applied_pr = resolve_fs_path(raw_p, prefix_p)
+                    if resolved:
+                        md_cnt, asset_cnt = count_directory_markdown_files(resolved)
+                        self.send_json(200, {
+                            "status": "ok",
+                            "valid": True,
+                            "resolved_path": resolved,
+                            "applied_prefix": applied_pr or "",
+                            "name": os.path.basename(resolved),
+                            "md_count": md_cnt,
+                            "asset_count": asset_cnt,
+                            "default_file": find_first_markdown_file(resolved)
+                        })
+                    else:
+                        self.send_json(200, {
+                            "status": "ok",
+                            "valid": False,
+                            "message": f"Directory not found: {raw_p}"
+                        })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/workspace/switch':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    raw_p = payload.get('path', '').strip()
+                    prefix_p = payload.get('prefix', None)
+                    if prefix_p is not None:
+                        workspace_state.set_prefix(prefix_p)
+
+                    resolved, applied_pr = resolve_fs_path(raw_p, prefix_p)
+                    if not resolved:
+                        active_prefix = prefix_p if prefix_p is not None else workspace_state.get_prefix()
+                        self.send_json(400, {
+                            "status": "error",
+                            "message": f"Directory not found: {raw_p} (checked with prefix: '{active_prefix}')"
+                        })
+                        return
+
+                    success = workspace_state.set_directory(resolved, is_standalone=True)
+                    if not success:
+                        self.send_json(500, {"status": "error", "message": "Failed to set active directory"})
+                        return
+
+                    # Re-index with Rust core if available
+                    rust_index_library(resolved)
+                    md_cnt, asset_cnt = count_directory_markdown_files(resolved)
+                    first_file = find_first_markdown_file(resolved)
+
+                    self.send_json(200, {
+                        "status": "ok",
+                        "directory": resolved,
+                        "name": os.path.basename(resolved),
+                        "applied_prefix": applied_pr or "",
+                        "md_count": md_cnt,
+                        "asset_count": asset_cnt,
+                        "default_file": first_file
+                    })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
             elif parsed.path == '/api/library/import_folder':
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
                 try:
                     payload = json.loads(post_data.decode('utf-8'))
-                    src_path = payload.get('path', '').strip()
+                    raw_src = payload.get('path', '').strip()
+                    prefix_p = payload.get('prefix', None)
                     subfolder = payload.get('subfolder', '').strip()
                     use_rust = payload.get('use_rust', True)
+
+                    src_path, _ = resolve_fs_path(raw_src, prefix_p)
                     if not src_path or not os.path.isdir(src_path):
-                        self.send_json(400, {"status": "error", "message": f"Directory not found: {src_path}"})
+                        self.send_json(400, {"status": "error", "message": f"Directory not found: {raw_src}"})
                         return
+
+                    directory = workspace_state.get_directory()
                     if not subfolder:
                         subfolder = os.path.basename(os.path.abspath(src_path))
                     target_dst = safe_rel_path(directory, subfolder) or os.path.join(directory, subfolder)
@@ -3387,21 +3696,19 @@ def main():
                 return
             super().handle_error(request, client_address)
 
-    port = int(os.environ.get("PORT", 2026))
+    port = args.port if args.port else int(os.environ.get("PORT", 2026))
     try:
         httpd = ReusableTCPServer(("127.0.0.1", port), Handler)
     except OSError:
         httpd = ReusableTCPServer(("127.0.0.1", 0), Handler)
 
-    init_supplement_db(directory)
-
     with httpd:
-        port = httpd.server_address[1]
-        url = f"http://127.0.0.1:{port}"
-        print(f"Serving {directory} at {url}", flush=True)
+        actual_port = httpd.server_address[1]
+        url = f"http://127.0.0.1:{actual_port}"
+        print(f"Serving workspace at {url} (directory: {workspace_state.get_directory()})", flush=True)
         
         # Start browser after a tiny delay if not disabled
-        if not os.environ.get("MDVIEWER_NO_BROWSER"):
+        if not args.no_browser and not os.environ.get("MDVIEWER_NO_BROWSER"):
             threading.Timer(0.1, lambda: webbrowser.open(url)).start()
         
         try:

@@ -33,9 +33,10 @@
 - **Single-File Frontend** (`index.html`): Zero-framework SPA with Tokyo Night theme
 
 ### Additional Features
+- **In-Place Workspace (0 Duplication)**: Open and work directly in your existing notes directory. All edits, saves, and checklists write to your disk files in-place without duplicating anything.
+- **Distrobox & Container Path Mapping**: Built-in support for running inside Distrobox/Docker/Podman with auto-detected `/run/host` path prefix, configurable via UI modal, CLI `--prefix`, or `MDVIEWER_PATH_PREFIX`.
 - **Sidebar File Explorer**: Browse, create, rename, delete files and folders with right-click context menus
 - **In-Browser Terminal**: Sandboxed CLI with `ls`, `cd`, `cat`, `edit`, `diff`, `accept`, `discard` commands
-- **Folder Import**: Import external folders into the standalone library with Rust-accelerated copying
 - **Workspace Search**: `Ctrl+Shift+F` full-text search across all files
 - **Zero External Dependencies**: Python standard library only (no pip packages required)
 - **Fully Local & Offline**: No network access needed, no telemetry
@@ -61,17 +62,20 @@ cp target/release/mdviewer_core ../../src/mdviewer/bin/
 ## Usage
 
 ```bash
-# Standalone mode (uses ~/.mdviewer/ library)
+# Standalone mode (opens last active workspace or default vault)
 mdviewer
 
-# Serve a specific directory
+# Open a specific folder directly in-place
 mdviewer /path/to/your/notes
 
-# Import an Anki deck
-mdviewer import-anki deck.apkg -o ./output
+# Running in Distrobox with host path prefix
+mdviewer --prefix /run/host /home/user/Documents/Notes
 
-# Import a folder into the library
-mdviewer import-folder /path/to/folder
+# Custom port
+mdviewer --port 8080 /path/to/notes
+
+# Import an Anki deck (.apkg)
+mdviewer import-anki deck.apkg -o ./output
 ```
 
 The server starts on port `2026` (or auto-selects a free port) and opens in your default browser.
