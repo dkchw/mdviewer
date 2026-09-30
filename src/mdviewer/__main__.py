@@ -2369,6 +2369,7 @@ class WorkspaceState:
         # Automatically register non-default directory into linked_folders
         if os.path.abspath(self.directory) != os.path.abspath(DEFAULT_LIBRARY_PATH):
             self.ensure_linked_folder(self.directory, path_prefix=self.path_prefix)
+        self.save_config()
 
     def get_directory(self) -> str:
         with self.lock:
@@ -3128,10 +3129,15 @@ def main():
                 config_data = {}
                 if os.path.exists(config_file):
                     try:
-                        with open(config_file, 'r') as f:
+                        with open(config_file, 'r', encoding='utf-8') as f:
                             config_data = json.load(f)
                     except:
                         pass
+                cur_dir = workspace_state.get_directory()
+                ws_history = config_data.get("workspace_history", {})
+                if isinstance(ws_history, dict) and cur_dir in ws_history and isinstance(ws_history[cur_dir], dict):
+                    for k, v in ws_history[cur_dir].items():
+                        config_data[k] = v
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -3351,20 +3357,31 @@ def main():
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)
                 try:
-                    new_patch = json.loads(post_data)
+                    new_patch = json.loads(post_data.decode('utf-8'))
                     config_file = os.path.expanduser("~/.mdviewer_config.json")
                     config_data = {}
                     if os.path.exists(config_file):
                         try:
-                            with open(config_file, 'r') as f:
+                            with open(config_file, 'r', encoding='utf-8') as f:
                                 config_data = json.load(f)
                         except:
                             pass
                     
                     config_data.update(new_patch)
+
+                    cur_dir = workspace_state.get_directory()
+                    if "workspace_history" not in config_data or not isinstance(config_data["workspace_history"], dict):
+                        config_data["workspace_history"] = {}
+                    if cur_dir not in config_data["workspace_history"] or not isinstance(config_data["workspace_history"][cur_dir], dict):
+                        config_data["workspace_history"][cur_dir] = {}
+
+                    ws_keys = ("lastOpenFile", "lastOpenFolder", "lastImportedFolder", "lastFolderDeck", "expandedFolders", "lastAppMode")
+                    for k in ws_keys:
+                        if k in new_patch:
+                            config_data["workspace_history"][cur_dir][k] = new_patch[k]
                     
-                    with open(config_file, 'w') as f:
-                        json.dump(config_data, f)
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(config_data, f, indent=2)
                     
                     self.send_response(200)
                     self.end_headers()

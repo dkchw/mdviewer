@@ -4976,7 +4976,8 @@
           <span id="ankiSuccessTitle">Import Complete!</span>
         </div>
         <div id="ankiSuccessSummary" style="font-size:12px;color:var(--fg);margin-bottom:12px;">Converted cards successfully.</div>
-        <div style="display:flex;gap:10px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" id="ankiOpenFolderDeckBtn" class="fc-btn-primary" style="background:#e0af68;color:#1a1b26;">📁 Study Folder Deck</button>
           <button type="button" id="ankiOpenReaderBtn" class="fc-btn-primary" style="background:#7aa2f7;color:#1a1b26;">📂 Open in Reader</button>
           <button type="button" id="ankiOpenFlashcardsBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;">🎴 Start Flashcards</button>
         </div>
@@ -5925,8 +5926,13 @@
 
       row.addEventListener('click', async ()=>{
         node.expanded = !node.expanded;
-        if (node.expanded) expandedFolders.add(node.path);
-        else expandedFolders.delete(node.path);
+        if (node.expanded) {
+          expandedFolders.add(node.path);
+          saveConfig({ lastOpenFolder: node.path });
+          try { localStorage.setItem('mdviewer-last-folder', node.path); } catch(e) {}
+        } else {
+          expandedFolders.delete(node.path);
+        }
         saveExpandedFolders();
         
         row.querySelector('.tree-arrow').textContent = node.expanded ? '▾' : '▸';
@@ -6249,6 +6255,27 @@
     let r = fileTree.querySelector(safeSelector);
     if(!r){
       ensureAncestorsExpanded(filePath);
+      await initSidebar();
+      r = fileTree.querySelector(safeSelector);
+    }
+    if(r){
+      r.classList.add('active');
+      activeRow = r;
+      r.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  async function setActiveFolderTreeRow(folderPath){
+    if(!fileTree || !folderPath) return;
+    if(activeRow){
+      activeRow.classList.remove('active');
+      activeRow = null;
+    }
+    const safeSelector = `.tree-row.dir[data-path="${folderPath.replace(/(["\\])/g, '\\$1')}"]`;
+    let r = fileTree.querySelector(safeSelector);
+    if(!r){
+      ensureAncestorsExpanded(folderPath + '/dummy');
+      expandedFolders.add(folderPath);
       await initSidebar();
       r = fileTree.querySelector(safeSelector);
     }
@@ -8602,6 +8629,31 @@
       updateFcInfoForCurrentCard();
     }
     updateAiBadgesAndCounts();
+
+    if (isFolderDeck && folderDeckInfo) {
+      if (typeof syncUrlState === 'function') syncUrlState('replace');
+      debouncedSaveFolderDeckState();
+    }
+  }
+
+  let saveFolderDeckTimer = null;
+  function debouncedSaveFolderDeckState() {
+    clearTimeout(saveFolderDeckTimer);
+    saveFolderDeckTimer = setTimeout(() => {
+      if (isFolderDeck && folderDeckInfo) {
+        saveConfig({
+          lastFolderDeck: {
+            folder: folderDeckInfo.folderPath,
+            folderName: folderDeckInfo.folderName,
+            level: folderDeckInfo.targetLevel,
+            recursive: true,
+            cardIndex: currentCardIndex
+          },
+          lastOpenFolder: folderDeckInfo.folderPath,
+          lastAppMode: 'folder_deck'
+        });
+      }
+    }, 300);
   }
 
   let isFlippingAnim = false;
@@ -8873,6 +8925,13 @@
     fcCard.style.transform = '';
     fcCard.style.transition = '';
     isFlippingAnim = false;
+    if (isFolderDeck) {
+      saveConfig({ lastFolderDeck: null, lastAppMode: currentAppMode || 'outline' });
+      try {
+        sessionStorage.removeItem('mdv_folder_deck');
+        localStorage.removeItem('mdviewer-folder-deck');
+      } catch(e) {}
+    }
     isFolderDeck = false;
     folderDeckInfo = null;
     folderDeckAllCards = [];
@@ -9543,7 +9602,20 @@
       }
 
       // Save to server config fallback (for launching a fresh browser session)
-      saveConfig({ lastOpenFile: filePath });
+      const folderOfFile = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+      ensureAncestorsExpanded(filePath);
+      const configPatch = {
+        lastOpenFile: filePath,
+        lastOpenFolder: folderOfFile,
+        lastAppMode: isFlashcardMode ? 'flashcard' : (currentAppMode || 'outline')
+      };
+      if (!isFolderDeck) {
+        configPatch.lastFolderDeck = null;
+      }
+      saveConfig(configPatch);
+      try {
+        if (folderOfFile) localStorage.setItem('mdviewer-last-folder', folderOfFile);
+      } catch(e) {}
 
       // Handle view mode and scroll / card restoration
       if(options.mode === 'flashcard' || (!options.mode && isFlashcardMode)){
@@ -9615,55 +9687,83 @@
   function syncUrlState(action = 'replace'){
     try {
       const url = new URL(window.location.href);
-      if(currentFilePath){
-        url.searchParams.set('file', currentFilePath);
-      } else {
-        url.searchParams.delete('file');
-      }
-
-      if(isFlashcardMode){
-        url.searchParams.set('mode', 'flashcard');
+      if (isFolderDeck && folderDeckInfo) {
+        url.searchParams.set('mode', 'folder_deck');
+        url.searchParams.set('folder', folderDeckInfo.folderPath || '');
+        url.searchParams.set('level', String(folderDeckInfo.targetLevel || '2'));
         url.searchParams.set('card', String(currentCardIndex + 1));
-        if(flashcardFilter && flashcardFilter !== 'outline'){
-          url.searchParams.set('filter', flashcardFilter);
-        } else {
-          url.searchParams.delete('filter');
-        }
+        url.searchParams.delete('file');
+        url.searchParams.delete('filter');
+        url.searchParams.delete('page');
         if(fcCard && fcCard.classList.contains('flipped')){
           url.searchParams.set('flipped', '1');
         } else {
           url.searchParams.delete('flipped');
         }
-        if(fcTwoColumn && currentBackPageIndex > 0){
-          url.searchParams.set('page', String(currentBackPageIndex + 1));
-        } else {
-          url.searchParams.delete('page');
-        }
       } else {
-        url.searchParams.delete('mode');
-        url.searchParams.delete('card');
-        url.searchParams.delete('flipped');
-        url.searchParams.delete('page');
-        url.searchParams.delete('filter');
+        url.searchParams.delete('folder');
+        url.searchParams.delete('level');
+        if(currentFilePath){
+          url.searchParams.set('file', currentFilePath);
+        } else {
+          url.searchParams.delete('file');
+        }
+
+        if(isFlashcardMode){
+          url.searchParams.set('mode', 'flashcard');
+          url.searchParams.set('card', String(currentCardIndex + 1));
+          if(flashcardFilter && flashcardFilter !== 'outline'){
+            url.searchParams.set('filter', flashcardFilter);
+          } else {
+            url.searchParams.delete('filter');
+          }
+          if(fcCard && fcCard.classList.contains('flipped')){
+            url.searchParams.set('flipped', '1');
+          } else {
+            url.searchParams.delete('flipped');
+          }
+          if(fcTwoColumn && currentBackPageIndex > 0){
+            url.searchParams.set('page', String(currentBackPageIndex + 1));
+          } else {
+            url.searchParams.delete('page');
+          }
+        } else {
+          url.searchParams.delete('mode');
+          url.searchParams.delete('card');
+          url.searchParams.delete('flipped');
+          url.searchParams.delete('page');
+          url.searchParams.delete('filter');
+        }
       }
 
       // Tab-isolated sessionStorage
-      if(currentFilePath) sessionStorage.setItem('mdv_tab_file', currentFilePath);
-      sessionStorage.setItem('mdv_tab_mode', isFlashcardMode ? 'flashcard' : 'outline');
-      if(isFlashcardMode){
-        sessionStorage.setItem('mdv_tab_card', String(currentCardIndex));
-        sessionStorage.setItem('mdv_tab_page', String(currentBackPageIndex));
-        sessionStorage.setItem('mdv_tab_flipped', fcCard && fcCard.classList.contains('flipped') ? '1' : '0');
-        sessionStorage.setItem('mdv_tab_filter', flashcardFilter || 'outline');
+      if (isFolderDeck && folderDeckInfo) {
+        sessionStorage.setItem('mdv_tab_mode', 'folder_deck');
+        sessionStorage.setItem('mdv_folder_deck', JSON.stringify({
+          folder: folderDeckInfo.folderPath,
+          folderName: folderDeckInfo.folderName,
+          level: folderDeckInfo.targetLevel,
+          cardIndex: currentCardIndex
+        }));
+      } else {
+        if(currentFilePath) sessionStorage.setItem('mdv_tab_file', currentFilePath);
+        sessionStorage.setItem('mdv_tab_mode', isFlashcardMode ? 'flashcard' : 'outline');
+        if(isFlashcardMode){
+          sessionStorage.setItem('mdv_tab_card', String(currentCardIndex));
+          sessionStorage.setItem('mdv_tab_page', String(currentBackPageIndex));
+          sessionStorage.setItem('mdv_tab_flipped', fcCard && fcCard.classList.contains('flipped') ? '1' : '0');
+          sessionStorage.setItem('mdv_tab_filter', flashcardFilter || 'outline');
+        }
       }
 
       const newUrlStr = url.pathname + url.search + url.hash;
       const currUrlStr = window.location.pathname + window.location.search + window.location.hash;
       if(newUrlStr !== currUrlStr){
+        const stateObj = isFolderDeck ? { folderDeck: true, folder: folderDeckInfo?.folderPath } : { file: currentFilePath };
         if(action === 'push'){
-          window.history.pushState({ file: currentFilePath }, '', newUrlStr);
+          window.history.pushState(stateObj, '', newUrlStr);
         } else {
-          window.history.replaceState({ file: currentFilePath }, '', newUrlStr);
+          window.history.replaceState(stateObj, '', newUrlStr);
         }
       }
     } catch(e) {}
@@ -9671,6 +9771,45 @@
 
   async function restoreTabState(isFromPopstate = false){
     const urlParams = new URLSearchParams(window.location.search);
+
+    // 1. Check if Folder Deck was active (URL, sessionStorage, or savedConfig)
+    const urlMode = urlParams.get('mode');
+    const urlFolder = urlParams.get('folder');
+    let savedFolderDeck = null;
+    if (savedConfig.lastFolderDeck && savedConfig.lastFolderDeck.folder) {
+      savedFolderDeck = savedConfig.lastFolderDeck;
+    }
+    if (!savedFolderDeck && !isFromPopstate) {
+      try {
+        const raw = sessionStorage.getItem('mdv_folder_deck');
+        if (raw) savedFolderDeck = JSON.parse(raw);
+      } catch(e) {}
+    }
+
+    const isFolderDeckRequested = (urlMode === 'folder_deck' && urlFolder) ||
+      (!isFromPopstate && !urlParams.get('file') && (savedConfig.lastAppMode === 'folder_deck' || urlMode === 'folder_deck') && savedFolderDeck);
+
+    if (isFolderDeckRequested) {
+      const folderPath = urlFolder || (savedFolderDeck ? savedFolderDeck.folder : '');
+      const level = urlParams.get('level') || (savedFolderDeck ? savedFolderDeck.level : '2');
+      const recursive = urlParams.has('recursive') ? (urlParams.get('recursive') === '1') : (savedFolderDeck ? savedFolderDeck.recursive !== false : true);
+      let cardIdx = 0;
+      if (urlParams.has('card')) {
+        const c = parseInt(urlParams.get('card'), 10);
+        if (!isNaN(c) && c >= 1) cardIdx = c - 1;
+      } else if (savedFolderDeck && typeof savedFolderDeck.cardIndex === 'number') {
+        cardIdx = savedFolderDeck.cardIndex;
+      }
+
+      if (folderPath) {
+        ensureAncestorsExpanded(folderPath + '/dummy');
+        expandedFolders.add(folderPath);
+        saveExpandedFolders();
+        if (typeof initSidebar === 'function') await initSidebar();
+        await loadFolderDeck(folderPath, level, recursive, cardIdx);
+        return;
+      }
+    }
     
     let targetFile = urlParams.get('file');
     if(!targetFile && !isFromPopstate){
@@ -13644,7 +13783,7 @@
     }
   }
 
-  async function loadFolderDeck(folderPath, targetLevel = '2', recursive = true) {
+  async function loadFolderDeck(folderPath, targetLevel = '2', recursive = true, initialCardIndex = 0) {
     closeFolderDeckModal();
     showToast('⏳ Collecting flashcards across folder...', 3500);
 
@@ -13674,7 +13813,41 @@
       folderDeckAllCards = data.cards.slice();
       flashcardList = data.cards.slice();
       cachedMissingCount = null;
-      currentCardIndex = 0;
+      currentCardIndex = (typeof initialCardIndex === 'number' && initialCardIndex >= 0)
+        ? Math.min(initialCardIndex, Math.max(0, flashcardList.length - 1))
+        : 0;
+
+      // Ensure this folder and ancestors are expanded in sidebar
+      if (data.folder) {
+        ensureAncestorsExpanded(data.folder + '/dummy');
+        expandedFolders.add(data.folder);
+        saveExpandedFolders();
+      }
+
+      // Save folder deck state to server config so it survives server restart
+      saveConfig({
+        lastFolderDeck: {
+          folder: data.folder,
+          folderName: data.folder_name,
+          level: data.target_level,
+          recursive: !!recursive,
+          cardIndex: currentCardIndex
+        },
+        lastOpenFolder: data.folder,
+        lastAppMode: 'folder_deck'
+      });
+      try {
+        localStorage.setItem('mdviewer-last-folder', data.folder);
+        localStorage.setItem('mdviewer-mode', 'folder_deck');
+        sessionStorage.setItem('mdv_folder_deck', JSON.stringify({
+          folder: data.folder,
+          folderName: data.folder_name,
+          level: data.target_level,
+          recursive: !!recursive,
+          cardIndex: currentCardIndex
+        }));
+        sessionStorage.setItem('mdv_tab_mode', 'folder_deck');
+      } catch(e) {}
 
       // Switch into flashcard view
       isFlashcardMode = true;
@@ -13689,6 +13862,9 @@
       updateFolderDeckUI();
       renderCurrentCard();
       renderCardOverview();
+
+      if (typeof syncUrlState === 'function') syncUrlState('replace');
+      if (typeof setActiveFolderTreeRow === 'function') setActiveFolderTreeRow(data.folder);
 
       showToast(`🎴 Loaded ${data.total_cards.toLocaleString()} cards from ${data.total_files} files!`, 4000);
     } catch (err) {
@@ -13956,10 +14132,12 @@
   const ankiStartImportBtn = document.getElementById('ankiStartImportBtn');
   const ankiOpenReaderBtn = document.getElementById('ankiOpenReaderBtn');
   const ankiOpenFlashcardsBtn = document.getElementById('ankiOpenFlashcardsBtn');
+  const ankiOpenFolderDeckBtn = document.getElementById('ankiOpenFolderDeckBtn');
 
   let activeAnkiApkgPath = null;
   let activeAnkiMeta = null;
   let lastImportedFile = null;
+  let lastImportedFolder = null;
 
   function openAnkiImportModal() {
     if (!ankiImportModal) return;
@@ -13982,6 +14160,7 @@
     activeAnkiApkgPath = null;
     activeAnkiMeta = null;
     lastImportedFile = null;
+    lastImportedFolder = null;
     if (ankiInspectionCard) ankiInspectionCard.style.display = 'none';
     if (ankiOptionsCard) ankiOptionsCard.style.display = 'none';
     if (ankiProgressCard) ankiProgressCard.style.display = 'none';
@@ -14173,6 +14352,23 @@
 
       lastImportedFile = data.workspace_files && data.workspace_files.length ? data.workspace_files[0] : (data.imported_files && data.imported_files.length ? (targetFolder ? targetFolder + '/' + data.imported_files[0] : data.imported_files[0]) : null);
 
+      const effectiveFolder = targetFolder || (lastImportedFile && lastImportedFile.includes('/') ? lastImportedFile.substring(0, lastImportedFile.lastIndexOf('/')) : '');
+      lastImportedFolder = effectiveFolder;
+      if (effectiveFolder) {
+        ensureAncestorsExpanded(effectiveFolder + '/dummy');
+        expandedFolders.add(effectiveFolder);
+        saveExpandedFolders();
+        saveConfig({
+          lastImportedFolder: effectiveFolder,
+          lastOpenFolder: effectiveFolder,
+          lastOpenFile: lastImportedFile || ''
+        });
+        try {
+          localStorage.setItem('mdviewer-last-folder', effectiveFolder);
+          localStorage.setItem('mdviewer-last-imported-folder', effectiveFolder);
+        } catch(e) {}
+      }
+
       if (ankiSuccessCard) {
         ankiSuccessCard.style.display = 'block';
         if (ankiSuccessTitle) ankiSuccessTitle.textContent = `Import Complete! (${data.total_notes.toLocaleString()} Notes)`;
@@ -14246,6 +14442,20 @@
   }
 
   if (ankiStartImportBtn) ankiStartImportBtn.addEventListener('click', startAnkiImport);
+
+  if (ankiOpenFolderDeckBtn) {
+    ankiOpenFolderDeckBtn.addEventListener('click', async () => {
+      const folderToLoad = lastImportedFolder || (lastImportedFile && lastImportedFile.includes('/') ? lastImportedFile.substring(0, lastImportedFile.lastIndexOf('/')) : '');
+      if (folderToLoad) {
+        closeAnkiImportModal();
+        const headingLevel = ankiHeadingLevelSelect ? parseInt(ankiHeadingLevelSelect.value, 10) : 2;
+        await loadFolderDeck(folderToLoad, String(headingLevel), true);
+      } else if (lastImportedFile) {
+        closeAnkiImportModal();
+        await openFile(lastImportedFile, { mode: 'flashcard' });
+      }
+    });
+  }
 
   if (ankiOpenReaderBtn) {
     ankiOpenReaderBtn.addEventListener('click', async () => {
@@ -16560,6 +16770,18 @@
     if(initialFile){
       ensureAncestorsExpanded(initialFile);
     }
+    if (savedConfig.lastOpenFolder) {
+      ensureAncestorsExpanded(savedConfig.lastOpenFolder + '/dummy');
+      expandedFolders.add(savedConfig.lastOpenFolder);
+    }
+    if (savedConfig.lastImportedFolder) {
+      ensureAncestorsExpanded(savedConfig.lastImportedFolder + '/dummy');
+      expandedFolders.add(savedConfig.lastImportedFolder);
+    }
+    if (savedConfig.lastFolderDeck && savedConfig.lastFolderDeck.folder) {
+      ensureAncestorsExpanded(savedConfig.lastFolderDeck.folder + '/dummy');
+      expandedFolders.add(savedConfig.lastFolderDeck.folder);
+    }
 
     try {
       setupModeSwitcher();
@@ -16570,7 +16792,7 @@
       console.error('Error during initial UI setup:', err);
     }
 
-    const defaultMode = urlParams.get('mode') || 'outline';
+    const defaultMode = urlParams.get('mode') || (savedConfig.lastAppMode === 'folder_deck' ? 'flashcard' : (savedConfig.lastAppMode || 'outline'));
     setAppMode(defaultMode);
 
     applyZoom();
@@ -16578,6 +16800,7 @@
     updateFcAnimationUI();
     window.openFile = openFile;
     window.loadFolderDeck = loadFolderDeck;
+    window.setActiveFolderTreeRow = setActiveFolderTreeRow;
     window.startBatchGeneration = startBatchGeneration;
     window.activeBatches = activeBatches;
     window.getHeadings = () => headings;
