@@ -32,20 +32,141 @@
   ::-webkit-scrollbar-thumb:hover { background: #565f89; }
   ::-webkit-scrollbar-corner { background: var(--bg); }
 
-  /* Toolbar */
-  #toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;
-    background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;}
-  #toolbar button, #toolbar label.filebtn{
-    background:#242737;color:var(--fg);border:1px solid var(--border);
-    padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;}
-  #toolbar button:hover, #toolbar label.filebtn:hover{background:#2c3040;}
-  #toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
-  #toolbar .lvlgroup button{padding:6px 9px;}
-  #fileInput{display:none;}
-  #fname{color:var(--accent);font-size:13px;font-weight:600;margin-left:auto;padding-right:8px;}
-  #stats{color:#a9b1d6;font-size:12px;opacity:0.9;}
-  #zoomGroup{display:flex;align-items:center;gap:4px;}
-  #zoomLevel{color:#a9b1d6;font-size:12px;font-weight:500;width:38px;text-align:center;display:inline-block;}
+  /* Toolbar - Clean single-row layout without wrapping */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 10px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: nowrap;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    z-index: 40;
+  }
+  .tb-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .tb-group-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 300px;
+    max-width: 360px;
+    margin: 0 4px;
+    min-width: 160px;
+  }
+  #toolbar button, #toolbar label.filebtn {
+    background: #242737;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    padding: 3px 7px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  #toolbar button:hover, #toolbar label.filebtn:hover { background: #2c3040; }
+  #toolbar .sep { width: 1px; height: 16px; background: var(--border); margin: 0 1px; flex-shrink: 0; }
+  #toolbar .lvlgroup { display: inline-flex; gap: 2px; }
+  #toolbar .lvlgroup button { padding: 2px 5px; font-size: 10px; }
+  #fileInput { display: none; }
+
+  #toolbar .mode-tab-btn {
+    background: transparent;
+    border: none;
+    padding: 3px 6px;
+    font-size: 11px;
+    border-radius: 5px;
+    gap: 3px;
+  }
+  #toolbar .mode-tab-btn:hover { background: rgba(255,255,255,0.06); }
+  #toolbar .mode-tab-btn.active { background: #24283b; color: #7aa2f7; }
+
+  #toolbar .doc-mode-tab {
+    background: transparent;
+    border: none;
+    padding: 3px 6px;
+    font-size: 10.5px;
+    border-radius: 4px;
+    gap: 3px;
+  }
+  #toolbar .doc-mode-tab:hover { background: rgba(255,255,255,0.05); }
+  #toolbar .doc-mode-tab.active { background: #24283b; color: #7aa2f7; }
+  
+  .tb-file-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    flex-shrink: 1;
+    min-width: 45px;
+  }
+  #fname {
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 78px;
+  }
+  #stats {
+    color: #a9b1d6;
+    font-size: 10px;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #zoomGroup {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 2px;
+  }
+  #zoomGroup button {
+    background: transparent;
+    border: none;
+    padding: 1px 3px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  #zoomGroup button:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--fg);
+  }
+  #zoomLevel {
+    color: #a9b1d6;
+    font-size: 10px;
+    font-weight: 500;
+    width: 28px;
+    text-align: center;
+    display: inline-block;
+  }
 
   /* Scroll area */
   #scroller{flex:1;overflow:auto;position:relative;background:var(--bg);}
@@ -167,42 +288,146 @@
   .tree-label{overflow:hidden;text-overflow:ellipsis;}
   #sidebarToggleBtn{margin-right:2px;}
   
-  /* Search Component */
-  #searchBox{display:flex;align-items:center;gap:4px;position:relative;}
-  .scope-group{display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);}
-  .scope-group button{
-    background:#191b29;color:var(--muted);border:none;border-radius:0;
-    padding:4px 8px;font-size:11px;cursor:pointer;line-height:1.2;
+  /* Search Component - Centered in Toolbar */
+  #searchBox {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    width: 100%;
+    max-width: 440px;
   }
-  .scope-group button.active{
-    background:#2c3040;color:var(--accent);font-weight:600;
+  .scope-group {
+    display: inline-flex;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
   }
-  .scope-group button:not(:last-child){
-    border-right:1px solid var(--border);
+  #toolbar .scope-group button {
+    background: #191b29;
+    color: var(--muted);
+    border: none;
+    border-radius: 0;
+    padding: 3px 7px;
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: all 0.15s;
   }
-  .search-input-wrap{
-    display:flex;align-items:center;background:#191b29;border:1px solid var(--border);
-    border-radius:6px;padding:3px 6px;gap:4px;position:relative;
+  #toolbar .scope-group button.active {
+    background: #24283b;
+    color: var(--accent);
+    font-weight: 600;
   }
-  .search-input-wrap:focus-within{border-color:var(--accent);}
-  #searchInput{
-    background:transparent;color:var(--fg);border:none;
-    padding:2px 2px;font-size:12px;width:150px;outline:none;
+  #toolbar .scope-group button:not(:last-child) {
+    border-right: 1px solid var(--border);
   }
-  #searchCount{
-    color:#a9b1d6;font-size:11px;white-space:nowrap;user-select:none;margin:0 2px;
+  .search-input-wrap {
+    display: flex;
+    align-items: center;
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    gap: 6px;
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    transition: all 0.15s ease;
   }
-  #searchPrevBtn, #searchNextBtn, #searchClearBtn{
-    background:transparent;color:var(--muted);border:none;padding:2px 3px;
-    font-size:10px;cursor:pointer;line-height:1;border-radius:3px;display:none;
+  .search-input-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.18);
+    background: #191b29;
   }
-  #searchPrevBtn:hover, #searchNextBtn:hover, #searchClearBtn:hover{
-    background:#2c3040;color:var(--fg);
+  #searchInput {
+    background: transparent;
+    color: var(--fg);
+    border: none;
+    padding: 1px 2px;
+    font-size: 12px;
+    width: 100%;
+    outline: none;
   }
-  #searchResults{
-    position:absolute;top:calc(100% + 4px);right:0;width:380px;max-height:420px;
-    background:#1f2335;border:1px solid var(--border);border-radius:6px;
-    box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:100;overflow-y:auto;display:none;
+  #searchCount {
+    color: #a9b1d6;
+    font-size: 11px;
+    white-space: nowrap;
+    user-select: none;
+    margin: 0 2px;
+  }
+  #toolbar #searchPrevBtn, #toolbar #searchNextBtn, #toolbar #searchClearBtn {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 2px 3px;
+    font-size: 10px;
+    cursor: pointer;
+    line-height: 1;
+    border-radius: 3px;
+    display: none;
+  }
+  #toolbar #searchPrevBtn:hover, #toolbar #searchNextBtn:hover, #toolbar #searchClearBtn:hover {
+    background: #2c3040;
+    color: var(--fg);
+  }
+  #searchResults {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 480px;
+    max-width: 90vw;
+    max-height: 420px;
+    background: #1f2335;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.6);
+    z-index: 100;
+    overflow-y: auto;
+    display: none;
+  }
+
+  /* Sidebar Search & Quick Filter */
+  .sb-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: 6px 10px 4px;
+    transition: all 0.15s ease;
+  }
+  .sb-search-wrap:focus-within {
+    border-color: var(--accent);
+    background: #191b29;
+  }
+  #sidebarSearchInput {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--fg);
+    font-size: 11.5px;
+    width: 100%;
+  }
+  .sb-search-clear {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .sb-search-clear:hover { color: var(--fg); }
+
+  /* First-child margin reset to prevent top gap in reader / live preview */
+  #docLiveBody > *:first-child,
+  #docBody > *:first-child {
+    margin-top: 0 !important;
   }
   .search-tabs{
     display:flex;border-bottom:1px solid var(--border);background:#191b29;position:sticky;top:0;z-index:2;
@@ -2892,15 +3117,15 @@
     background: transparent;
     border: none;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 5px 12px;
-    border-radius: 6px;
+    padding: 3px 7px;
+    border-radius: 5px;
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
     user-select: none;
   }
   .mode-tab-btn:hover {
@@ -2915,15 +3140,15 @@
   .rust-core-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 11px;
+    gap: 2px;
+    font-size: 10px;
     font-weight: 700;
     color: #ff9e64;
     background: rgba(255,158,100,0.12);
     border: 1px solid rgba(255,158,100,0.3);
-    padding: 4px 9px;
-    border-radius: 12px;
-    letter-spacing: 0.3px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.2px;
     cursor: default;
     user-select: none;
   }
@@ -3277,15 +3502,15 @@
     background: transparent;
     border: none;
     color: var(--muted);
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 3px 9px;
+    padding: 3px 6px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
   }
   .doc-mode-tab:hover {
     color: var(--fg);
@@ -3684,98 +3909,103 @@
         <button id="explorerCollapseAll" class="sb-header-btn" title="Collapse All Folders">▲</button>
       </div>
     </div>
+    <!-- Sidebar Quick Search & Filter -->
+    <div id="sidebarSearchWrap" class="sb-search-wrap">
+      <span style="font-size:11px;color:var(--muted);user-select:none;">🔍</span>
+      <input type="text" id="sidebarSearchInput" placeholder="Filter files... (Ctrl+Shift+F)" spellcheck="false" autocomplete="off" />
+      <button id="sidebarSearchClearBtn" class="sb-search-clear" style="display:none;" title="Clear filter">✕</button>
+    </div>
     <div id="sidebarNote"></div>
     <div id="fileTree"></div>
   </div>
   <div id="mainPane">
   <div id="toolbar">
-    <button id="sidebarToggleBtn" title="Show/hide file explorer (Ctrl+B)">☰</button>
+    <!-- Left Zone: Navigation & Mode Switchers -->
+    <div class="tb-group">
+      <button id="sidebarToggleBtn" title="Show/hide file explorer (Ctrl+B)">☰</button>
 
-    <!-- Unified 3-Mode Switcher -->
-    <div class="mode-switcher-container" id="modeSwitcher">
-      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
-      <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
-      <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
-    </div>
+      <!-- Unified 3-Mode Switcher -->
+      <div class="mode-switcher-container" id="modeSwitcher">
+        <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
+        <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
+        <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
+      </div>
 
-    <!-- Rust Engine Badge -->
-    <span id="rustCoreBadge" class="rust-core-badge" title="Accelerated by native Rust engine (mdviewer_core) with SIMD & Rayon">⚡ Rust Core</span>
+      <!-- Rust Engine Badge -->
+      <span id="rustCoreBadge" class="rust-core-badge" title="Accelerated by native Rust engine (mdviewer_core) with SIMD & Rayon">⚡ Rust</span>
 
-    <div class="sep"></div>
+      <!-- Outline Mode Controls (visible in Outline Mode) -->
+      <div id="outlineToolbarGroup" style="display:inline-flex;align-items:center;gap:3px;">
+        <div class="sep"></div>
+        <label class="filebtn" for="fileInput" style="padding:3px 7px;font-size:10.5px;">Open</label>
+        <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+        <button id="collapseAll" style="padding:3px 6px;font-size:10.5px;" title="Collapse all outline items">Collapse</button>
+        <button id="expandAll" style="padding:3px 6px;font-size:10.5px;" title="Expand all outline items">Expand</button>
+        <div class="lvlgroup" id="lvlGroup">
+          <button data-lvl="1">H1</button>
+          <button data-lvl="2">H2</button>
+          <button data-lvl="3">H3</button>
+        </div>
+      </div>
 
-    <!-- Outline Mode Toolbar Group -->
-    <div id="outlineToolbarGroup" style="display:inline-flex;align-items:center;gap:6px;">
-      <label class="filebtn" for="fileInput">Open .md file</label>
-      <input type="file" id="fileInput" accept=".md,.markdown,.txt">
-      <button id="collapseAll">Collapse All</button>
-      <button id="expandAll">Expand All</button>
-      <span style="color:#a9b1d6;font-size:12px;font-weight:500;">Level:</span>
-      <div class="lvlgroup" id="lvlGroup">
-        <button data-lvl="1">H1</button>
-        <button data-lvl="2">H2</button>
-        <button data-lvl="3">H3</button>
-        <button data-lvl="4">H4</button>
-        <button data-lvl="5">H5</button>
-        <button data-lvl="6">H6</button>
+      <!-- Document Mode Sub-view tabs (visible in Document Mode) -->
+      <div id="docToolbarGroup" style="display:none;align-items:center;gap:4px;">
+        <div class="sep"></div>
+        <div class="doc-view-mode-tabs" id="docViewModeTabs">
+          <button id="docSubViewReadingBtn" class="doc-mode-tab active" title="Reading View [Ctrl+E]">📖 Reading</button>
+          <button id="docSubViewLiveBtn" class="doc-mode-tab" title="Live Preview [Ctrl+E]">⚡ Live Preview</button>
+          <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Edit Note [Ctrl+E]">✏️ Edit</button>
+        </div>
+        <!-- Hidden containers so element IDs remain available for listeners without cluttering the toolbar -->
+        <div id="docReadingToolsGroup" style="display:none !important;">
+          <button id="docDoublePageBtn" style="display:none;"></button>
+          <button id="docWideLayoutBtn" style="display:none;"></button>
+          <button id="docToggleTocBtn" style="display:none;"></button>
+          <button id="docCheckAllBtn" style="display:none;"></button>
+          <button id="docUncheckAllBtn" style="display:none;"></button>
+        </div>
+        <div id="docEditingToolsGroup" style="display:none !important;">
+          <button id="docTopSaveBtn" style="display:none;"></button>
+          <span id="docTopSaveStatus" style="display:none;"></span>
+          <button id="docToggleTOCInEditorBtn" style="display:none;"></button>
+        </div>
       </div>
     </div>
 
-    <!-- Document Mode Toolbar Group -->
-    <div id="docToolbarGroup" style="display:none;align-items:center;gap:6px;">
-      <!-- Obsidian-style Sub-View Switcher -->
-      <div class="doc-view-mode-tabs" id="docViewModeTabs">
-        <button id="docSubViewReadingBtn" class="doc-mode-tab active" title="Reading View — Rendered GitHub prose & double-page [Ctrl+E]">📖 Reading</button>
-        <button id="docSubViewLiveBtn" class="doc-mode-tab" title="Live Preview — Obsidian-style split editor with real-time live preview [Ctrl+E]">⚡ Live Preview</button>
-        <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Edit — Full-width focused markdown editor">✏️ Edit</button>
-      </div>
-
-      <div class="sep"></div>
-
-      <!-- Reading View Controls (visible when reading mode is active) -->
-      <div id="docReadingToolsGroup" style="display:inline-flex;align-items:center;gap:6px;">
-        <button id="docDoublePageBtn" class="doc-tool-btn" title="Toggle Double-Page Book Reader">📖 Double-Page</button>
-        <button id="docWideLayoutBtn" class="doc-tool-btn" title="Toggle Wide Edge-to-Edge Layout">↔ Wide</button>
-        <button id="docCheckAllBtn" class="doc-tool-btn" title="Check All Checklists">☑ Check All</button>
-        <button id="docUncheckAllBtn" class="doc-tool-btn" title="Uncheck All Checklists">☐ Uncheck All</button>
-        <button id="docToggleTocBtn" class="doc-tool-btn" title="Toggle Table of Contents">📑 TOC</button>
-      </div>
-
-      <!-- Editing View Controls (visible when live or source mode is active) -->
-      <div id="docEditingToolsGroup" style="display:none;align-items:center;gap:6px;">
-        <button id="docTopSaveBtn" class="doc-tool-btn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;" title="Save file to disk [Ctrl+S]">💾 Save</button>
-        <span id="docTopSaveStatus" class="doc-status-pill saved">✓ Saved</span>
-        <button id="docToggleTOCInEditorBtn" class="doc-tool-btn" title="Toggle Table of Contents Sidebar">📑 TOC</button>
+    <!-- Center Zone: Prestigious Centered Search Bar -->
+    <div class="tb-group-center">
+      <div id="searchBox">
+        <div class="search-input-wrap">
+          <span style="font-size:11px;opacity:0.6;user-select:none;">🔍</span>
+          <input type="text" id="searchInput" placeholder="Find in note or vault (Ctrl+F)..." spellcheck="false" autocomplete="off" />
+          <span id="searchCount"></span>
+          <button id="searchPrevBtn" title="Previous match (Shift+Enter)">▲</button>
+          <button id="searchNextBtn" title="Next match (Enter)">▼</button>
+          <button id="searchClearBtn" title="Clear search (Esc)">✕</button>
+        </div>
+        <div class="scope-group" id="searchScopeGroup">
+          <button id="scopeFileBtn" class="active" title="Search in current file (Ctrl+F)">File</button>
+          <button id="scopeAllBtn" title="Search workspace (Ctrl+Shift+F)">All</button>
+        </div>
+        <div id="searchResults"></div>
       </div>
     </div>
 
-    <div class="sep"></div>
-    <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:6px;" title="Explore and manage AI supplements across document outlines">✨ AI Notes <span id="aiToolbarCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;">0</span></button>
-    <button id="terminalToggleBtn" title="Toggle In-Browser Sandboxed Terminal (`)">🖥️ Terminal</button>
-
-    <div class="sep"></div>
-    <div id="zoomGroup">
-      <button id="zoomOut" title="Decrease text size">A−</button>
-      <span id="zoomLevel">100%</span>
-      <button id="zoomIn" title="Increase text size">A+</button>
-      <button id="zoomReset" title="Reset zoom">Reset</button>
-    </div>
-    <div class="sep"></div>
-    <div id="searchBox">
-      <div class="scope-group" id="searchScopeGroup">
-        <button id="scopeFileBtn" class="active" title="Search in current file (Ctrl+F)">File</button>
-        <button id="scopeAllBtn" title="Search workspace (Ctrl+Shift+F)">All</button>
+    <!-- Right Zone: AI Notes, Terminal, Zoom & Active File Pill -->
+    <div class="tb-group">
+      <button id="aiExplorerToolbarBtn" style="background:rgba(122,162,247,0.15);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore and manage AI supplements">✨ AI <span id="aiToolbarCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 5px;border-radius:8px;font-size:10px;">0</span></button>
+      <button id="terminalToggleBtn" title="Toggle In-Browser Sandboxed Terminal (`)">🖥️ Term</button>
+      <div id="zoomGroup">
+        <button id="zoomOut" title="Decrease font">A−</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomIn" title="Increase font">A+</button>
+        <button id="zoomReset" style="display:none;" title="Reset zoom">Reset</button>
       </div>
-      <div class="search-input-wrap">
-        <input type="text" id="searchInput" placeholder="Find (Ctrl+F)..." spellcheck="false" autocomplete="off" />
-        <span id="searchCount"></span>
-        <button id="searchPrevBtn" title="Previous match (Shift+Enter)">▲</button>
-        <button id="searchNextBtn" title="Next match (Enter)">▼</button>
-        <button id="searchClearBtn" title="Clear search (Esc)">✕</button>
+      <div class="tb-file-pill" title="Current file">
+        <span id="fname"></span>
+        <span id="stats"></span>
       </div>
-      <div id="searchResults"></div>
     </div>
-    <div id="fname"></div>
-    <div id="stats"></div>
   </div>
   <div id="scroller">
     <div id="dropzone">Drop a Markdown file here, or click "Open .md file"</div>
@@ -5523,10 +5753,13 @@
     if(isFlashcardMode){ changeFcFont(-1); return; }
     zoomIdx = Math.max(0, zoomIdx - 1); applyZoom();
   });
-  document.getElementById('zoomReset').addEventListener('click', ()=>{
-    if(isFlashcardMode){ resetFcFont(); return; }
-    zoomIdx = 3; applyZoom();
-  });
+  const zoomResetBtn = document.getElementById('zoomReset');
+  if (zoomResetBtn) {
+    zoomResetBtn.addEventListener('click', ()=>{
+      if(isFlashcardMode){ resetFcFont(); return; }
+      zoomIdx = 3; applyZoom();
+    });
+  }
   scroller.addEventListener('wheel', (e)=>{
     if(e.ctrlKey){
       e.preventDefault();
@@ -5943,6 +6176,7 @@
 
   function buildNodeDOM(node){
     const wrapper = document.createElement('div');
+    wrapper.className = 'tree-node-wrap';
     const row = createRow(node);
     wrapper.appendChild(row);
     if(node.kind === 'directory'){
@@ -6356,6 +6590,94 @@
       expandedFolders.clear();
       saveExpandedFolders();
       initSidebar();
+    });
+  }
+
+  // --- Sidebar Quick Search & File Filter ---
+  const sidebarSearchInput = document.getElementById('sidebarSearchInput');
+  const sidebarSearchClearBtn = document.getElementById('sidebarSearchClearBtn');
+
+  if (sidebarSearchInput) {
+    let sbFilterTimer = null;
+    sidebarSearchInput.addEventListener('input', () => {
+      clearTimeout(sbFilterTimer);
+      sbFilterTimer = setTimeout(() => {
+        const q = sidebarSearchInput.value.trim().toLowerCase();
+        if (sidebarSearchClearBtn) {
+          sidebarSearchClearBtn.style.display = q ? 'inline-block' : 'none';
+        }
+        
+        const allWraps = fileTree.querySelectorAll('.tree-node-wrap');
+        const allRows = fileTree.querySelectorAll('.tree-row');
+        
+        if (!q) {
+          allWraps.forEach(w => w.style.display = '');
+          allRows.forEach(r => {
+            r.style.display = '';
+            const lbl = r.querySelector('.tree-label');
+            if (lbl && lbl.dataset.rawText) {
+              lbl.textContent = lbl.dataset.rawText;
+            }
+          });
+          return;
+        }
+
+        // Hide all node wrappers initially
+        allWraps.forEach(w => w.style.display = 'none');
+
+        // Reveal matched rows and all their ancestor wrappers and child containers
+        allRows.forEach(r => {
+          const lbl = r.querySelector('.tree-label');
+          if (!lbl) return;
+          if (!lbl.dataset.rawText) lbl.dataset.rawText = lbl.textContent;
+          const text = lbl.dataset.rawText;
+          const path = (r.dataset.path || '').toLowerCase();
+          
+          if (text.toLowerCase().includes(q) || path.includes(q)) {
+            if (text.toLowerCase().includes(q)) {
+              const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+              lbl.innerHTML = escapeHtml(text).replace(regex, '<mark style="background:rgba(250,179,135,0.35);color:#fab387;border-radius:2px;padding:0 2px;">$1</mark>');
+            } else {
+              lbl.textContent = text;
+            }
+            r.style.display = '';
+
+            let curr = r.parentElement;
+            while (curr && curr !== fileTree) {
+              if (curr.classList.contains('tree-node-wrap')) {
+                curr.style.display = '';
+              } else if (curr.tagName === 'DIV' && curr.parentElement && curr.parentElement.classList.contains('tree-node-wrap')) {
+                curr.style.display = 'block';
+                const parentRow = curr.parentElement.querySelector(':scope > .tree-row');
+                if (parentRow) {
+                  const arrow = parentRow.querySelector('.tree-arrow');
+                  if (arrow) arrow.textContent = '▾';
+                }
+              }
+              curr = curr.parentElement;
+            }
+          } else {
+            lbl.textContent = text;
+          }
+        });
+      }, 40);
+    });
+
+    if (sidebarSearchClearBtn) {
+      sidebarSearchClearBtn.addEventListener('click', () => {
+        sidebarSearchInput.value = '';
+        sidebarSearchClearBtn.style.display = 'none';
+        initSidebar();
+        sidebarSearchInput.focus();
+      });
+    }
+
+    sidebarSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        sidebarSearchInput.value = '';
+        if (sidebarSearchClearBtn) sidebarSearchClearBtn.style.display = 'none';
+        initSidebar();
+      }
     });
   }
 
@@ -16752,11 +17074,11 @@
         const badge = document.getElementById('rustCoreBadge');
         if (badge) {
           if (data.rust && data.rust.available) {
-            badge.innerHTML = `⚡ Rust Core`;
+            badge.innerHTML = `⚡ Rust`;
             badge.title = `Accelerated by native Rust engine (${data.rust.features ? data.rust.features.join(', ') : 'Rayon + SIMD'}). Standalone Library: ${data.library_dir}`;
             badge.style.display = 'inline-flex';
           } else {
-            badge.innerHTML = `🐍 Python Core`;
+            badge.innerHTML = `🐍 Python`;
             badge.title = `Running on Standard Python engine. Standalone Library: ${data.library_dir}`;
             badge.style.display = 'inline-flex';
             badge.style.borderColor = '#7aa2f7';
