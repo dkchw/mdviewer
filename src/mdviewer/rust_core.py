@@ -120,3 +120,55 @@ def rust_import_folder(src_dir: str, dst_dir: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         sys.stderr.write(f"Rust import_folder error: {e}\n")
     return None
+
+def rust_tree(dir_path: str) -> Optional[Dict[str, Any]]:
+    """Ultra-fast directory scanning in Rust."""
+    bin_path = find_rust_binary()
+    if not bin_path:
+        return None
+    try:
+        proc = subprocess.run([bin_path, "tree", dir_path], capture_output=True, text=True, timeout=10)
+        if proc.returncode == 0:
+            return json.loads(proc.stdout)
+    except Exception as e:
+        sys.stderr.write(f"Rust tree error: {e}\n")
+    return None
+
+def rust_file_meta(file_path: str) -> Optional[Dict[str, Any]]:
+    """Fast line count and massive file detection in Rust."""
+    bin_path = find_rust_binary()
+    if not bin_path:
+        return None
+    try:
+        proc = subprocess.run([bin_path, "meta", file_path], capture_output=True, text=True, timeout=10)
+        if proc.returncode == 0:
+            return json.loads(proc.stdout)
+    except Exception as e:
+        sys.stderr.write(f"Rust file_meta error: {e}\n")
+    return None
+
+def rust_read_chunk(file_path: str, start_line: int = 1, count: int = 1000) -> Optional[Dict[str, Any]]:
+    """Streamed chunk reader in Rust (reads range of lines without memory blowup)."""
+    bin_path = find_rust_binary()
+    if not bin_path:
+        return None
+    try:
+        proc = subprocess.run([bin_path, "chunk", file_path, str(start_line), str(count)], capture_output=True, text=True, timeout=15)
+        if proc.returncode == 0:
+            return json.loads(proc.stdout)
+    except Exception as e:
+        sys.stderr.write(f"Rust read_chunk error: {e}\n")
+    return None
+
+def rust_count_directory(dir_path: str) -> Optional[Dict[str, Any]]:
+    """Parallel counting of markdown files and assets in Rust."""
+    bin_path = find_rust_binary()
+    if not bin_path:
+        return None
+    try:
+        proc = subprocess.run([bin_path, "count", dir_path], capture_output=True, text=True, timeout=15)
+        if proc.returncode == 0:
+            return json.loads(proc.stdout)
+    except Exception as e:
+        sys.stderr.write(f"Rust count error: {e}\n")
+    return None

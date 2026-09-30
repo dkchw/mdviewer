@@ -35,12 +35,14 @@ except ImportError:
 try:
     from .rust_core import (
         is_rust_available, get_rust_info, rust_index_library,
-        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder
+        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder,
+        rust_tree, rust_file_meta, rust_read_chunk, rust_count_directory
     )
 except ImportError:
     from mdviewer.rust_core import (
         is_rust_available, get_rust_info, rust_index_library,
-        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder
+        rust_parse_file, rust_render_markdown, rust_search_library, rust_import_folder,
+        rust_tree, rust_file_meta, rust_read_chunk, rust_count_directory
     )
 
 import unicodedata
@@ -2159,8 +2161,53 @@ def resolve_file_path(raw_path: str, custom_prefix: Optional[str] = None) -> tup
 
     return None, None
 
+def find_dolphin_bin() -> Optional[str]:
+    """Finds dolphin file manager executable on the system or host."""
+    cand = shutil.which("dolphin")
+    if cand:
+        return cand
+    import glob
+    matches = glob.glob("/nix/store/*-dolphin-*/bin/dolphin")
+    if matches:
+        return matches[0]
+    for p in ("/run/current-system/sw/bin/dolphin", "/usr/bin/dolphin"):
+        if os.path.exists(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+def trigger_open_folder(path: str) -> dict:
+    """Triggers Dolphin or default file manager on the system/host to open the specified folder."""
+    target = path.strip() if path else ""
+    if not target:
+        target = os.path.expanduser("~")
+    
+    resolved, _ = resolve_fs_path(target)
+    final_path = resolved if resolved and os.path.exists(resolved) else target
+    
+    dolphin = find_dolphin_bin()
+    if dolphin:
+        try:
+            subprocess.Popen([dolphin, final_path], start_new_session=True)
+            return {"status": "ok", "app": "dolphin", "path": final_path, "message": f"Opened in Dolphin: {final_path}"}
+        except Exception as e:
+            pass
+
+    xdg = shutil.which("xdg-open")
+    if xdg:
+        try:
+            subprocess.Popen([xdg, final_path], start_new_session=True)
+            return {"status": "ok", "app": "xdg-open", "path": final_path, "message": f"Opened with xdg-open: {final_path}"}
+        except Exception:
+            pass
+
+    return {"status": "error", "message": "Neither Dolphin nor xdg-open could be launched"}
+
 def count_directory_markdown_files(directory: str) -> tuple[int, int]:
-    """Fast scan of markdown files and assets in directory."""
+    """Fast scan of markdown files and assets in directory accelerated by Rust."""
+    if is_rust_available():
+        res = rust_count_directory(directory)
+        if res and res.get("status") == "ok":
+            return res.get("md_count", 0), res.get("asset_count", 0)
     md_count = 0
     asset_count = 0
     try:
@@ -2778,6 +2825,12 @@ def main():
                     self.end_headers()
                     return
 
+                if is_rust_available() and os.path.isdir(target_dir):
+                    rust_res = rust_tree(target_dir)
+                    if rust_res and rust_res.get("status") == "ok":
+                        self.send_json(200, rust_res.get("entries", []))
+                        return
+
                 entries = []
                 if os.path.isdir(target_dir):
                     try:
@@ -2785,7 +2838,7 @@ def main():
                             if entry.name.startswith('.'):
                                 continue
                             if entry.is_dir():
-                                if entry.name.lower() in ('node_modules', '.obsidian', '.vscode', '.idea'):
+                                if entry.name.lower() in ('node_modules', '.obsidian', '.vscode', '.idea', 'target', '.git'):
                                     continue
                                 entries.append({"name": entry.name, "kind": "directory"})
                             elif entry.is_file():
@@ -2794,10 +2847,76 @@ def main():
                     except Exception as e:
                         pass
                 
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps(entries).encode('utf-8'))
+                self.send_json(200, entries)
+
+            elif parsed.path == '/api/file/meta':
+                query = urllib.parse.parse_qs(parsed.query)
+                rel_path = query.get('path', [''])[0]
+                target_file = os.path.abspath(rel_path) if rel_path.startswith('/') else os.path.abspath(os.path.join(directory, rel_path))
+                if not workspace_state.is_path_allowed(target_file):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+
+                if is_rust_available() and os.path.isfile(target_file):
+                    meta_res = rust_file_meta(target_file)
+                    if meta_res and meta_res.get("status") == "ok":
+                        self.send_json(200, meta_res)
+                        return
+
+                try:
+                    size = os.path.getsize(target_file)
+                    with open(target_file, 'r', encoding='utf-8', errors='replace') as f:
+                        lines_cnt = sum(1 for _ in f)
+                    is_massive = lines_cnt > 20000 or size > 2 * 1024 * 1024
+                    self.send_json(200, {
+                        "status": "ok",
+                        "file_path": target_file,
+                        "size_bytes": size,
+                        "total_lines": lines_cnt,
+                        "is_massive": is_massive,
+                        "recommended_chunk_size": 1000 if is_massive else lines_cnt
+                    })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/file/chunk':
+                query = urllib.parse.parse_qs(parsed.query)
+                rel_path = query.get('path', [''])[0]
+                start_l = int(query.get('start', ['1'])[0])
+                count_l = int(query.get('count', ['1000'])[0])
+                target_file = os.path.abspath(rel_path) if rel_path.startswith('/') else os.path.abspath(os.path.join(directory, rel_path))
+                if not workspace_state.is_path_allowed(target_file):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+
+                if is_rust_available() and os.path.isfile(target_file):
+                    chunk_res = rust_read_chunk(target_file, start_l, count_l)
+                    if chunk_res and chunk_res.get("status") == "ok":
+                        self.send_json(200, chunk_res)
+                        return
+
+                try:
+                    with open(target_file, 'r', encoding='utf-8', errors='replace') as f:
+                        chunk_lines = []
+                        total_cnt = 0
+                        for idx, l in enumerate(f):
+                            total_cnt += 1
+                            ln = idx + 1
+                            if start_l <= ln < start_l + count_l:
+                                chunk_lines.append(l.rstrip('\r\n'))
+                    self.send_json(200, {
+                        "status": "ok",
+                        "file_path": target_file,
+                        "start_line": start_l,
+                        "count": len(chunk_lines),
+                        "total_lines": total_cnt,
+                        "has_more": start_l + len(chunk_lines) <= total_cnt,
+                        "content": "\n".join(chunk_lines)
+                    })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
                 
             elif parsed.path == '/api/file':
                 query = urllib.parse.parse_qs(parsed.query)
@@ -3853,6 +3972,19 @@ def main():
                         "default_file": first_file,
                         "linked_folders": workspace_state.get_linked_folders()
                     })
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/workspace/open_dolphin':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8')) if post_data else {}
+                    target_path = payload.get('path', '').strip()
+                    if not target_path:
+                        target_path = workspace_state.get_directory()
+                    res = trigger_open_folder(target_path)
+                    self.send_json(200 if res.get("status") == "ok" else 500, res)
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
 

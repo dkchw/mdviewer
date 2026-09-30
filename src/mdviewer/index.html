@@ -3388,10 +3388,14 @@
     font-size: 13.5px;
     line-height: 22px;
     tab-size: 2;
-    white-space: pre-wrap;
-    word-wrap: break-word;
+    white-space: pre;
+    overflow-x: auto;
     overflow-y: auto;
     caret-color: #7aa2f7;
+  }
+  .doc-textarea.wrap-lines {
+    white-space: pre-wrap;
+    word-wrap: break-word;
   }
   .doc-textarea::selection {
     background: rgba(122, 162, 247, 0.35);
@@ -3408,13 +3412,47 @@
   }
   .doc-live-body-container {
     flex: 1 1 auto;
-    overflow-y: auto;
-    padding: 24px 32px 80px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+  }
+  .doc-live-gutter {
+    width: 44px;
+    flex-shrink: 0;
+    background: #14151f;
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    overflow: hidden;
+    user-select: none;
+  }
+  .doc-live-line-numbers {
+    display: flex;
+    flex-direction: column;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 22px;
+    color: #444b6a;
+    text-align: right;
+    padding-right: 8px;
+  }
+  .massive-shield-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, rgba(122,162,247,0.12) 0%, rgba(187,154,247,0.08) 100%);
+    border-bottom: 1px solid rgba(122,162,247,0.3);
+    padding: 6px 16px;
+    font-size: 12px;
+    flex-shrink: 0;
+    z-index: 10;
   }
   #docLiveBody {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    overflow-y: auto;
+    padding: 16px 28px 80px;
     max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   .doc-editor-status-bar {
@@ -3559,6 +3597,7 @@
           <div id="workspaceLinkedFoldersList"></div>
           <div class="sb-menu-divider"></div>
           <div class="sb-menu-action" id="menuActionLinkFolder"><span>🔗</span> <span>Link Existing Folder...</span></div>
+          <div class="sb-menu-action" id="menuActionOpenDolphin"><span>🐬</span> <span>Open in Dolphin</span></div>
           <div class="sb-menu-action" id="menuActionImportAnki"><span>📥</span> <span>Import Anki Deck...</span></div>
           <div class="sb-menu-action" id="menuActionDefaultLib"><span>🏠</span> <span>Central Library</span></div>
         </div>
@@ -3580,7 +3619,7 @@
 
     <!-- Unified 3-Mode Switcher -->
     <div class="mode-switcher-container" id="modeSwitcher">
-      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
+      <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Line-by-Line & Outline Reader [1]">📑 Line-by-Line</button>
       <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
       <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
     </div>
@@ -3748,6 +3787,10 @@
             </div>
 
             <div class="doc-editor-btn-group">
+              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;margin-right:4px;" title="Toggle word wrapping">
+                <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
+                <span>Wrap</span>
+              </label>
               <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;margin-right:6px;">
                 <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
                 <span>Auto-save</span>
@@ -3755,6 +3798,26 @@
               <span id="edSaveStatusPill" class="doc-status-pill saved">✓ Saved</span>
               <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:3px 10px;" title="Save to disk (Ctrl+S)">💾 Save</button>
               <button class="doc-tool-btn" id="edBackToReadingBtn" title="Back to Reading Mode (Ctrl+E)">📖 Read</button>
+            </div>
+          </div>
+
+          <!-- Massive File Shield Banner (Protects from 1M Line Files) -->
+          <div id="massiveFileShieldBanner" class="massive-shield-banner" style="display:none;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:16px;">🛡️</span>
+              <div>
+                <strong style="color:#7aa2f7;">Massive File Shield Active</strong>
+                <span style="color:var(--muted);font-size:11.5px;margin-left:6px;">
+                  Showing lines <span id="shieldRangeStart" style="font-weight:700;color:var(--fg);">1</span>–<span id="shieldRangeEnd" style="font-weight:700;color:var(--fg);">1,000</span> of <span id="shieldTotalLines" style="font-weight:700;color:#7aa2f7;">1,000,000</span> (Document windowing active)
+                </span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="fc-btn-secondary" id="shieldPrevChunkBtn" style="padding:2px 8px;font-size:11px;" title="Previous 1,000 lines">◀ Prev 1k</button>
+              <button type="button" class="fc-btn-secondary" id="shieldNextChunkBtn" style="padding:2px 8px;font-size:11px;" title="Next 1,000 lines">Next 1k ▶</button>
+              <input type="number" id="shieldJumpLineInput" class="ai-modal-input" placeholder="Line #" style="width:70px;padding:2px 6px;font-size:11px;" />
+              <button type="button" class="fc-btn-secondary" id="shieldJumpBtn" style="padding:2px 8px;font-size:11px;">Jump</button>
+              <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Line-by-Line Outline View">⚡ Line-by-Line (60 FPS Full)</button>
             </div>
           </div>
 
@@ -3778,11 +3841,15 @@
                   <span style="font-size:14px;">⚡</span> Live Preview (Obsidian Engine)
                 </span>
                 <div style="display:flex;align-items:center;gap:8px;">
+                  <button type="button" id="docToggleLiveLineNums" class="fc-btn-secondary" style="font-size:10.5px;padding:2px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Toggle Line Numbers in Live Preview"># Lines</button>
                   <span id="docLiveStats" style="font-size:11px;color:var(--muted);">0 words</span>
                   <span id="docLiveRenderSpeed" class="rust-speed-badge" style="font-size:10.5px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:1px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ Rust 0ms</span>
                 </div>
               </div>
               <div id="docLiveBodyContainer" class="doc-live-body-container">
+                <div id="docLiveGutter" class="doc-live-gutter" style="display:block;">
+                  <div id="docLiveLineNumbers" class="doc-live-line-numbers">1</div>
+                </div>
                 <div id="docLiveBody" class="md-body markdown-body"></div>
               </div>
             </div>
@@ -4907,6 +4974,7 @@
         <div style="display:flex;gap:6px;">
           <input type="text" id="importFolderPathInput" class="ai-modal-input" placeholder="e.g. /home/dkchw/Documents/Notes or ~/Notes..." style="flex:1;font-size:12.5px;font-family:monospace;" />
           <button type="button" id="workspaceVerifyBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 12px;white-space:nowrap;">Check</button>
+          <button type="button" id="workspaceOpenDolphinBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:0 10px;white-space:nowrap;display:flex;align-items:center;gap:4px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Open folder in Dolphin file manager"><span>🐬 Open Dolphin</span></button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">Enter any folder path on your computer. mdviewer will work directly in it without copying or duplicating files.</div>
       </div>
@@ -9307,27 +9375,102 @@
     }
   });
 
-  // --- Tab state & Navigation Management ---
-  async function openFile(filePath, options = {}){
-    window.openFile = openFile;
-    if(!filePath) return;
-    try {
-      const res = await fetch('/api/file?path=' + encodeURIComponent(filePath));
-      if(!res.ok) throw new Error('File not found: ' + filePath);
-      const text = await res.text();
-      currentFilePath = filePath;
+  // --- Massive File Shield & Document Windowing (Supports 1M+ Lines) ---
+  let massiveShieldState = {
+    active: false,
+    filePath: '',
+    totalLines: 0,
+    startLine: 1,
+    chunkSize: 1000
+  };
 
-      loadText(text, filePath);
-      await setActiveTreeRow(filePath);
+  async function checkAndApplyMassiveShield(filePath) {
+    try {
+      const res = await fetch('/api/file/meta?path=' + encodeURIComponent(filePath));
+      if (!res.ok) return { is_massive: false, total_lines: 0 };
+      return await res.json();
+    } catch(e) {
+      return { is_massive: false, total_lines: 0 };
+    }
+  }
+
+  async function loadShieldChunk(start) {
+    if (!massiveShieldState.filePath) return;
+    const total = massiveShieldState.totalLines;
+    const chunk = massiveShieldState.chunkSize;
+    start = Math.max(1, Math.min(total, start));
+    const end = Math.min(total, start + chunk - 1);
+    massiveShieldState.startLine = start;
+
+    try {
+      const res = await fetch(`/api/file/chunk?path=${encodeURIComponent(massiveShieldState.filePath)}&start=${start}&count=${chunk}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const banner = document.getElementById('massiveFileShieldBanner');
+      const elStart = document.getElementById('shieldRangeStart');
+      const elEnd = document.getElementById('shieldRangeEnd');
+      const elTotal = document.getElementById('shieldTotalLines');
+      if (banner) banner.style.display = 'flex';
+      if (elStart) elStart.textContent = start.toLocaleString();
+      if (elEnd) elEnd.textContent = end.toLocaleString();
+      if (elTotal) elTotal.textContent = total.toLocaleString();
 
       const docTextarea = document.getElementById('docTextarea');
       if (docTextarea) {
-        docTextarea.value = text;
+        docTextarea.value = data.content || '';
         if (typeof updateDocLineNumbers === 'function') updateDocLineNumbers();
         if (typeof updateEditorStats === 'function') updateEditorStats();
         if (typeof setDocSaveStatus === 'function') setDocSaveStatus(true);
         if (typeof docSubMode !== 'undefined' && docSubMode === 'live' && typeof renderLivePreview === 'function') {
           renderLivePreview();
+        }
+      }
+      if (typeof loadText === 'function') {
+        loadText(data.content || '', massiveShieldState.filePath);
+      }
+    } catch(err) {
+      console.error('Failed to load massive chunk:', err);
+    }
+  }
+
+  // --- Tab state & Navigation Management ---
+  async function openFile(filePath, options = {}){
+    window.openFile = openFile;
+    if(!filePath) return;
+    try {
+      currentFilePath = filePath;
+      await setActiveTreeRow(filePath);
+
+      const banner = document.getElementById('massiveFileShieldBanner');
+      const meta = await checkAndApplyMassiveShield(filePath);
+
+      if (meta && meta.is_massive) {
+        massiveShieldState.active = true;
+        massiveShieldState.filePath = filePath;
+        massiveShieldState.totalLines = meta.total_lines;
+        massiveShieldState.startLine = 1;
+        await loadShieldChunk(1);
+        if (banner) banner.style.display = 'flex';
+      } else {
+        massiveShieldState.active = false;
+        if (banner) banner.style.display = 'none';
+
+        const res = await fetch('/api/file?path=' + encodeURIComponent(filePath));
+        if(!res.ok) throw new Error('File not found: ' + filePath);
+        const text = await res.text();
+
+        loadText(text, filePath);
+
+        const docTextarea = document.getElementById('docTextarea');
+        if (docTextarea) {
+          docTextarea.value = text;
+          if (typeof updateDocLineNumbers === 'function') updateDocLineNumbers();
+          if (typeof updateEditorStats === 'function') updateEditorStats();
+          if (typeof setDocSaveStatus === 'function') setDocSaveStatus(true);
+          if (typeof docSubMode !== 'undefined' && docSubMode === 'live' && typeof renderLivePreview === 'function') {
+            renderLivePreview();
+          }
         }
       }
       if(typeof loadCurrentFileAiCards === 'function'){
@@ -14265,7 +14408,10 @@
 
     try {
       let payload = {};
-      if (filePath) {
+      if (massiveShieldState && massiveShieldState.active) {
+        const textarea = document.getElementById('docTextarea');
+        payload.content = textarea ? textarea.value : (lines ? lines.join('\n') : '');
+      } else if (filePath) {
         payload.file = filePath;
       } else {
         payload.content = lines.join('\n');
@@ -14289,7 +14435,19 @@
         docSpeedBadge.textContent = `${engineLabel} ${data.render_duration_ms ? data.render_duration_ms.toFixed(1) : renderDur}ms`;
       }
 
-      docBody.innerHTML = data.html || '';
+      if (massiveShieldState && massiveShieldState.active) {
+        const start = massiveShieldState.startLine;
+        const total = massiveShieldState.totalLines;
+        const end = Math.min(total, start + massiveShieldState.chunkSize - 1);
+        docBody.innerHTML = `
+          <div style="background:rgba(122,162,247,0.12);border:1px solid rgba(122,162,247,0.3);border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
+            <span>🛡️ <strong style="color:#7aa2f7;">Massive File Shield Active</strong>: Showing lines ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()}.</span>
+            <button type="button" class="fc-btn-secondary" onclick="setAppMode('outline')" style="font-size:11px;padding:2px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);">⚡ Line-by-Line (60 FPS Full)</button>
+          </div>
+        ` + (data.html || '');
+      } else {
+        docBody.innerHTML = data.html || '';
+      }
 
       const rawText = docBody.innerText || '';
       const words = rawText.trim() ? rawText.trim().split(/\s+/).length : 0;
@@ -14586,14 +14744,83 @@
   function updateDocLineNumbers() {
     const textarea = document.getElementById('docTextarea');
     const lineNumbersEl = document.getElementById('docLineNumbers');
-    if (!textarea || !lineNumbersEl) return;
+    const gutter = document.getElementById('docGutter');
+    if (!textarea || !lineNumbersEl || !gutter) return;
+
     const text = textarea.value;
     const count = text ? text.split('\n').length : 1;
+    const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
+
+    // Dynamically resize gutter width for large line numbers
+    const maxNum = baseLine + count;
+    const digits = String(maxNum).length;
+    const neededWidth = Math.max(44, digits * 8 + 18);
+    gutter.style.width = `${neededWidth}px`;
+
+    // Virtualized line rendering based on textarea scrollTop
+    const LINE_HEIGHT = 22;
+    const scrollTop = textarea.scrollTop;
+    const clientH = textarea.clientHeight || 500;
+    const startIdx = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - 5);
+    const visibleCount = Math.ceil(clientH / LINE_HEIGHT) + 12;
+    const endIdx = Math.min(count, startIdx + visibleCount);
+    const offsetY = startIdx * LINE_HEIGHT - scrollTop;
+
     let nums = '';
-    for (let i = 1; i <= count; i++) {
-      nums += `<div>${i}</div>`;
+    for (let i = startIdx; i < endIdx; i++) {
+      nums += `<div style="height:${LINE_HEIGHT}px;line-height:${LINE_HEIGHT}px;">${baseLine + i}</div>`;
     }
+    lineNumbersEl.style.transform = `translateY(${offsetY}px)`;
     lineNumbersEl.innerHTML = nums;
+  }
+
+  function updateLivePreviewLineNumbers() {
+    const liveGutter = document.getElementById('docLiveGutter');
+    const liveLineNums = document.getElementById('docLiveLineNumbers');
+    const liveBody = document.getElementById('docLiveBody');
+    const textarea = document.getElementById('docTextarea');
+    if (!liveGutter || !liveLineNums || !liveBody || !textarea) return;
+    if (liveGutter.style.display === 'none') return;
+
+    const rawLines = textarea.value.split('\n');
+    const children = Array.from(liveBody.children);
+    if (!children.length) {
+      liveLineNums.innerHTML = '<div style="padding-top:16px;">1</div>';
+      return;
+    }
+
+    const baseLine = (massiveShieldState && massiveShieldState.active) ? massiveShieldState.startLine : 1;
+    let currentLine = 0;
+    let markersHtml = '';
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      const topPos = child.offsetTop;
+
+      while (currentLine < rawLines.length && !rawLines[currentLine].trim()) {
+        currentLine++;
+      }
+
+      const displayLine = baseLine + currentLine;
+      markersHtml += `<div class="live-line-marker" style="position:absolute;top:${topPos}px;right:8px;font-size:11px;color:#565f89;user-select:none;font-family:ui-monospace,monospace;" title="Line ${displayLine}">${displayLine}</div>`;
+
+      if (child.tagName === 'PRE') {
+        const codeLines = child.textContent.split('\n').length;
+        currentLine += Math.max(1, codeLines);
+      } else if (child.tagName === 'UL' || child.tagName === 'OL') {
+        const lis = child.querySelectorAll('li').length;
+        currentLine += Math.max(1, lis);
+      } else if (child.tagName === 'TABLE') {
+        const rows = child.querySelectorAll('tr').length;
+        currentLine += Math.max(1, rows);
+      } else {
+        currentLine++;
+      }
+    }
+
+    liveLineNums.style.position = 'relative';
+    liveLineNums.style.height = `${liveBody.scrollHeight}px`;
+    liveLineNums.innerHTML = markersHtml;
   }
 
   function updateEditorStats() {
@@ -14704,6 +14931,10 @@
           }
         });
       });
+
+      if (typeof updateLivePreviewLineNumbers === 'function') {
+        updateLivePreviewLineNumbers();
+      }
 
     } catch (err) {
       console.error('Live preview error:', err);
@@ -15064,6 +15295,69 @@
       });
     }
 
+    // Wrap lines toggle
+    const wrapCb = document.getElementById('edWrapLinesCb');
+    if (wrapCb) {
+      wrapCb.addEventListener('change', () => {
+        if (wrapCb.checked) {
+          textarea.classList.add('wrap-lines');
+        } else {
+          textarea.classList.remove('wrap-lines');
+        }
+        updateDocLineNumbers();
+      });
+    }
+
+    // Live preview line numbers toggle
+    const toggleLiveNumsBtn = document.getElementById('docToggleLiveLineNums');
+    const liveGutter = document.getElementById('docLiveGutter');
+    if (toggleLiveNumsBtn && liveGutter) {
+      toggleLiveNumsBtn.addEventListener('click', () => {
+        const isHidden = liveGutter.style.display === 'none';
+        liveGutter.style.display = isHidden ? 'block' : 'none';
+        toggleLiveNumsBtn.style.color = isHidden ? '#7aa2f7' : 'var(--muted)';
+        toggleLiveNumsBtn.style.borderColor = isHidden ? 'rgba(122,162,247,0.4)' : 'var(--border)';
+        if (isHidden) {
+          updateLivePreviewLineNumbers();
+        }
+      });
+    }
+
+    // Massive File Shield Banner navigation buttons
+    const prevChunkBtn = document.getElementById('shieldPrevChunkBtn');
+    if (prevChunkBtn) {
+      prevChunkBtn.addEventListener('click', () => {
+        loadShieldChunk(massiveShieldState.startLine - massiveShieldState.chunkSize);
+      });
+    }
+    const nextChunkBtn = document.getElementById('shieldNextChunkBtn');
+    if (nextChunkBtn) {
+      nextChunkBtn.addEventListener('click', () => {
+        loadShieldChunk(massiveShieldState.startLine + massiveShieldState.chunkSize);
+      });
+    }
+    const jumpBtn = document.getElementById('shieldJumpBtn');
+    const jumpInput = document.getElementById('shieldJumpLineInput');
+    if (jumpBtn && jumpInput) {
+      const doJump = () => {
+        const val = parseInt(jumpInput.value, 10);
+        if (!isNaN(val) && val > 0) loadShieldChunk(val);
+      };
+      jumpBtn.addEventListener('click', doJump);
+      jumpInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          doJump();
+        }
+      });
+    }
+    const switchOutlineBtn = document.getElementById('shieldSwitchOutlineBtn');
+    if (switchOutlineBtn) {
+      switchOutlineBtn.addEventListener('click', () => {
+        setAppMode('outline');
+      });
+    }
+
     // Textarea input and stats handling
     textarea.addEventListener('input', () => {
       isDocEditorDirty = true;
@@ -15077,36 +15371,45 @@
     textarea.addEventListener('click', updateEditorStats);
     textarea.addEventListener('keyup', updateEditorStats);
 
+    const liveBody = document.getElementById('docLiveBody');
+
     // Synchronized scroll between Textarea, Gutter, and Live Preview
     textarea.addEventListener('scroll', () => {
-      if (gutter) gutter.scrollTop = textarea.scrollTop;
-      if (docSubMode === 'live' && liveBodyContainer && !isSyncingScroll) {
+      updateDocLineNumbers();
+      if (docSubMode === 'live' && liveBody && !isSyncingScroll) {
         isSyncingScroll = true;
         const maxSrc = textarea.scrollHeight - textarea.clientHeight;
         if (maxSrc > 0) {
           const ratio = textarea.scrollTop / maxSrc;
-          const maxTgt = liveBodyContainer.scrollHeight - liveBodyContainer.clientHeight;
-          liveBodyContainer.scrollTop = ratio * maxTgt;
+          const maxTgt = liveBody.scrollHeight - liveBody.clientHeight;
+          liveBody.scrollTop = ratio * maxTgt;
+          if (liveGutter) liveGutter.scrollTop = liveBody.scrollTop;
         }
         setTimeout(() => { isSyncingScroll = false; }, 40);
       }
     }, { passive: true });
 
-    if (liveBodyContainer) {
-      liveBodyContainer.addEventListener('scroll', () => {
+    if (liveBody) {
+      liveBody.addEventListener('scroll', () => {
+        if (liveGutter) liveGutter.scrollTop = liveBody.scrollTop;
         if (docSubMode === 'live' && !isSyncingScroll) {
           isSyncingScroll = true;
-          const maxSrc = liveBodyContainer.scrollHeight - liveBodyContainer.clientHeight;
+          const maxSrc = liveBody.scrollHeight - liveBody.clientHeight;
           if (maxSrc > 0) {
-            const ratio = liveBodyContainer.scrollTop / maxSrc;
+            const ratio = liveBody.scrollTop / maxSrc;
             const maxTgt = textarea.scrollHeight - textarea.clientHeight;
             textarea.scrollTop = ratio * maxTgt;
-            if (gutter) gutter.scrollTop = textarea.scrollTop;
+            updateDocLineNumbers();
           }
           setTimeout(() => { isSyncingScroll = false; }, 40);
         }
       }, { passive: true });
     }
+
+    window.addEventListener('resize', () => {
+      updateDocLineNumbers();
+      if (docSubMode === 'live') updateLivePreviewLineNumbers();
+    }, { passive: true });
 
     // Obsidian-grade Smart Typing: Auto-indent, List Continuation, Tab Indent, Auto-close brackets
     textarea.addEventListener('keydown', (e) => {
@@ -15385,6 +15688,25 @@
       }
     }
 
+    async function triggerOpenDolphin(targetPath = '') {
+      try {
+        const res = await fetch('/api/workspace/open_dolphin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: targetPath || '' })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showAppToast(`🐬 Opened Dolphin: ${data.opened_path || targetPath || 'folder'}`, 3000);
+        } else {
+          alert('Could not launch Dolphin: ' + (data.message || 'Unknown error'));
+        }
+      } catch(e) {
+        alert('Failed to trigger Dolphin: ' + e.message);
+      }
+    }
+    window.triggerOpenDolphin = triggerOpenDolphin;
+
     function renderLinkedFoldersDropdown(linkedFolders, activeDir, defaultLib) {
       const list = document.getElementById('workspaceLinkedFoldersList');
       if (!list) return;
@@ -15403,8 +15725,17 @@
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${f.name}</span>
             <span style="font-size:10px;color:var(--muted);margin-left:auto;padding-right:6px;">${f.md_count}</span>
           </div>
+          <button type="button" class="fc-btn-secondary dolphin-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#7aa2f7;" title="Open in Dolphin">🐬</button>
           <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 5px;font-size:10px;line-height:1;margin-left:4px;color:#f7768e;" title="Unlink folder">✕</button>
         `;
+        const dolphinBtn = item.querySelector('.dolphin-btn');
+        if (dolphinBtn) {
+          dolphinBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerOpenDolphin(f.resolved_path);
+          });
+        }
+
         const unlinkBtn = item.querySelector('.unlink-btn');
         unlinkBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -15442,6 +15773,12 @@
 
     const menuActionLinkFolder = document.getElementById('menuActionLinkFolder');
     if (menuActionLinkFolder) menuActionLinkFolder.addEventListener('click', () => { closeWorkspaceDropdown(); openModal(); });
+
+    const menuActionOpenDolphin = document.getElementById('menuActionOpenDolphin');
+    if (menuActionOpenDolphin) menuActionOpenDolphin.addEventListener('click', async () => {
+      closeWorkspaceDropdown();
+      await triggerOpenDolphin();
+    });
 
     const menuActionImportAnki = document.getElementById('menuActionImportAnki');
     if (menuActionImportAnki) menuActionImportAnki.addEventListener('click', () => { closeWorkspaceDropdown(); if(window.openAnkiImportModal) window.openAnkiImportModal(); });
@@ -15496,10 +15833,18 @@
                     <span style="font-size:10px;color:var(--muted);">(${f.md_count} notes)</span>
                   </div>
                   <div style="display:flex;gap:4px;">
+                    <button type="button" class="fc-btn-secondary dolphin-btn" style="padding:1px 6px;font-size:10.5px;color:#7aa2f7;" title="Open folder in Dolphin">🐬</button>
                     <button type="button" class="fc-btn-secondary switch-btn" style="padding:1px 6px;font-size:10.5px;">${isActive ? 'Active' : 'Open'}</button>
                     <button type="button" class="fc-btn-secondary unlink-btn" style="padding:1px 6px;font-size:10.5px;color:#f7768e;" title="Unlink folder">✕</button>
                   </div>
                 `;
+                const dBtn = b.querySelector('.dolphin-btn');
+                if (dBtn) {
+                  dBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    triggerOpenDolphin(f.resolved_path);
+                  });
+                }
                 b.querySelector('.switch-btn').addEventListener('click', async () => {
                   await switchWorkspace(f.resolved_path);
                   closeModal();
@@ -15605,6 +15950,14 @@
     }
 
     if (verifyBtn) verifyBtn.addEventListener('click', validatePath);
+
+    const workspaceOpenDolphinBtn = document.getElementById('workspaceOpenDolphinBtn');
+    if (workspaceOpenDolphinBtn) {
+      workspaceOpenDolphinBtn.addEventListener('click', async () => {
+        const val = pathInput ? pathInput.value.trim() : '';
+        await triggerOpenDolphin(val);
+      });
+    }
 
     if (prefixAutoBtn) {
       prefixAutoBtn.addEventListener('click', () => {
@@ -15868,7 +16221,10 @@
     }
   });
 
+  window.openFile = openFile;
   window.setAppMode = setAppMode;
+  window.getCurrentAppMode = () => currentAppMode;
+  window.massiveShieldState = massiveShieldState;
   window.renderCurrentDocument = renderCurrentDocument;
   window.setDocSubMode = setDocSubMode;
   window.toggleDocEditMode = toggleDocEditMode;
@@ -15909,8 +16265,8 @@
       console.error('Error during initial UI setup:', err);
     }
 
-    const savedMode = localStorage.getItem('mdviewer-mode') || 'outline';
-    setAppMode(savedMode);
+    const defaultMode = urlParams.get('mode') || 'outline';
+    setAppMode(defaultMode);
 
     applyZoom();
     applyFcZoom();

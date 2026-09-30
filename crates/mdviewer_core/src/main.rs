@@ -600,11 +600,220 @@ fn import_folder(src_dir: &Path, dst_dir: &Path) -> Result<ImportFolderResult, i
     })
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct TreeEntry {
+    name: String,
+    kind: String,
+    size: u64,
+    mtime: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct TreeResult {
+    status: String,
+    path: String,
+    entries: Vec<TreeEntry>,
+    duration_ms: f64,
+}
+
+fn scan_tree(dir_path: &Path) -> TreeResult {
+    let t0 = Instant::now();
+    let mut entries = Vec::new();
+    if let Ok(read_dir) = fs::read_dir(dir_path) {
+        for entry in read_dir.flatten() {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            if file_name.starts_with('.') {
+                continue;
+            }
+            if let Ok(ft) = entry.file_type() {
+                if ft.is_dir() {
+                    let low = file_name.to_lowercase();
+                    if low == "node_modules" || low == ".obsidian" || low == ".vscode" || low == ".idea" || low == "target" || low == ".git" {
+                        continue;
+                    }
+                    let mtime = entry.metadata().ok().and_then(|m| m.modified().ok())
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs()).unwrap_or(0);
+                    entries.push(TreeEntry {
+                        name: file_name,
+                        kind: "directory".to_string(),
+                        size: 0,
+                        mtime,
+                    });
+                } else if ft.is_file() {
+                    let low = file_name.to_lowercase();
+                    if low.ends_with(".md") || low.ends_with(".markdown") || low.ends_with(".txt") {
+                        let meta = entry.metadata().ok();
+                        let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+                        let mtime = meta.and_then(|m| m.modified().ok())
+                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                            .map(|d| d.as_secs()).unwrap_or(0);
+                        entries.push(TreeEntry {
+                            name: file_name,
+                            kind: "file".to_string(),
+                            size,
+                            mtime,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    entries.sort_by(|a, b| {
+        if a.kind != b.kind {
+            if a.kind == "directory" { std::cmp::Ordering::Less } else { std::cmp::Ordering::Greater }
+        } else {
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        }
+    });
+    TreeResult {
+        status: "ok".to_string(),
+        path: dir_path.to_string_lossy().to_string(),
+        entries,
+        duration_ms: t0.elapsed().as_secs_f64() * 1000.0,
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct FileMetaResult {
+    status: String,
+    file_path: String,
+    size_bytes: u64,
+    total_lines: usize,
+    is_massive: bool,
+    recommended_chunk_size: usize,
+    duration_ms: f64,
+}
+
+fn file_meta(file_path: &Path) -> Result<FileMetaResult, String> {
+    let t0 = Instant::now();
+    let metadata = fs::metadata(file_path).map_err(|e| e.to_string())?;
+    let size_bytes = metadata.len();
+    let file = fs::File::open(file_path).map_err(|e| e.to_string())?;
+    let reader = io::BufReader::with_capacity(64 * 1024, file);
+    use std::io::BufRead;
+    let mut total_lines = 0;
+    for _ in reader.lines() {
+        total_lines += 1;
+    }
+    let is_massive = total_lines > 20_000 || size_bytes > 2 * 1024 * 1024;
+    Ok(FileMetaResult {
+        status: "ok".to_string(),
+        file_path: file_path.to_string_lossy().to_string(),
+        size_bytes,
+        total_lines,
+        is_massive,
+        recommended_chunk_size: if is_massive { 1000 } else { total_lines },
+        duration_ms: t0.elapsed().as_secs_f64() * 1000.0,
+    })
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ChunkResult {
+    status: String,
+    file_path: String,
+    start_line: usize,
+    count: usize,
+    total_lines: usize,
+    has_more: bool,
+    lines: Vec<String>,
+    content: String,
+    duration_ms: f64,
+}
+
+fn read_file_chunk(file_path: &Path, start_line: usize, count: usize) -> Result<ChunkResult, String> {
+    let t0 = Instant::now();
+    let file = fs::File::open(file_path).map_err(|e| e.to_string())?;
+    let reader = io::BufReader::with_capacity(64 * 1024, file);
+    use std::io::BufRead;
+    let mut chunk_lines = Vec::with_capacity(count);
+    let mut total_lines = 0;
+    for (idx, line_res) in reader.lines().enumerate() {
+        let line_num = idx + 1; // 1-indexed
+        total_lines += 1;
+        if line_num >= start_line && line_num < start_line + count {
+            if let Ok(l) = line_res {
+                chunk_lines.push(l);
+            }
+        }
+    }
+    let actual_count = chunk_lines.len();
+    let has_more = start_line + actual_count <= total_lines;
+    let content = chunk_lines.join("\n");
+    Ok(ChunkResult {
+        status: "ok".to_string(),
+        file_path: file_path.to_string_lossy().to_string(),
+        start_line,
+        count: actual_count,
+        total_lines,
+        has_more,
+        lines: chunk_lines,
+        content,
+        duration_ms: t0.elapsed().as_secs_f64() * 1000.0,
+    })
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CountResult {
+    status: String,
+    path: String,
+    md_count: usize,
+    asset_count: usize,
+    total_files: usize,
+    duration_ms: f64,
+}
+
+fn fast_count_directory(dir_path: &Path) -> CountResult {
+    let t0 = Instant::now();
+    let md_count = AtomicUsize::new(0);
+    let asset_count = AtomicUsize::new(0);
+    let total_files = AtomicUsize::new(0);
+
+    WalkDir::new(dir_path)
+        .into_iter()
+        .filter_entry(|e| {
+            let name = e.file_name().to_string_lossy();
+            if name.starts_with('.') && name != "." {
+                return false;
+            }
+            let low = name.to_lowercase();
+            if low == "node_modules" || low == ".obsidian" || low == ".vscode" || low == ".idea" || low == "target" || low == ".git" {
+                return false;
+            }
+            true
+        })
+        .par_bridge()
+        .for_each(|entry_res| {
+            if let Ok(entry) = entry_res {
+                if entry.file_type().is_file() {
+                    total_files.fetch_add(1, Ordering::Relaxed);
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if name.ends_with(".md") || name.ends_with(".markdown") || name.ends_with(".txt") {
+                        md_count.fetch_add(1, Ordering::Relaxed);
+                    } else if name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".jpeg")
+                        || name.ends_with(".gif") || name.ends_with(".svg") || name.ends_with(".webp")
+                        || name.ends_with(".mp3") || name.ends_with(".m4a") || name.ends_with(".wav") || name.ends_with(".ogg") {
+                        asset_count.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+
+    CountResult {
+        status: "ok".to_string(),
+        path: dir_path.to_string_lossy().to_string(),
+        md_count: md_count.load(Ordering::Relaxed),
+        asset_count: asset_count.load(Ordering::Relaxed),
+        total_files: total_files.load(Ordering::Relaxed),
+        duration_ms: t0.elapsed().as_secs_f64() * 1000.0,
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!(
-            "{{\"status\":\"error\",\"message\":\"Usage: mdviewer_core <index|parse|render|search|import-folder|version> [args]\"}}"
+            "{{\"status\":\"error\",\"message\":\"Usage: mdviewer_core <index|parse|render|search|import-folder|tree|meta|chunk|count|version> [args]\"}}"
         );
         return;
     }
@@ -612,7 +821,7 @@ fn main() {
     match args[1].as_str() {
         "version" => {
             println!(
-                "{{\"status\":\"ok\",\"version\":\"1.0.0\",\"engine\":\"mdviewer_core\",\"features\":[\"rayon_indexing\",\"simd_search\",\"pulldown_cmark\",\"parallel_importer\"]}}"
+                "{{\"status\":\"ok\",\"version\":\"1.1.0\",\"engine\":\"mdviewer_core\",\"features\":[\"rayon_indexing\",\"simd_search\",\"pulldown_cmark\",\"parallel_importer\",\"fast_tree\",\"stream_chunker\",\"massive_shield\"]}}"
             );
         }
         "index" => {
@@ -621,6 +830,50 @@ fn main() {
                 std::process::exit(1);
             }
             let res = index_library(Path::new(&args[2]));
+            println!("{}", serde_json::to_string(&res).unwrap());
+        }
+        "tree" => {
+            if args.len() < 3 {
+                eprintln!("Error: missing directory path for tree command");
+                std::process::exit(1);
+            }
+            let res = scan_tree(Path::new(&args[2]));
+            println!("{}", serde_json::to_string(&res).unwrap());
+        }
+        "meta" => {
+            if args.len() < 3 {
+                eprintln!("Error: missing file path for meta command");
+                std::process::exit(1);
+            }
+            match file_meta(Path::new(&args[2])) {
+                Ok(res) => println!("{}", serde_json::to_string(&res).unwrap()),
+                Err(e) => {
+                    println!("{{\"status\":\"error\",\"message\":\"{}\"}}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "chunk" => {
+            if args.len() < 3 {
+                eprintln!("Error: missing file path for chunk command");
+                std::process::exit(1);
+            }
+            let start = if args.len() >= 4 { args[3].parse::<usize>().unwrap_or(1) } else { 1 };
+            let count = if args.len() >= 5 { args[4].parse::<usize>().unwrap_or(1000) } else { 1000 };
+            match read_file_chunk(Path::new(&args[2]), start, count) {
+                Ok(res) => println!("{}", serde_json::to_string(&res).unwrap()),
+                Err(e) => {
+                    println!("{{\"status\":\"error\",\"message\":\"{}\"}}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "count" => {
+            if args.len() < 3 {
+                eprintln!("Error: missing directory path for count command");
+                std::process::exit(1);
+            }
+            let res = fast_count_directory(Path::new(&args[2]));
             println!("{}", serde_json::to_string(&res).unwrap());
         }
         "parse" => {
