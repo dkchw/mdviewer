@@ -3864,6 +3864,7 @@
               <input type="number" id="shieldJumpLineInput" class="ai-modal-input" placeholder="Line #" style="width:70px;padding:2px 6px;font-size:11px;" />
               <button type="button" class="fc-btn-secondary" id="shieldJumpBtn" style="padding:2px 8px;font-size:11px;">Jump</button>
               <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Outline View">⚡ Outline (60 FPS Full)</button>
+              <button type="button" class="fc-btn-secondary" id="shieldSplitDeckBtn" style="padding:2px 10px;font-size:11.5px;background:rgba(187,154,247,0.15);color:#bb9af7;border-color:rgba(187,154,247,0.3);font-weight:600;" title="Split this massive file into 500-card chapters for full reading & flashcard study">✂️ Split Deck (500 cards)</button>
             </div>
           </div>
 
@@ -3941,7 +3942,7 @@
         <button id="fcFilterH1" data-filter="h1" title="Level 1 headings">H1</button>
         <button id="fcFilterH2" data-filter="h2" title="Level 2 headings">H2</button>
         <button id="fcFilterAll" data-filter="all" title="All headings">All</button>
-        <button id="fcFilterAi" data-filter="ai" title="Study all cards that have AI supplements across all outline levels">✨ AI Cards (<span id="fcFilterAiCount">0</span>)</button>
+        <button id="fcFilterAi" data-filter="ai" title="Study all cards that have AI supplements across all outline levels">✨ AI Cards <span id="fcFilterAiCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
       </div>
       <div class="sep"></div>
       <button id="fcShuffleBtn" title="Shuffle flashcards (S)">🔀 Shuffle</button>
@@ -3962,7 +3963,7 @@
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
-      <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer (<span id="fcAiTopCount">0</span>)</button>
+      <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
       <div class="fc-stats" id="fcStats">0 / 0</div>
     </div>
     <div id="flashcardMainArea">
@@ -4089,7 +4090,7 @@
           <button class="active" data-scope="both" title="Search both front and back">Both</button>
           <button data-scope="front" title="Search front title & breadcrumb">Front</button>
           <button data-scope="back" title="Search back content">Back</button>
-          <button id="fcSearchAiFilterBtn" data-scope="ai" title="Filter overview to show only cards with saved AI supplements">✨ AI Only (<span id="fcSearchAiCount">0</span>)</button>
+          <button id="fcSearchAiFilterBtn" data-scope="ai" title="Filter overview to show only cards with saved AI supplements">✨ AI Only <span id="fcSearchAiCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
       </div>
       <div class="fc-card-list" id="fcCardList"></div>
@@ -10507,12 +10508,18 @@
     if (aiSummaryMap) {
       totalWorkspaceAi = Object.values(aiSummaryMap).reduce((acc, item) => acc + (item.count || 0), 0);
     }
-    const fileAiCount = currentFileAiCards ? currentFileAiCards.size : 0;
+    const currentSummary = getAiSummaryItem(currentFilePath);
+    const fileAiCount = (currentFileAiCards && currentFileAiCards.size > 0)
+      ? new Set(currentFileAiCards.values()).size
+      : (currentSummary?.count || 0);
 
-    if (fcFilterAiCount) fcFilterAiCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
-    if (fcAiTopCount) fcAiTopCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
-    if (fcSearchAiCount) fcSearchAiCount.textContent = fileAiCount ? `(${fileAiCount})` : '';
-    if (aiToolbarCount) aiToolbarCount.textContent = totalWorkspaceAi ? `${totalWorkspaceAi}` : '0';
+    if (fcFilterAiCount) fcFilterAiCount.textContent = `${fileAiCount}`;
+    if (fcAiTopCount) fcAiTopCount.textContent = `${fileAiCount}`;
+    if (fcSearchAiCount) fcSearchAiCount.textContent = `${fileAiCount}`;
+    if (aiToolbarCount) {
+      aiToolbarCount.textContent = `${fileAiCount}`;
+      aiToolbarCount.title = `${fileAiCount} AI note${fileAiCount === 1 ? '' : 's'} in active document (Workspace total: ${totalWorkspaceAi.toLocaleString()})`;
+    }
 
     let missingCount = 0;
     if (flashcardList && flashcardList.length > 0) {
@@ -11819,6 +11826,7 @@
                   renderBackFaceContent();
                   if (isFcInfoPanelOpen) displayActivePromptContent();
                 }
+                updateAiBadgesAndCounts();
               }
               const fIdx = b.failedIndices.indexOf(ev.card_idx);
               if (fIdx >= 0) b.failedIndices.splice(fIdx, 1);
@@ -14501,7 +14509,10 @@
         docBody.innerHTML = `
           <div style="background:rgba(122,162,247,0.12);border:1px solid rgba(122,162,247,0.3);border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
             <span>🛡️ <strong style="color:#7aa2f7;">Massive File Shield Active</strong>: Showing lines ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()}.</span>
-            <button type="button" class="fc-btn-secondary" onclick="setAppMode('outline')" style="font-size:11px;padding:2px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);">⚡ Outline (60 FPS Full)</button>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="fc-btn-secondary" onclick="setAppMode('outline')" style="font-size:11px;padding:2px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.3);">⚡ Outline (60 FPS Full)</button>
+              <button type="button" class="fc-btn-secondary" onclick="triggerSplitCurrentDeck()" style="font-size:11px;padding:2px 8px;background:rgba(187,154,247,0.15);color:#bb9af7;border-color:rgba(187,154,247,0.3);font-weight:600;" title="Split this file into 500-card chapters">✂️ Split Deck (500 cards)</button>
+            </div>
           </div>
         ` + (data.html || '');
       } else {
@@ -15498,6 +15509,43 @@
       switchOutlineBtn.addEventListener('click', () => {
         setAppMode('outline');
       });
+    }
+
+    async function triggerSplitCurrentDeck() {
+      if (!currentFilePath) return;
+      const splitDeckBtn = document.getElementById('shieldSplitDeckBtn');
+      if (splitDeckBtn) {
+        splitDeckBtn.disabled = true;
+        splitDeckBtn.textContent = '⏳ Splitting...';
+      }
+      try {
+        showToast('⏳ Splitting deck into chapters of 500 cards...', 3000);
+        const res = await fetch('/api/deck/split', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentFilePath, chunk_size: 500 })
+        });
+        const data = await res.json();
+        if (!res.ok || data.status === 'error') {
+          showToast('Error splitting deck: ' + (data.message || res.statusText), 5000);
+        } else {
+          showToast(`✓ Split into ${data.parts_count} chapters (${data.total_cards} cards total)!`, 5000);
+          if (typeof initSidebar === 'function') initSidebar();
+        }
+      } catch (e) {
+        showToast('Failed to split deck: ' + e.message, 5000);
+      } finally {
+        if (splitDeckBtn) {
+          splitDeckBtn.disabled = false;
+          splitDeckBtn.textContent = '✂️ Split Deck (500 cards)';
+        }
+      }
+    }
+    window.triggerSplitCurrentDeck = triggerSplitCurrentDeck;
+
+    const splitDeckBtn = document.getElementById('shieldSplitDeckBtn');
+    if (splitDeckBtn) {
+      splitDeckBtn.addEventListener('click', triggerSplitCurrentDeck);
     }
 
     // Textarea input and stats handling
@@ -16507,6 +16555,7 @@
     window.openFile = openFile;
     window.startBatchGeneration = startBatchGeneration;
     window.activeBatches = activeBatches;
+    window.getHeadings = () => headings;
     window.getFlashcardList = () => flashcardList;
     window.getCurrentFileAiCards = () => currentFileAiCards;
     window.getCurrentCardIndex = () => currentCardIndex;

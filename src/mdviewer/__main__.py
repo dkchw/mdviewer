@@ -28,9 +28,9 @@ import mimetypes
 import tempfile
 
 try:
-    from .anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename
+    from .anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename, split_markdown_deck
 except ImportError:
-    from mdviewer.anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename
+    from mdviewer.anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename, split_markdown_deck
 
 try:
     from .rust_core import (
@@ -2799,6 +2799,31 @@ def main():
             sys.exit(1)
         sys.exit(0)
 
+    if len(sys.argv) > 1 and sys.argv[1] == 'split-deck':
+        import argparse
+        parser = argparse.ArgumentParser(description="Split large monolithic markdown deck into modular chapters")
+        parser.add_argument("file", help="Path to markdown deck file")
+        parser.add_argument("--chunk", "-c", type=int, default=500, help="Number of cards per chapter (default: 500)")
+        parser.add_argument("--output-dir", "-o", default=None, help="Output directory for chapter files (default: same folder)")
+        parser.add_argument("--by-level", action="store_true", help="Split by CEFR level (A1, A2, B1, B2) instead of rank")
+        args = parser.parse_args(sys.argv[2:])
+
+        print(f"Splitting {args.file} into chapters of {args.chunk} cards...")
+        try:
+            res = split_markdown_deck(
+                args.file,
+                chunk_size=args.chunk,
+                output_dir=args.output_dir,
+                by_level=args.by_level
+            )
+            print(f"✓ Successfully split {res['total_cards']} cards into {res['parts_count']} chapters:")
+            for f in res["files_created"]:
+                print(f"  • {f['filename']} ({f['cards_count']} cards)")
+        except Exception as e:
+            print(f"Error splitting deck: {e}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
     if len(sys.argv) > 1 and sys.argv[1] == 'import-folder':
         import argparse
         parser = argparse.ArgumentParser(description="Import external folder into mdviewer standalone library")
@@ -3912,6 +3937,26 @@ def main():
                         else:
                             rel_files.append(full_f)
                     res["workspace_files"] = rel_files
+                    self.send_json(200, res)
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/deck/split':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    rel_p = payload.get('path', '').strip()
+                    abs_p = safe_rel_path(directory, rel_p) or os.path.abspath(rel_p)
+                    if not abs_p or not os.path.isfile(abs_p):
+                        self.send_json(404, {"status": "error", "message": f"Deck file not found: {rel_p}"})
+                        return
+                    chunk_sz = int(payload.get('chunk_size', 500))
+                    by_lvl = bool(payload.get('by_level', False))
+                    out_d = payload.get('output_dir', None)
+                    if out_d:
+                        out_d = safe_rel_path(directory, out_d) or os.path.abspath(out_d)
+                    res = split_markdown_deck(abs_p, chunk_size=chunk_sz, output_dir=out_d, by_level=by_lvl)
                     self.send_json(200, res)
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})

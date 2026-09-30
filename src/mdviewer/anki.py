@@ -598,3 +598,150 @@ def import_apkg(
             "extracted_media_count": extracted_media_count,
             "output_dir": output_dir
         }
+
+
+def split_markdown_deck(
+    md_file_path: str,
+    chunk_size: int = 500,
+    output_dir: Optional[str] = None,
+    by_level: bool = False,
+    keep_original: bool = True
+) -> Dict[str, Any]:
+    """
+    Split a large monolithic markdown deck file into modular chapter files (e.g. 500 cards each).
+    Each chapter file is fully self-contained, keeps asset references intact, and avoids triggering
+    the Massive File Shield so it can be browsed, read in double-page mode, and studied in full.
+    """
+    if not os.path.isfile(md_file_path):
+        raise FileNotFoundError(f"Deck file not found: {md_file_path}")
+
+    with open(md_file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Split into header and cards
+    card_pattern = r'\n(?=#{1,6}\s+(?:\d+\.\s+|[^\n]+))'
+    parts = re.split(card_pattern, content)
+    if len(parts) <= 1:
+        parts = content.split('\n---\n')
+
+    first_part = parts[0]
+    if re.search(r'^\s*#{1,6}\s+\d+\.\s+', first_part, re.MULTILINE):
+        header_text = ""
+        card_blocks = parts
+    else:
+        header_text = first_part.strip()
+        card_blocks = parts[1:]
+
+    total_cards = len(card_blocks)
+    if total_cards <= chunk_size and not by_level:
+        return {
+            "status": "ok",
+            "message": f"File has only {total_cards} cards, which is already under chunk size ({chunk_size}).",
+            "total_cards": total_cards,
+            "files_created": []
+        }
+
+    target_dir = os.path.abspath(output_dir or os.path.dirname(md_file_path))
+    os.makedirs(target_dir, exist_ok=True)
+
+    deck_title = "Deck"
+    m_title = re.search(r'^\s*#\s+([^\n\r]+)', header_text)
+    if m_title:
+        deck_title = m_title.group(1).strip()
+    else:
+        deck_title = os.path.splitext(os.path.basename(md_file_path))[0]
+
+    files_created = []
+
+    if by_level:
+        levels: Dict[str, List[str]] = {}
+        for c in card_blocks:
+            m_lvl = re.search(r'\*\*Level:\*\*\s*([^\n\r]+)', c)
+            lvl = m_lvl.group(1).strip() if m_lvl else "Uncategorized"
+            levels.setdefault(lvl, []).append(c)
+
+        part_idx = 1
+        for lvl_name, lvl_cards in levels.items():
+            safe_lvl = sanitize_filename(lvl_name)
+            sub_chunks = []
+            curr = 0
+            while curr < len(lvl_cards):
+                end = min(len(lvl_cards), curr + chunk_size)
+                if 0 < (len(lvl_cards) - end) < max(20, chunk_size // 6):
+                    end = len(lvl_cards)
+                sub_chunks.append((curr, end))
+                curr = end
+
+            for s_idx, (s_start, s_end) in enumerate(sub_chunks):
+                chunk_c = lvl_cards[s_start:s_end]
+                sub_suffix = f"_Part_{s_idx + 1}" if len(sub_chunks) > 1 else ""
+                fname = f"{part_idx:02d}_{safe_lvl}{sub_suffix}_({len(chunk_c)}_cards).md"
+                out_path = os.path.join(target_dir, fname)
+
+                chunk_lines = [
+                    f"# {deck_title} - Level {lvl_name}{sub_suffix} ({len(chunk_c)} cards)",
+                    "",
+                    f"> Level **{lvl_name}** ({len(chunk_c)} cards) from **{deck_title}**.",
+                    "",
+                    '\n'.join(c.strip() for c in chunk_c if c.strip()),
+                    ""
+                ]
+                with open(out_path, 'w', encoding='utf-8') as out_f:
+                    out_f.write('\n'.join(chunk_lines))
+
+                files_created.append({
+                    "filename": fname,
+                    "path": out_path,
+                    "cards_count": len(chunk_c),
+                    "level": lvl_name
+                })
+                part_idx += 1
+    else:
+        chunk_ranges = []
+        curr = 0
+        while curr < total_cards:
+            end = min(total_cards, curr + chunk_size)
+            if 0 < (total_cards - end) < max(20, chunk_size // 6):
+                end = total_cards
+            chunk_ranges.append((curr, end))
+            curr = end
+
+        digits = 4 if total_cards >= 1000 else 3
+
+        for idx, (start_idx, end_idx) in enumerate(chunk_ranges):
+            cards_in_chunk = card_blocks[start_idx:end_idx]
+            card_start_num = start_idx + 1
+            card_end_num = end_idx
+            part_num = idx + 1
+
+            fname = f"{part_num:02d}_Rank_{card_start_num:0{digits}d}-{card_end_num:0{digits}d}.md"
+            out_path = os.path.join(target_dir, fname)
+
+            chunk_lines = [
+                f"# {deck_title} - Part {part_num} (Cards {card_start_num}–{card_end_num})",
+                "",
+                f"> Cards **{card_start_num}** to **{card_end_num}** of **{deck_title}** ({len(cards_in_chunk)} cards).",
+                "",
+                '\n'.join(c.strip() for c in cards_in_chunk if c.strip()),
+                ""
+            ]
+
+            with open(out_path, 'w', encoding='utf-8') as out_f:
+                out_f.write('\n'.join(chunk_lines))
+
+            files_created.append({
+                "filename": fname,
+                "path": out_path,
+                "cards_count": len(cards_in_chunk),
+                "start_card": card_start_num,
+                "end_card": card_end_num
+            })
+
+    return {
+        "status": "ok",
+        "total_cards": total_cards,
+        "chunk_size": chunk_size,
+        "parts_count": len(files_created),
+        "files_created": files_created,
+        "target_dir": target_dir
+    }
