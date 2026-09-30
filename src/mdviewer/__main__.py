@@ -1087,7 +1087,7 @@ def proxy_openrouter_generate(model, system_prompt, user_message, api_key=None, 
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {clean_key}",
-            "HTTP-Referer": "http://127.0.0.1:2026",
+            "HTTP-Referer": "http://127.0.0.1:2112",
             "X-Title": "MDViewer Flashcard Assistant",
             "User-Agent": "MDViewer/1.2"
         },
@@ -2106,6 +2106,58 @@ def resolve_fs_path(raw_path: str, custom_prefix: Optional[str] = None) -> tuple
 
     return None, None
 
+def resolve_file_path(raw_path: str, custom_prefix: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resolves a file path on the filesystem (checking direct path, prefixed path, and tilde).
+    """
+    if not raw_path or not str(raw_path).strip():
+        return None, None
+
+    cleaned = str(raw_path).strip().strip('\'"')
+    distro_host_home = os.environ.get("DISTROBOX_HOST_HOME", "").strip()
+
+    prefixes = []
+    if custom_prefix is not None:
+        p = custom_prefix.strip()
+        if p and p not in prefixes:
+            prefixes.append(p)
+    default_p = get_default_path_prefix()
+    if default_p and default_p not in prefixes:
+        prefixes.append(default_p)
+    if os.path.isdir("/run/host") and "/run/host" not in prefixes:
+        prefixes.append("/run/host")
+    if "" not in prefixes:
+        prefixes.append("")
+
+    candidates = []
+    if cleaned.startswith("~"):
+        rel_tilde = cleaned[1:].lstrip('/\\')
+        candidates.append((os.path.expanduser(cleaned), ""))
+        if distro_host_home:
+            host_cand = os.path.join(distro_host_home, rel_tilde)
+            candidates.append((host_cand, ""))
+            for pr in prefixes:
+                if pr:
+                    candidates.append((os.path.join(pr, host_cand.lstrip('/\\')), pr))
+        for pr in prefixes:
+            if pr:
+                candidates.append((os.path.join(pr, rel_tilde), pr))
+    else:
+        candidates.append((cleaned, ""))
+        for pr in prefixes:
+            if pr and not cleaned.startswith(pr):
+                candidates.append((os.path.join(pr, cleaned.lstrip('/\\')), pr))
+
+    for cand_path, used_prefix in candidates:
+        try:
+            abs_cand = os.path.abspath(cand_path)
+            if os.path.exists(abs_cand) and os.path.isfile(abs_cand):
+                return abs_cand, used_prefix
+        except Exception:
+            continue
+
+    return None, None
+
 def count_directory_markdown_files(directory: str) -> tuple[int, int]:
     """Fast scan of markdown files and assets in directory."""
     md_count = 0
@@ -2471,7 +2523,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="mdviewer - Ultra-Fast Markdown Workstation")
     parser.add_argument("directory", nargs="?", default=None, help="Directory containing markdown files to serve/edit (optional)")
-    parser.add_argument("--port", "-p", type=int, default=None, help="Port to run server on (default: 2026 or PORT env var)")
+    parser.add_argument("--port", "-p", type=int, default=None, help="Port to run server on (default: 2112 or PORT env var)")
     parser.add_argument("--prefix", default=None, help="Distrobox/container path prefix (e.g. /run/host)")
     parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
 
@@ -3133,7 +3185,7 @@ def main():
                         headers={
                             "Content-Type": "application/json",
                             "Authorization": f"Bearer {api_key.strip()}",
-                            "HTTP-Referer": "http://127.0.0.1:2026",
+                            "HTTP-Referer": "http://127.0.0.1:2112",
                             "X-Title": "MDViewer Flashcard Assistant",
                             "User-Agent": "MDViewer/1.2"
                         },
@@ -3359,11 +3411,15 @@ def main():
                     if not target_path:
                         self.send_json(400, {"status": "error", "message": "Missing path parameter"})
                         return
-                    if os.path.isabs(target_path) and os.path.exists(target_path):
-                        resolved = target_path
-                    else:
-                        resolved = safe_rel_path(directory, target_path) or os.path.abspath(target_path)
-                    if not os.path.isfile(resolved):
+                    prefix_p = payload.get('prefix', None)
+                    resolved, _ = resolve_file_path(target_path, prefix_p)
+                    if not resolved:
+                        cand_dir = safe_rel_path(directory, target_path) or os.path.abspath(os.path.join(directory, target_path))
+                        if os.path.isfile(cand_dir):
+                            resolved = cand_dir
+                        elif os.path.isabs(target_path) and os.path.isfile(target_path):
+                            resolved = target_path
+                    if not resolved or not os.path.isfile(resolved):
                         self.send_json(404, {"status": "error", "message": f"File not found: {target_path}"})
                         return
                     meta = inspect_apkg(resolved)
@@ -3410,11 +3466,15 @@ def main():
                         self.send_json(400, {"status": "error", "message": "Missing path parameter"})
                         return
 
-                    if os.path.isabs(apkg_path) and os.path.exists(apkg_path):
-                        resolved_apkg = apkg_path
-                    else:
-                        resolved_apkg = safe_rel_path(directory, apkg_path) or os.path.abspath(apkg_path)
-                    if not os.path.isfile(resolved_apkg):
+                    prefix_p = payload.get('prefix', None)
+                    resolved_apkg, _ = resolve_file_path(apkg_path, prefix_p)
+                    if not resolved_apkg:
+                        cand_dir = safe_rel_path(directory, apkg_path) or os.path.abspath(os.path.join(directory, apkg_path))
+                        if os.path.isfile(cand_dir):
+                            resolved_apkg = cand_dir
+                        elif os.path.isabs(apkg_path) and os.path.isfile(apkg_path):
+                            resolved_apkg = apkg_path
+                    if not resolved_apkg or not os.path.isfile(resolved_apkg):
                         self.send_json(404, {"status": "error", "message": f"APKG file not found: {apkg_path}"})
                         return
 
@@ -3690,16 +3750,29 @@ def main():
         daemon_threads = True
         request_queue_size = 2048
 
+        def server_bind(self):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, "SO_REUSEPORT"):
+                try:
+                    self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                except OSError:
+                    pass
+            super().server_bind()
+
         def handle_error(self, request, client_address):
             exc = sys.exception()
             if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
                 return
             super().handle_error(request, client_address)
 
-    port = args.port if args.port else int(os.environ.get("PORT", 2026))
+    port = args.port if args.port is not None else int(os.environ.get("PORT", 2112))
     try:
         httpd = ReusableTCPServer(("127.0.0.1", port), Handler)
-    except OSError:
+    except OSError as e:
+        if args.port is not None:
+            print(f"Error: Specified port {port} is unavailable ({e}).", file=sys.stderr)
+            raise
+        print(f"Warning: Default port {port} is unavailable ({e}), trying fallback port...", file=sys.stderr)
         httpd = ReusableTCPServer(("127.0.0.1", 0), Handler)
 
     with httpd:

@@ -78,7 +78,7 @@ mdviewer --port 8080 /path/to/notes
 mdviewer import-anki deck.apkg -o ./output
 ```
 
-The server starts on port `2026` (or auto-selects a free port) and opens in your default browser.
+The server starts on port `2112` (or auto-selects a free port) and opens in your default browser.
 
 ## Keyboard Shortcuts
 

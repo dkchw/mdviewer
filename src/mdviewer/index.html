@@ -3468,8 +3468,8 @@
     <div id="sidebarHeader">
       <span class="sbTitle" id="sidebarWorkspaceTitle" title="Active Workspace">Workspace</span>
       <div style="display:flex;gap:4px;align-items:center;">
-        <button id="importFolderBtn" class="sb-header-btn" title="Open or switch workspace folder (in-place, no duplication)">📁 Open Folder</button>
-        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck">📥 Anki</button>
+        <button id="importFolderBtn" class="sb-header-btn" title="Open or import folder workspace (in-place, no duplication)" onclick="if(window.openFolderImportModal) window.openFolderImportModal();">📁 Import Folder</button>
+        <button id="ankiImportSidebarBtn" class="sb-header-btn" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Import Anki</button>
         <button id="newNoteBtn" class="sb-header-btn" title="New Note">➕</button>
         <button id="newFolderBtn" class="sb-header-btn" title="New Folder">📁+</button>
         <button id="explorerCollapseAll" class="sb-header-btn" title="Collapse All Folders">▲</button>
@@ -4786,7 +4786,7 @@
     <div class="ai-modal-header" style="background:linear-gradient(90deg, #1f2335 0%, #24283b 100%);">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:18px;">📂</span>
-        <span class="ai-modal-title">Open Folder as Workspace</span>
+        <span class="ai-modal-title">Open / Import Folder as Workspace</span>
       </div>
       <button class="ai-modal-close" id="importFolderCloseBtn">✕</button>
     </div>
@@ -4877,39 +4877,6 @@
         <button class="fc-btn-primary" id="workspaceOpenInPlaceBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;">📂 Open Folder (In-Place)</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- Import Progress Card -->
-      <div id="importFolderProgressCard" style="display:none;background:#14151f;border:1px solid var(--border);border-radius:8px;padding:12px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="fc-ai-thinking-spinner" style="border-top-color:#7aa2f7;"></div>
-          <span id="importFolderProgressText" style="font-size:12px;font-weight:600;color:#7aa2f7;">Importing folder and copying assets...</span>
-        </div>
-      </div>
-
-      <!-- Success Result Card -->
-      <div id="importFolderSuccessCard" style="display:none;background:rgba(158,206,106,0.08);border:1px solid rgba(158,206,106,0.3);border-radius:8px;padding:14px;">
-        <div style="display:flex;align-items:center;gap:8px;color:#9ece6a;font-weight:700;font-size:13.5px;margin-bottom:6px;">
-          <span>✓</span>
-          <span>Folder Imported Successfully!</span>
-        </div>
-        <div id="importFolderSuccessSummary" style="font-size:12px;color:var(--fg);margin-bottom:12px;"></div>
-        <div style="display:flex;gap:10px;">
-          <button type="button" id="importFolderOpenDocBtn" class="fc-btn-primary" style="background:#7aa2f7;color:#1a1b26;">📖 Open in Document Mode</button>
-          <button type="button" id="importFolderOpenOutlineBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;">📑 Open in Outline</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="ai-modal-footer" style="padding:10px 18px;background:#16161e;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:11px;color:var(--muted);">All markdown files, images, and audio will be imported into your library.</span>
-      <div style="display:flex;gap:8px;">
-        <button class="fc-btn-secondary" id="importFolderCancelBtn">Cancel</button>
-        <button class="fc-btn-primary" id="importFolderStartBtn" style="background:#7aa2f7;color:#1a1b26;">📁 Import Folder</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -13626,6 +13593,7 @@
   const ankiModalCloseBtn = document.getElementById('ankiModalCloseBtn');
   const ankiModalCancelBtn = document.getElementById('ankiModalCancelBtn');
   const ankiImportToolbarBtn = document.getElementById('ankiImportToolbarBtn');
+  const ankiImportSidebarBtn = document.getElementById('ankiImportSidebarBtn');
   const fcAnkiImportBtn = document.getElementById('fcAnkiImportBtn');
   const ankiDropzone = document.getElementById('ankiDropzone');
   const ankiFileInput = document.getElementById('ankiFileInput');
@@ -13895,10 +13863,13 @@
   }
 
   // Event Listeners for Anki Import
+  if (ankiImportSidebarBtn) ankiImportSidebarBtn.addEventListener('click', openAnkiImportModal);
   if (ankiImportToolbarBtn) ankiImportToolbarBtn.addEventListener('click', openAnkiImportModal);
   if (fcAnkiImportBtn) fcAnkiImportBtn.addEventListener('click', openAnkiImportModal);
   if (ankiModalCloseBtn) ankiModalCloseBtn.addEventListener('click', closeAnkiImportModal);
   if (ankiModalCancelBtn) ankiModalCancelBtn.addEventListener('click', closeAnkiImportModal);
+  window.openAnkiImportModal = openAnkiImportModal;
+  window.closeAnkiImportModal = closeAnkiImportModal;
 
   if (ankiInspectBtn) {
     ankiInspectBtn.addEventListener('click', () => {
@@ -15374,6 +15345,8 @@
     if (openBtn) openBtn.addEventListener('click', openModal);
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    window.openFolderImportModal = openModal;
+    window.closeFolderImportModal = closeModal;
 
     if (pathInput) {
       pathInput.addEventListener('input', () => {
@@ -15695,17 +15668,14 @@
       ensureAncestorsExpanded(initialFile);
     }
 
-    await loadAiPrompts();
-    await loadAiSettings();
-    await refreshAiSummary();
-    await initSidebar();
-    await restoreTabState();
-
-    setupModeSwitcher();
-    setupDocumentMode();
-    setupFolderImportModal();
-    setupFileActions();
-    await initEngineInfo();
+    try {
+      setupModeSwitcher();
+      setupDocumentMode();
+      setupFolderImportModal();
+      setupFileActions();
+    } catch(err) {
+      console.error('Error during initial UI setup:', err);
+    }
 
     const savedMode = localStorage.getItem('mdviewer-mode') || 'outline';
     setAppMode(savedMode);
@@ -15720,6 +15690,14 @@
     window.getCurrentFileAiCards = () => currentFileAiCards;
     window.getCurrentCardIndex = () => currentCardIndex;
     window.setCurrentCardIndex = (i) => { currentCardIndex = i; renderCurrentCard(); };
+
+    await loadAiPrompts();
+    await loadAiSettings();
+    await refreshAiSummary();
+    await initSidebar();
+    await restoreTabState();
+    await initEngineInfo();
+
     render();
   })();
 })();
