@@ -169,7 +169,7 @@
   }
 
   /* Scroll area */
-  #scroller{flex:1;overflow:auto;position:relative;background:var(--bg);}
+  #scroller{display:none;flex:1 1 auto;min-height:0;overflow:auto;position:relative;background:var(--bg);}
   #dropzone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:var(--muted);font-size:14px;pointer-events:none;}
   #dropzone.hidden{display:none;}
@@ -3153,10 +3153,13 @@
     user-select: none;
   }
 
-  /* ── Document View ────────────────────────────────── */
+  /* ── Document View (Reading Screen) ────────────────── */
   #documentView {
-    flex: 1;
+    flex: 1 1 auto;
     display: none;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     position: relative;
     background: var(--bg);
@@ -3523,11 +3526,12 @@
   }
 
   .doc-editor-container {
-    display: flex;
+    display: none;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
+    height: 100%;
     overflow: hidden;
     background: #16161e;
     position: relative;
@@ -4003,11 +4007,13 @@
     <div class="tb-group">
       <button id="sidebarToggleBtn" title="Show/hide file explorer (Ctrl+B)">☰</button>
 
-      <!-- Unified 3-Mode Switcher -->
+      <!-- Unified Screen Switcher: Outline [1], Reading [2], Live Preview [3], Flashcards [4] -->
       <div class="mode-switcher-container" id="modeSwitcher">
         <button id="modeOutlineBtn" class="mode-tab-btn active" title="Virtual Outline & Tree Reader [1]">📑 Outline</button>
-        <button id="modeDocumentBtn" class="mode-tab-btn" title="Rendered Document & Prose Reader with Double-Page [2]">📖 Document</button>
-        <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [3]">🎴 Flashcards</button>
+        <button id="modeReadingBtn" class="mode-tab-btn" title="Prose Document Reading View [2]">📖 Reading</button>
+        <button id="modeLivePreviewBtn" class="mode-tab-btn" title="Live Preview & Markdown Editor [3]">⚡ Live Preview</button>
+        <button id="modeFlashcardsBtn" class="mode-tab-btn" title="Spaced Repetition Study Deck [4]">🎴 Flashcards</button>
+        <button id="modeDocumentBtn" style="display:none;"></button>
       </div>
 
       <!-- Rust Engine Badge -->
@@ -4027,26 +4033,24 @@
         </div>
       </div>
 
-      <!-- Document Mode Sub-view tabs (visible in Document Mode) -->
-      <div id="docToolbarGroup" style="display:none;align-items:center;gap:4px;">
-        <div class="sep"></div>
+      <!-- Hidden stub containers so element IDs remain available for listeners without cluttering the toolbar -->
+      <div id="docToolbarGroup" style="display:none !important;">
         <div class="doc-view-mode-tabs" id="docViewModeTabs">
-          <button id="docSubViewReadingBtn" class="doc-mode-tab active" title="Reading View [Ctrl+E]">📖 Reading</button>
-          <button id="docSubViewLiveBtn" class="doc-mode-tab" title="Live Preview [Ctrl+E]">⚡ Live Preview</button>
-          <button id="docSubViewSourceBtn" class="doc-mode-tab" title="Edit Note [Ctrl+E]">✏️ Edit</button>
+          <button id="docSubViewReadingBtn"></button>
+          <button id="docSubViewLiveBtn"></button>
+          <button id="docSubViewSourceBtn"></button>
         </div>
-        <!-- Hidden containers so element IDs remain available for listeners without cluttering the toolbar -->
-        <div id="docReadingToolsGroup" style="display:none !important;">
-          <button id="docDoublePageBtn" style="display:none;"></button>
-          <button id="docWideLayoutBtn" style="display:none;"></button>
-          <button id="docToggleTocBtn" style="display:none;"></button>
-          <button id="docCheckAllBtn" style="display:none;"></button>
-          <button id="docUncheckAllBtn" style="display:none;"></button>
+        <div id="docReadingToolsGroup">
+          <button id="docDoublePageBtn"></button>
+          <button id="docWideLayoutBtn"></button>
+          <button id="docToggleTocBtn"></button>
+          <button id="docCheckAllBtn"></button>
+          <button id="docUncheckAllBtn"></button>
         </div>
-        <div id="docEditingToolsGroup" style="display:none !important;">
-          <button id="docTopSaveBtn" style="display:none;"></button>
-          <span id="docTopSaveStatus" style="display:none;"></span>
-          <button id="docToggleTOCInEditorBtn" style="display:none;"></button>
+        <div id="docEditingToolsGroup">
+          <button id="docTopSaveBtn"></button>
+          <span id="docTopSaveStatus"></span>
+          <button id="docToggleTOCInEditorBtn"></button>
         </div>
       </div>
     </div>
@@ -4132,142 +4136,146 @@
           <div id="docBody" class="md-body markdown-body"></div>
         </div>
 
-        <!-- 2. Obsidian-like Live Preview & Document Editor Container -->
-        <div id="docEditorContainer" class="doc-editor-container" style="display:none;">
-          <!-- Massive File Shield Banner (Protects from 1M Line Files) -->
-          <div id="massiveFileShieldBanner" class="massive-shield-banner" style="display:none;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:16px;">🛡️</span>
-              <div>
-                <strong style="color:#7aa2f7;">Massive File Shield Active</strong>
-                <span style="color:var(--muted);font-size:11.5px;margin-left:6px;">
-                  Showing lines <span id="shieldRangeStart" style="font-weight:700;color:var(--fg);">1</span>–<span id="shieldRangeEnd" style="font-weight:700;color:var(--fg);">1,000</span> of <span id="shieldTotalLines" style="font-weight:700;color:#7aa2f7;">1,000,000</span> (Document windowing active)
-                </span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <button type="button" class="fc-btn-secondary" id="shieldPrevChunkBtn" style="padding:2px 8px;font-size:11px;" title="Previous 1,000 lines">◀ Prev 1k</button>
-              <button type="button" class="fc-btn-secondary" id="shieldNextChunkBtn" style="padding:2px 8px;font-size:11px;" title="Next 1,000 lines">Next 1k ▶</button>
-              <input type="number" id="shieldJumpLineInput" class="ai-modal-input" placeholder="Line #" style="width:70px;padding:2px 6px;font-size:11px;" />
-              <button type="button" class="fc-btn-secondary" id="shieldJumpBtn" style="padding:2px 8px;font-size:11px;">Jump</button>
-              <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Outline View">⚡ Outline (60 FPS Full)</button>
-              <button type="button" class="fc-btn-secondary" id="shieldSplitDeckBtn" style="padding:2px 10px;font-size:11.5px;background:rgba(187,154,247,0.15);color:#bb9af7;border-color:rgba(187,154,247,0.3);font-weight:600;" title="Split this massive file into 500-card chapters for full reading & flashcard study">✂️ Split Deck (500 cards)</button>
-            </div>
-          </div>
-
-          <!-- Split Workspace Area -->
-          <div id="docEditorSplitArea" class="doc-editor-split-area">
-            <!-- Left Pane: Editor with Gutter and Independent Editor Toolbar -->
-            <div id="docEditorPane" class="doc-editor-pane">
-              <!-- Editor Formatting Toolbar INDEPENDENT to the editor pane -->
-              <div id="docEditorToolbar" class="doc-editor-toolbar">
-                <div class="doc-editor-btn-group">
-                  <button class="doc-ed-btn" id="edBtnBold" title="Bold (Ctrl+B)"><b>B</b></button>
-                  <button class="doc-ed-btn" id="edBtnItalic" title="Italic (Ctrl+I)"><i>I</i></button>
-                  <button class="doc-ed-btn" id="edBtnStrike" title="Strikethrough"><s>S</s></button>
-                  <div class="sep" style="height:14px;"></div>
-                  <button class="doc-ed-btn" id="edBtnH1" title="Heading 1" style="font-weight:700;color:#7aa2f7;">H1</button>
-                  <button class="doc-ed-btn" id="edBtnH2" title="Heading 2" style="font-weight:700;color:#bb9af7;">H2</button>
-                  <button class="doc-ed-btn" id="edBtnH3" title="Heading 3" style="font-weight:700;color:#7dcfff;">H3</button>
-                  <div class="sep" style="height:14px;"></div>
-                  <button class="doc-ed-btn" id="edBtnTask" title="Task List item (Ctrl+L)">☑</button>
-                  <button class="doc-ed-btn" id="edBtnBullet" title="Bullet List">•</button>
-                  <button class="doc-ed-btn" id="edBtnNumList" title="Numbered List">1.</button>
-                  <div class="sep" style="height:14px;"></div>
-                  <button class="doc-ed-btn" id="edBtnQuote" title="Blockquote">”</button>
-                  <select id="edCalloutSelect" class="doc-ed-select" title="Insert Obsidian Callout">
-                    <option value="" disabled selected>✨ Callout ▾</option>
-                    <option value="NOTE">ℹ️ Note</option>
-                    <option value="TIP">💡 Tip</option>
-                    <option value="IMPORTANT">⚡ Important</option>
-                    <option value="WARNING">⚠️ Warning</option>
-                    <option value="CAUTION">🛑 Caution</option>
-                  </select>
-                  <div class="sep" style="height:14px;"></div>
-                  <button class="doc-ed-btn" id="edBtnCode" title="Code Block / Inline">&lt;/&gt;</button>
-                  <button class="doc-ed-btn" id="edBtnLink" title="Insert Link (Ctrl+K)">🔗</button>
-                  <button class="doc-ed-btn" id="edBtnWiki" title="Obsidian Wikilink">[[ ]]</button>
-                  <button class="doc-ed-btn" id="edBtnMath" title="KaTeX Math ($ or $$)">∑</button>
-                  <button class="doc-ed-btn" id="edBtnTable" title="Insert Table">⊞</button>
-                  <button class="doc-ed-btn" id="edBtnHr" title="Horizontal Divider">—</button>
-                </div>
-
-                <div class="doc-editor-btn-group">
-                  <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle word wrapping">
-                    <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
-                    <span>Wrap</span>
-                  </label>
-                  <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle auto-saving">
-                    <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
-                    <span>Auto</span>
-                  </label>
-                  <span id="edSaveStatusPill" class="doc-status-pill saved" style="font-size:10px;padding:1px 5px;">✓ Saved</span>
-                  <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 7px;font-size:11px;" title="Save to disk (Ctrl+S)">💾 Save</button>
-                </div>
-
-                <!-- Hidden stub elements for backward compatibility -->
-                <div style="display:none !important;">
-                  <button id="edSubReadingBtn"></button>
-                  <button id="edSubLiveBtn"></button>
-                  <button id="edSubSourceBtn"></button>
-                </div>
-              </div>
-
-              <!-- Editor Workspace Area (Gutter + Textarea) -->
-              <div class="doc-editor-edit-zone" style="display:flex;flex:1 1 auto;min-height:0;overflow:hidden;position:relative;">
-                <div id="docGutter" class="doc-gutter">
-                  <div id="docLineNumbers" class="doc-line-numbers">1</div>
-                </div>
-                <textarea id="docTextarea" class="doc-textarea" spellcheck="false" placeholder="Write markdown content here..."></textarea>
-              </div>
-            </div>
-
-            <!-- Resizable Split Divider -->
-            <div id="docSplitDivider" class="doc-split-divider" title="Drag to resize panes"></div>
-
-            <!-- Right Pane: Live Rendered Preview -->
-            <div id="docLivePreviewPane" class="doc-live-preview-pane">
-              <div class="doc-live-header">
-                <span style="font-weight:600;font-size:12px;color:#7aa2f7;display:flex;align-items:center;gap:6px;">
-                  <span style="font-size:14px;">⚡</span> Live Preview (Obsidian Engine)
-                </span>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <button type="button" id="docToggleLiveLineNums" class="fc-btn-secondary" style="font-size:10.5px;padding:2px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Toggle Line Numbers in Live Preview"># Lines</button>
-                  <span id="docLiveStats" style="font-size:11px;color:var(--muted);">0 words</span>
-                  <span id="docLiveRenderSpeed" class="rust-speed-badge" style="font-size:10.5px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:1px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ Rust 0ms</span>
-                </div>
-              </div>
-              <div id="docLiveBodyContainer" class="doc-live-body-container">
-                <div id="docLiveGutter" class="doc-live-gutter" style="display:block;">
-                  <div id="docLiveLineNumbers" class="doc-live-line-numbers">1</div>
-                </div>
-                <div id="docLiveBody" class="md-body markdown-body"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Editor Footer Status Bar -->
-          <div id="docEditorStatusBar" class="doc-editor-status-bar">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span id="edFooterStatusPill" class="doc-status-pill saved">✓ Saved</span>
-              <span id="edFooterFilePath" style="color:var(--muted);font-size:11.5px;">Welcome.md</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;color:var(--muted);font-size:11.5px;">
-              <span id="edFooterCursor">Ln 1, Col 1</span>
-              <span id="edFooterWordCount">0 words</span>
-              <span id="edFooterLineCount">1 lines</span>
-              <span id="edFooterCharCount">0 chars</span>
-              <span id="edFooterReadingTime">1 min read</span>
-            </div>
-          </div>
-        </div>
-
         <!-- Double Page Reading HUD -->
         <div id="docReadingHud" class="doc-reading-hud" style="display:none;">
           <button id="docPrevPageBtn" title="Previous Page (Left Arrow / PageUp)">◀</button>
           <span id="docHudPageText">Page 1 / 1 (100%)</span>
           <button id="docNextPageBtn" title="Next Page (Right Arrow / PageDown / Space)">▶</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 3: Live Preview & Document Editor (Independent Screen) -->
+  <div id="docEditorContainer" class="doc-editor-container" style="display:none;">
+    <!-- Massive File Shield Banner (Protects from 1M Line Files) -->
+    <div id="massiveFileShieldBanner" class="massive-shield-banner" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">🛡️</span>
+        <div>
+          <strong style="color:#7aa2f7;">Massive File Shield Active</strong>
+          <span style="color:var(--muted);font-size:11.5px;margin-left:6px;">
+            Showing lines <span id="shieldRangeStart" style="font-weight:700;color:var(--fg);">1</span>–<span id="shieldRangeEnd" style="font-weight:700;color:var(--fg);">1,000</span> of <span id="shieldTotalLines" style="font-weight:700;color:#7aa2f7;">1,000,000</span> (Document windowing active)
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" class="fc-btn-secondary" id="shieldPrevChunkBtn" style="padding:2px 8px;font-size:11px;" title="Previous 1,000 lines">◀ Prev 1k</button>
+        <button type="button" class="fc-btn-secondary" id="shieldNextChunkBtn" style="padding:2px 8px;font-size:11px;" title="Next 1,000 lines">Next 1k ▶</button>
+        <input type="number" id="shieldJumpLineInput" class="ai-modal-input" placeholder="Line #" style="width:70px;padding:2px 6px;font-size:11px;" />
+        <button type="button" class="fc-btn-secondary" id="shieldJumpBtn" style="padding:2px 8px;font-size:11px;">Jump</button>
+        <button type="button" class="fc-btn-primary" id="shieldSwitchOutlineBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 10px;font-size:11.5px;" title="Switch to 60 FPS Virtual Outline View">⚡ Outline (60 FPS Full)</button>
+        <button type="button" class="fc-btn-secondary" id="shieldSplitDeckBtn" style="padding:2px 10px;font-size:11.5px;background:rgba(187,154,247,0.15);color:#bb9af7;border-color:rgba(187,154,247,0.3);font-weight:600;" title="Split this massive file into 500-card chapters for full reading & flashcard study">✂️ Split Deck (500 cards)</button>
+      </div>
+    </div>
+
+    <!-- Split Workspace Area -->
+    <div id="docEditorSplitArea" class="doc-editor-split-area">
+      <!-- Left Pane: Editor with Gutter and Independent Editor Toolbar -->
+      <div id="docEditorPane" class="doc-editor-pane">
+        <!-- Editor Formatting Toolbar INDEPENDENT to the editor pane -->
+        <div id="docEditorToolbar" class="doc-editor-toolbar">
+          <div class="doc-editor-btn-group">
+            <button class="doc-ed-btn" id="edBtnBold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button class="doc-ed-btn" id="edBtnItalic" title="Italic (Ctrl+I)"><i>I</i></button>
+            <button class="doc-ed-btn" id="edBtnStrike" title="Strikethrough"><s>S</s></button>
+            <div class="sep" style="height:14px;"></div>
+            <button class="doc-ed-btn" id="edBtnH1" title="Heading 1" style="font-weight:700;color:#7aa2f7;">H1</button>
+            <button class="doc-ed-btn" id="edBtnH2" title="Heading 2" style="font-weight:700;color:#bb9af7;">H2</button>
+            <button class="doc-ed-btn" id="edBtnH3" title="Heading 3" style="font-weight:700;color:#7dcfff;">H3</button>
+            <div class="sep" style="height:14px;"></div>
+            <button class="doc-ed-btn" id="edBtnTask" title="Task List item (Ctrl+L)">☑</button>
+            <button class="doc-ed-btn" id="edBtnBullet" title="Bullet List">•</button>
+            <button class="doc-ed-btn" id="edBtnNumList" title="Numbered List">1.</button>
+            <div class="sep" style="height:14px;"></div>
+            <button class="doc-ed-btn" id="edBtnQuote" title="Blockquote">”</button>
+            <select id="edCalloutSelect" class="doc-ed-select" title="Insert Obsidian Callout">
+              <option value="" disabled selected>✨ Callout ▾</option>
+              <option value="NOTE">ℹ️ Note</option>
+              <option value="TIP">💡 Tip</option>
+              <option value="IMPORTANT">⚡ Important</option>
+              <option value="WARNING">⚠️ Warning</option>
+              <option value="CAUTION">🛑 Caution</option>
+            </select>
+            <div class="sep" style="height:14px;"></div>
+            <button class="doc-ed-btn" id="edBtnCode" title="Code Block / Inline">&lt;/&gt;</button>
+            <button class="doc-ed-btn" id="edBtnLink" title="Insert Link (Ctrl+K)">🔗</button>
+            <button class="doc-ed-btn" id="edBtnWiki" title="Obsidian Wikilink">[[ ]]</button>
+            <button class="doc-ed-btn" id="edBtnMath" title="KaTeX Math ($ or $$)">∑</button>
+            <button class="doc-ed-btn" id="edBtnTable" title="Insert Table">⊞</button>
+            <button class="doc-ed-btn" id="edBtnHr" title="Horizontal Divider">—</button>
+          </div>
+
+          <div class="doc-editor-btn-group">
+            <div class="sep" style="height:14px;"></div>
+            <button type="button" class="doc-ed-btn active" id="edLiveSplitBtn" style="font-size:11px;padding:2px 7px;font-weight:600;" title="Split View: Editor + Live Preview">⚡ Split</button>
+            <button type="button" class="doc-ed-btn" id="edLiveSourceBtn" style="font-size:11px;padding:2px 7px;" title="Full Editor: Source Markdown only">✏️ Edit</button>
+            <div class="sep" style="height:14px;"></div>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle word wrapping">
+              <input type="checkbox" id="edWrapLinesCb" style="accent-color:#7aa2f7;" />
+              <span>Wrap</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);cursor:pointer;" title="Toggle auto-saving">
+              <input type="checkbox" id="edAutoSaveCb" checked style="accent-color:#7aa2f7;" />
+              <span>Auto</span>
+            </label>
+            <span id="edSaveStatusPill" class="doc-status-pill saved" style="font-size:10px;padding:1px 5px;">✓ Saved</span>
+            <button class="doc-tool-btn" id="edSaveBtn" style="background:#7aa2f7;color:#1a1b26;font-weight:700;padding:2px 7px;font-size:11px;" title="Save to disk (Ctrl+S)">💾 Save</button>
+          </div>
+
+          <!-- Hidden stub elements for backward compatibility -->
+          <div style="display:none !important;">
+            <button id="edSubReadingBtn"></button>
+            <button id="edSubLiveBtn"></button>
+            <button id="edSubSourceBtn"></button>
+          </div>
+        </div>
+
+        <!-- Editor Workspace Area (Gutter + Textarea) -->
+        <div class="doc-editor-edit-zone" style="display:flex;flex:1 1 auto;min-height:0;overflow:hidden;position:relative;">
+          <div id="docGutter" class="doc-gutter">
+            <div id="docLineNumbers" class="doc-line-numbers">1</div>
+          </div>
+          <textarea id="docTextarea" class="doc-textarea" spellcheck="false" placeholder="Write markdown content here..."></textarea>
+        </div>
+      </div>
+
+      <!-- Resizable Split Divider -->
+      <div id="docSplitDivider" class="doc-split-divider" title="Drag to resize panes"></div>
+
+      <!-- Right Pane: Live Rendered Preview -->
+      <div id="docLivePreviewPane" class="doc-live-preview-pane">
+        <div class="doc-live-header">
+          <span style="font-weight:600;font-size:12px;color:#7aa2f7;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:14px;">⚡</span> Live Preview (Obsidian Engine)
+          </span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" id="docToggleLiveLineNums" class="fc-btn-secondary" style="font-size:10.5px;padding:2px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);" title="Toggle Line Numbers in Live Preview"># Lines</button>
+            <span id="docLiveStats" style="font-size:11px;color:var(--muted);">0 words</span>
+            <span id="docLiveRenderSpeed" class="rust-speed-badge" style="font-size:10.5px;color:#9ece6a;background:rgba(158,206,106,0.1);padding:1px 6px;border-radius:4px;border:1px solid rgba(158,206,106,0.25);">⚡ Rust 0ms</span>
+          </div>
+        </div>
+        <div id="docLiveBodyContainer" class="doc-live-body-container">
+          <div id="docLiveGutter" class="doc-live-gutter" style="display:block;">
+            <div id="docLiveLineNumbers" class="doc-live-line-numbers">1</div>
+          </div>
+          <div id="docLiveBody" class="md-body markdown-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editor Footer Status Bar -->
+    <div id="docEditorStatusBar" class="doc-editor-status-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="edFooterStatusPill" class="doc-status-pill saved">✓ Saved</span>
+        <span id="edFooterFilePath" style="color:var(--muted);font-size:11.5px;">Welcome.md</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;color:var(--muted);font-size:11.5px;">
+        <span id="edFooterCursor">Ln 1, Col 1</span>
+        <span id="edFooterWordCount">0 words</span>
+        <span id="edFooterLineCount">1 lines</span>
+        <span id="edFooterCharCount">0 chars</span>
+        <span id="edFooterReadingTime">1 min read</span>
       </div>
     </div>
   </div>
@@ -15066,23 +15074,38 @@
   let isRenderingDoc = false;
 
   function setAppMode(mode, options = {}) {
-    if (mode !== 'outline' && mode !== 'document' && mode !== 'flashcards') {
+    if (mode === 'document') {
+      const storedSub = localStorage.getItem('mdviewer-doc-submode') || (docSubMode || 'reading');
+      mode = (storedSub === 'live' || storedSub === 'source') ? 'live' : 'reading';
+    } else if (mode === 'flashcard' || mode === 'folder_deck') {
+      mode = 'flashcards';
+    } else if (mode === 'preview' || mode === 'edit' || mode === 'source') {
+      mode = 'live';
+    }
+
+    if (mode !== 'outline' && mode !== 'reading' && mode !== 'live' && mode !== 'flashcards') {
       mode = 'outline';
     }
     currentAppMode = mode;
     localStorage.setItem('mdviewer-mode', mode);
+    if (typeof saveConfig === 'function') {
+      saveConfig({ lastAppMode: mode });
+    }
 
     const outlineBtn = document.getElementById('modeOutlineBtn');
-    const docBtn = document.getElementById('modeDocumentBtn');
+    const readingBtn = document.getElementById('modeReadingBtn');
+    const liveBtn = document.getElementById('modeLivePreviewBtn');
     const fcBtn = document.getElementById('modeFlashcardsBtn');
+    const docBtn = document.getElementById('modeDocumentBtn');
+
     if (outlineBtn) outlineBtn.classList.toggle('active', mode === 'outline');
-    if (docBtn) docBtn.classList.toggle('active', mode === 'document');
+    if (readingBtn) readingBtn.classList.toggle('active', mode === 'reading');
+    if (liveBtn) liveBtn.classList.toggle('active', mode === 'live');
     if (fcBtn) fcBtn.classList.toggle('active', mode === 'flashcards');
+    if (docBtn) docBtn.classList.toggle('active', mode === 'reading' || mode === 'live');
 
     const outlineGroup = document.getElementById('outlineToolbarGroup');
-    const docGroup = document.getElementById('docToolbarGroup');
     if (outlineGroup) outlineGroup.style.display = (mode === 'outline') ? 'inline-flex' : 'none';
-    if (docGroup) docGroup.style.display = (mode === 'document') ? 'inline-flex' : 'none';
 
     if (mode === 'flashcards') {
       if (!isFlashcardMode) {
@@ -15095,23 +15118,30 @@
     }
 
     const scrollerEl = document.getElementById('scroller');
-    const docViewEl = document.getElementById('documentView');
+    const readingViewEl = document.getElementById('documentView');
+    const liveViewEl = document.getElementById('docEditorContainer');
     const fcViewEl = document.getElementById('flashcardView');
 
     if (scrollerEl) scrollerEl.style.display = (mode === 'outline') ? 'block' : 'none';
-    if (docViewEl) docViewEl.style.display = (mode === 'document') ? 'block' : 'none';
+    if (readingViewEl) readingViewEl.style.display = (mode === 'reading') ? 'block' : 'none';
+    if (liveViewEl) liveViewEl.style.display = (mode === 'live') ? 'flex' : 'none';
     if (fcViewEl) fcViewEl.style.display = (mode === 'flashcards') ? 'flex' : 'none';
 
-    if (mode !== 'document' && typeof isDocEditorDirty !== 'undefined' && isDocEditorDirty) {
+    if (mode !== 'live' && typeof isDocEditorDirty !== 'undefined' && isDocEditorDirty) {
       if (typeof saveDocEditor === 'function') saveDocEditor(true);
     }
 
-    if (mode === 'document') {
-      if (typeof setDocSubMode === 'function') {
-        setDocSubMode(docSubMode || 'reading');
-      } else {
-        renderCurrentDocument();
+    if (mode === 'reading') {
+      renderCurrentDocument();
+    } else if (mode === 'live') {
+      const textarea = document.getElementById('docTextarea');
+      if (textarea && (!textarea.value || (!isDocEditorDirty && lines && textarea.value !== lines.join('\n')))) {
+        textarea.value = (lines && lines.length > 0) ? lines.join('\n') : '';
+        setDocSaveStatus(true);
       }
+      updateDocLineNumbers();
+      updateEditorStats();
+      renderLivePreview();
     } else if (mode === 'outline') {
       render();
     }
@@ -15119,12 +15149,16 @@
 
   function setupModeSwitcher() {
     const outlineBtn = document.getElementById('modeOutlineBtn');
-    const docBtn = document.getElementById('modeDocumentBtn');
+    const readingBtn = document.getElementById('modeReadingBtn');
+    const liveBtn = document.getElementById('modeLivePreviewBtn');
     const fcBtn = document.getElementById('modeFlashcardsBtn');
+    const docBtn = document.getElementById('modeDocumentBtn');
 
     if (outlineBtn) outlineBtn.addEventListener('click', () => setAppMode('outline'));
-    if (docBtn) docBtn.addEventListener('click', () => setAppMode('document'));
+    if (readingBtn) readingBtn.addEventListener('click', () => setAppMode('reading'));
+    if (liveBtn) liveBtn.addEventListener('click', () => setAppMode('live'));
     if (fcBtn) fcBtn.addEventListener('click', () => setAppMode('flashcards'));
+    if (docBtn) docBtn.addEventListener('click', () => setAppMode('reading'));
   }
 
   async function renderCurrentDocument(targetFile = null) {
@@ -15918,105 +15952,63 @@
     }, 1200);
   }
 
-  function setDocSubMode(subMode) {
-    docSubMode = subMode;
-    localStorage.setItem('mdviewer-doc-submode', subMode);
-
-    const readingContainer = document.getElementById('docBodyContainer');
-    const editorContainer = document.getElementById('docEditorContainer');
-    const readingTools = document.getElementById('docReadingToolsGroup');
-    const editingTools = document.getElementById('docEditingToolsGroup');
-    const readingHud = document.getElementById('docReadingHud');
+  function setLiveLayout(layout) {
     const splitArea = document.getElementById('docEditorSplitArea');
     const editorPane = document.getElementById('docEditorPane');
     const splitDivider = document.getElementById('docSplitDivider');
     const livePane = document.getElementById('docLivePreviewPane');
-    const textarea = document.getElementById('docTextarea');
+    const splitBtn = document.getElementById('edLiveSplitBtn');
+    const sourceBtn = document.getElementById('edLiveSourceBtn');
 
-    // Update Tab Buttons in Top Toolbar, Floating Bar, and Editor Toolbar
-    const topTabs = [
-      { id: 'docSubViewReadingBtn', mode: 'reading' },
-      { id: 'docSubViewLiveBtn', mode: 'live' },
-      { id: 'docSubViewSourceBtn', mode: 'source' },
-      { id: 'edSubReadingBtn', mode: 'reading' },
-      { id: 'edSubLiveBtn', mode: 'live' },
-      { id: 'edSubSourceBtn', mode: 'source' }
-    ];
-    const floatTabs = [
-      { id: 'docFloatSubReadingBtn', mode: 'reading' },
-      { id: 'docFloatSubLiveBtn', mode: 'live' },
-      { id: 'docFloatSubSourceBtn', mode: 'source' }
-    ];
-    topTabs.forEach(t => {
-      const el = document.getElementById(t.id);
-      if (el) el.classList.toggle('active', t.mode === subMode);
-    });
-    floatTabs.forEach(t => {
-      const el = document.getElementById(t.id);
-      if (el) el.classList.toggle('active', t.mode === subMode);
-    });
-
-    const docFloatingBar = document.getElementById('docFloatingBar');
-    if (docFloatingBar) {
-      docFloatingBar.style.display = (subMode === 'reading') ? 'flex' : 'none';
-    }
-
-    const floatEditBtn = document.getElementById('docFloatEditBtn');
-    if (floatEditBtn) {
-      floatEditBtn.textContent = (subMode === 'reading') ? '✏️ Edit' : '📖 Reading View';
-    }
-
-    if (subMode === 'reading') {
-      if (readingContainer) readingContainer.style.display = 'block';
-      if (editorContainer) editorContainer.style.display = 'none';
-      if (readingTools) readingTools.style.display = 'inline-flex';
-      if (editingTools) editingTools.style.display = 'none';
-      if (readingHud) readingHud.style.display = isDoublePageMode ? 'flex' : 'none';
-      renderCurrentDocument();
+    if (layout === 'source') {
+      if (splitArea) {
+        splitArea.classList.remove('split-mode-live');
+        splitArea.classList.add('split-mode-source');
+      }
+      if (splitDivider) splitDivider.style.display = 'none';
+      if (livePane) livePane.style.display = 'none';
+      if (editorPane) editorPane.style.flex = '1 1 100%';
+      if (sourceBtn) sourceBtn.classList.add('active');
+      if (splitBtn) splitBtn.classList.remove('active');
+      localStorage.setItem('mdviewer-doc-submode', 'source');
     } else {
-      if (readingContainer) readingContainer.style.display = 'none';
-      if (editorContainer) editorContainer.style.display = 'flex';
-      if (readingTools) readingTools.style.display = 'none';
-      if (editingTools) editingTools.style.display = 'inline-flex';
-      if (readingHud) readingHud.style.display = 'none';
-
-      // Ensure textarea has content
-      if (textarea && (!textarea.value || (!isDocEditorDirty && textarea.value !== lines.join('\n')))) {
-        textarea.value = lines.join('\n');
-        setDocSaveStatus(true);
+      if (splitArea) {
+        splitArea.classList.remove('split-mode-source');
+        splitArea.classList.add('split-mode-live');
       }
+      if (splitDivider) splitDivider.style.display = 'block';
+      if (livePane) livePane.style.display = 'flex';
+      if (editorPane) editorPane.style.flex = '1 1 50%';
+      if (splitBtn) splitBtn.classList.add('active');
+      if (sourceBtn) sourceBtn.classList.remove('active');
+      localStorage.setItem('mdviewer-doc-submode', 'live');
+      renderLivePreview();
+    }
+  }
 
-      updateDocLineNumbers();
-      updateEditorStats();
-
-      if (subMode === 'live') {
-        if (splitArea) {
-          splitArea.classList.remove('split-mode-source');
-          splitArea.classList.add('split-mode-live');
-        }
-        if (splitDivider) splitDivider.style.display = 'block';
-        if (livePane) livePane.style.display = 'flex';
-        if (editorPane) editorPane.style.flex = '1 1 50%';
-        renderLivePreview();
-      } else if (subMode === 'source') {
-        if (splitArea) {
-          splitArea.classList.remove('split-mode-live');
-          splitArea.classList.add('split-mode-source');
-        }
-        if (splitDivider) splitDivider.style.display = 'none';
-        if (livePane) livePane.style.display = 'none';
-        if (editorPane) editorPane.style.flex = '1 1 100%';
-      }
+  function setDocSubMode(subMode) {
+    docSubMode = subMode;
+    localStorage.setItem('mdviewer-doc-submode', subMode);
+    if (subMode === 'reading') {
+      setAppMode('reading');
+    } else if (subMode === 'source') {
+      setLiveLayout('source');
+      setAppMode('live');
+    } else {
+      setLiveLayout('split');
+      setAppMode('live');
     }
   }
 
   function toggleDocEditMode() {
-    if (docSubMode === 'reading') {
-      setDocSubMode('live');
+    if (currentAppMode === 'reading') {
+      setAppMode('live');
       const textarea = document.getElementById('docTextarea');
       if (textarea) textarea.focus();
+    } else if (currentAppMode === 'live') {
+      setAppMode('reading');
     } else {
-      setDocSubMode('reading');
+      setAppMode('reading');
     }
   }
 
@@ -16092,9 +16084,13 @@
     const liveBodyContainer = document.getElementById('docLiveBodyContainer');
     const splitDivider = document.getElementById('docSplitDivider');
     const splitArea = document.getElementById('docEditorSplitArea');
-    const editorPane = document.getElementById('docEditorPane');
-
     if (!textarea) return;
+
+    // Layout toggles in editor toolbar
+    const liveSplitBtn = document.getElementById('edLiveSplitBtn');
+    const liveSourceBtn = document.getElementById('edLiveSourceBtn');
+    if (liveSplitBtn) liveSplitBtn.addEventListener('click', () => setLiveLayout('split'));
+    if (liveSourceBtn) liveSourceBtn.addEventListener('click', () => setLiveLayout('source'));
 
     // Sub-mode tabs in top toolbar
     const topTabReading = document.getElementById('docSubViewReadingBtn');
@@ -17233,14 +17229,14 @@
   document.addEventListener('keydown', (e) => {
     // Global editor shortcuts that trigger even inside textarea/inputs
     if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
-      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+      if (typeof currentAppMode !== 'undefined' && (currentAppMode === 'document' || currentAppMode === 'reading' || currentAppMode === 'live')) {
         e.preventDefault();
         toggleDocEditMode();
         return;
       }
     }
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
-      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+      if (typeof currentAppMode !== 'undefined' && (currentAppMode === 'document' || currentAppMode === 'reading' || currentAppMode === 'live')) {
         e.preventDefault();
         saveDocEditor();
         return;
@@ -17255,23 +17251,29 @@
     }
     if (e.key === '2') {
       e.preventDefault();
-      setAppMode('document');
+      setAppMode('reading');
       return;
     }
     if (e.key === '3') {
+      e.preventDefault();
+      setAppMode('live');
+      return;
+    }
+    if (e.key === '4') {
       e.preventDefault();
       setAppMode('flashcards');
       return;
     }
     if (e.key === 'm' || e.key === 'M') {
       e.preventDefault();
-      if (currentAppMode === 'outline') setAppMode('document');
-      else if (currentAppMode === 'document') setAppMode('flashcards');
+      if (currentAppMode === 'outline') setAppMode('reading');
+      else if (currentAppMode === 'reading') setAppMode('live');
+      else if (currentAppMode === 'live') setAppMode('flashcards');
       else setAppMode('outline');
       return;
     }
 
-    if (currentAppMode === 'document' && isDoublePageMode) {
+    if ((currentAppMode === 'reading' || currentAppMode === 'document') && isDoublePageMode) {
       const activeTag = document.activeElement ? document.activeElement.tagName : '';
       if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
         if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'ArrowDown' || (e.key === ' ' && !e.shiftKey)) {
@@ -17341,7 +17343,7 @@
       console.error('Error during initial UI setup:', err);
     }
 
-    const defaultMode = urlParams.get('mode') || (savedConfig.lastAppMode === 'folder_deck' ? 'flashcard' : (savedConfig.lastAppMode || 'outline'));
+    const defaultMode = urlParams.get('mode') || localStorage.getItem('mdviewer-mode') || (savedConfig.lastAppMode === 'folder_deck' ? 'flashcard' : (savedConfig.lastAppMode || 'outline'));
     setAppMode(defaultMode);
 
     applyZoom();
