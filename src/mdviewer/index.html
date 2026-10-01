@@ -15854,9 +15854,10 @@
   async function renderLivePreview() {
     const textarea = document.getElementById('docTextarea');
     const liveBody = document.getElementById('docLiveBody');
+    const livePane = document.getElementById('docLivePreviewPane');
     const speedBadge = document.getElementById('docLiveRenderSpeed');
     if (!textarea || !liveBody) return;
-    if (docSubMode !== 'live') return;
+    if (livePane && livePane.style.display === 'none') return;
 
     const t0 = performance.now();
     try {
@@ -16047,6 +16048,7 @@
       }
       if (sourceBtn) sourceBtn.classList.add('active');
       if (splitBtn) splitBtn.classList.remove('active');
+      docSubMode = 'source';
       localStorage.setItem('mdviewer-doc-submode', 'source');
     } else {
       if (splitArea) {
@@ -16066,6 +16068,7 @@
       }
       if (splitBtn) splitBtn.classList.add('active');
       if (sourceBtn) sourceBtn.classList.remove('active');
+      docSubMode = 'live';
       localStorage.setItem('mdviewer-doc-submode', 'live');
       renderLivePreview();
     }
@@ -16169,6 +16172,7 @@
     const liveBodyContainer = document.getElementById('docLiveBodyContainer');
     const splitDivider = document.getElementById('docSplitDivider');
     const splitArea = document.getElementById('docEditorSplitArea');
+    const editorPane = document.getElementById('docEditorPane');
     if (!textarea) return;
 
     // Layout toggles in editor toolbar
