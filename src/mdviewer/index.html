@@ -7368,6 +7368,15 @@
 
     if (target.isDir) {
       menuHTML += `
+        <div class="ctx-item" data-action="new-note" title="Create a new note in this folder">
+          <span class="ctx-icon">➕</span>
+          <span class="ctx-label">New Note Here</span>
+        </div>
+        <div class="ctx-item" data-action="new-folder" title="Create a new folder in this folder">
+          <span class="ctx-icon">📁</span>
+          <span class="ctx-label">New Folder Here</span>
+        </div>
+        <div class="ctx-divider"></div>
         <div class="ctx-item" data-action="folder-generate" title="Generate AI supplements for all files in this folder at once">
           <span class="ctx-icon">⚡</span>
           <span class="ctx-label">Generate All in Folder...</span>
@@ -7379,6 +7388,15 @@
         <div class="ctx-item" data-action="term-folder">
           <span class="ctx-icon">🖥️</span>
           <span class="ctx-label">Open Terminal Here</span>
+        </div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" data-action="rename-move" title="Rename or move this folder">
+          <span class="ctx-icon">✏️</span>
+          <span class="ctx-label">Rename / Move</span>
+        </div>
+        <div class="ctx-item" data-action="delete" style="color:#f7768e;" title="Delete this folder">
+          <span class="ctx-icon">🗑️</span>
+          <span class="ctx-label">Delete Folder</span>
         </div>
         <div class="ctx-divider"></div>
         <div class="ctx-item" data-action="copy-rel-path">
@@ -7430,6 +7448,15 @@
       }
 
       menuHTML += `
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" data-action="rename-move" title="Rename or move this file">
+          <span class="ctx-icon">✏️</span>
+          <span class="ctx-label">Rename / Move</span>
+        </div>
+        <div class="ctx-item" data-action="delete" style="color:#f7768e;" title="Delete this file">
+          <span class="ctx-icon">🗑️</span>
+          <span class="ctx-label">Delete File</span>
+        </div>
         <div class="ctx-divider"></div>
         <div class="ctx-item" data-action="copy-rel-path">
           <span class="ctx-icon">📋</span>
@@ -7517,6 +7544,87 @@
           showAppToast(`📋 Copied name: ${target.name}`);
         }
         break;
+      case 'new-note': {
+        const name = prompt(`Enter new note name in '${target.path}'\n(e.g. MyNote.md):`, 'Untitled.md');
+        if (!name) return;
+        let clean = name.trim();
+        if (!clean.endsWith('.md') && !clean.endsWith('.markdown')) clean += '.md';
+        const fullPath = target.path ? `${target.path}/${clean}` : clean;
+        fetch('/api/file/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: fullPath, is_dir: false })
+        }).then(res => res.json()).then(data => {
+          if (data.status === 'ok') {
+            showAppToast(`Created note: ${clean}`);
+            if (typeof initSidebar === 'function') initSidebar();
+            if (typeof openFile === 'function') openFile(fullPath);
+          } else alert('Error: ' + data.message);
+        }).catch(err => alert('Error creating note: ' + err.message));
+        break;
+      }
+      case 'new-folder': {
+        const name = prompt(`Enter new folder name in '${target.path}':`, 'NewFolder');
+        if (!name) return;
+        const fullPath = target.path ? `${target.path}/${name.trim()}` : name.trim();
+        fetch('/api/file/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: fullPath, is_dir: true })
+        }).then(res => res.json()).then(data => {
+          if (data.status === 'ok') {
+            showAppToast(`Created folder: ${name.trim()}`);
+            if (typeof initSidebar === 'function') initSidebar();
+          } else alert('Error: ' + data.message);
+        }).catch(err => alert('Error creating folder: ' + err.message));
+        break;
+      }
+      case 'rename-move': {
+        const newPath = prompt(`Rename / Move '${target.name}'\nEnter new path:`, target.path);
+        if (newPath && newPath.trim() !== target.path) {
+          fetch('/api/file/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_path: target.path, new_path: newPath.trim() })
+          }).then(res => res.json()).then(data => {
+            if (data.status === 'ok') {
+              showAppToast(`Moved to: ${newPath.trim()}`);
+              if (typeof initSidebar === 'function') initSidebar();
+            } else alert('Error: ' + data.message);
+          }).catch(err => alert('Error renaming/moving: ' + err.message));
+        }
+        break;
+      }
+      case 'delete': {
+        const type = target.isDir ? 'folder' : 'file';
+        if (confirm(`Are you sure you want to delete this ${type}?\n${target.path}`)) {
+          fetch('/api/file/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: target.path })
+          }).then(res => res.json()).then(data => {
+            if (data.status === 'ok') {
+              showAppToast(`Deleted ${type}: ${target.name}`);
+              if (typeof initSidebar === 'function') initSidebar();
+              // Close if currently open
+              if (!target.isDir && typeof currentFilePath !== 'undefined' && currentFilePath === target.path) {
+                 if (typeof closeFile === 'function') closeFile(); // Assuming this might exist
+                 // Instead of calling closeFile (which may not exist), let's just clear editor
+                 const ta = document.getElementById('docTextarea');
+                 if (ta) ta.value = '';
+                 const lb = document.getElementById('docLiveBody');
+                 if (lb) lb.innerHTML = '';
+                 const fns = document.getElementById('fileNameSpan');
+                 if (fns) fns.textContent = 'No file opened';
+                 const status = document.getElementById('docSaveStatus');
+                 if (status) status.textContent = '';
+                 currentFilePath = null;
+              }
+            } else alert('Error: ' + data.message);
+          }).catch(err => alert('Error deleting: ' + err.message));
+        }
+        break;
+      }
     }
   });
 
