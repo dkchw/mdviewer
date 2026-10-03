@@ -6222,8 +6222,10 @@
     reader.onload = () => {
       loadText(reader.result, file.name);
       syncUrlState('replace');
-      if (typeof currentAppMode !== 'undefined' && currentAppMode === 'document') {
+      if (typeof currentAppMode !== 'undefined' && (currentAppMode === 'reading' || currentAppMode === 'document')) {
         renderCurrentDocument();
+      } else if (typeof currentAppMode !== 'undefined' && currentAppMode === 'live') {
+        if (typeof renderLivePreview === 'function') renderLivePreview();
       }
     };
     reader.readAsText(file);
@@ -10259,8 +10261,18 @@
         if(isFlashcardMode){
           exitFlashcardMode();
         }
-        if(typeof currentAppMode !== 'undefined' && currentAppMode === 'document'){
-          renderCurrentDocument();
+        if(options.mode && typeof setAppMode === 'function' && options.mode !== 'flashcard' && options.mode !== currentAppMode){
+          setAppMode(options.mode);
+        } else if(typeof currentAppMode !== 'undefined' && (currentAppMode === 'reading' || currentAppMode === 'document')){
+          await renderCurrentDocument();
+          const docBody = document.getElementById('docBody');
+          if(docBody && options.line == null && options.scroll == null){
+            docBody.scrollTop = 0;
+          }
+        } else if(typeof currentAppMode !== 'undefined' && currentAppMode === 'live'){
+          if(typeof renderLivePreview === 'function'){
+            renderLivePreview();
+          }
         }
         if(options.line != null && options.line >= 0){
           setTimeout(() => scrollToLine(options.line, true), 50);
@@ -10362,7 +10374,7 @@
         }));
       } else {
         if(currentFilePath) sessionStorage.setItem('mdv_tab_file', currentFilePath);
-        sessionStorage.setItem('mdv_tab_mode', isFlashcardMode ? 'flashcard' : 'outline');
+        sessionStorage.setItem('mdv_tab_mode', isFlashcardMode ? 'flashcard' : (currentAppMode || 'outline'));
         if(isFlashcardMode){
           sessionStorage.setItem('mdv_tab_card', String(currentCardIndex));
           sessionStorage.setItem('mdv_tab_page', String(currentBackPageIndex));
@@ -10444,7 +10456,7 @@
     
     if(!targetFile) return;
 
-    const mode = urlParams.get('mode') || (!isFromPopstate ? sessionStorage.getItem('mdv_tab_mode') : null) || 'outline';
+    const mode = urlParams.get('mode') || (!isFromPopstate ? sessionStorage.getItem('mdv_tab_mode') : null) || (currentAppMode || 'outline');
     const filter = urlParams.get('filter') || (!isFromPopstate ? sessionStorage.getItem('mdv_tab_filter') : null) || 'outline';
     
     let card = null;
@@ -15342,10 +15354,6 @@
     const docTocList = document.getElementById('docTocList');
     
     if (!docBody) return;
-    if (!filePath && (!lines || lines.length === 0)) {
-      filePath = 'Welcome.md';
-    }
-
     isRenderingDoc = true;
     const t0 = performance.now();
 
@@ -15356,8 +15364,10 @@
         payload.content = textarea ? textarea.value : (lines ? lines.join('\n') : '');
       } else if (filePath) {
         payload.file = filePath;
-      } else {
+      } else if (lines && lines.length > 0) {
         payload.content = lines.join('\n');
+      } else {
+        payload.content = '# Welcome to Markdown Viewer\n\nSelect a note from the sidebar to start reading.';
       }
 
       const res = await fetch('/api/document/render', {
@@ -17523,8 +17533,10 @@
   window.openFile = openFile;
   window.setAppMode = setAppMode;
   window.getCurrentAppMode = () => currentAppMode;
+  window.getCurrentFilePath = () => currentFilePath;
   window.massiveShieldState = massiveShieldState;
   window.renderCurrentDocument = renderCurrentDocument;
+  window.isRenderingDoc = () => isRenderingDoc;
   window.setDocSubMode = setDocSubMode;
   window.toggleDocEditMode = toggleDocEditMode;
   window.saveDocEditor = saveDocEditor;
