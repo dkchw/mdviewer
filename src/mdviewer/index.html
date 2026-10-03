@@ -9476,8 +9476,12 @@
   }
 
   function enterFlashcardMode(options = {}){
-    if(lines.length === 0){
-      alert('Please open a markdown file first.');
+    if((!lines || lines.length === 0) && !isFolderDeck){
+      if(!options.silent){
+        if (typeof showAppToast === 'function') {
+          showAppToast('Please open a markdown file first.', true);
+        }
+      }
       return;
     }
     isFlashcardMode = true;
@@ -13633,7 +13637,9 @@
   // Clean orphaned supplements helper
   async function cleanOrphanedSupplements() {
     if (!currentFilePath) {
-      alert('Please open a markdown file first to check for orphaned outputs.');
+      if (typeof showAppToast === 'function') {
+        showAppToast('Please open a markdown file first to check for orphaned outputs.', true);
+      }
       return;
     }
     const validSlugs = [];
@@ -15292,7 +15298,9 @@
 
     if (mode === 'flashcards') {
       if (!isFlashcardMode) {
-        enterFlashcardMode(options);
+        if ((lines && lines.length > 0) || isFolderDeck) {
+          enterFlashcardMode(options);
+        }
       }
     } else {
       if (isFlashcardMode) {
@@ -17589,7 +17597,7 @@
     }
 
     const defaultMode = urlParams.get('mode') || localStorage.getItem('mdviewer-mode') || (savedConfig.lastAppMode === 'folder_deck' ? 'flashcard' : (savedConfig.lastAppMode || 'outline'));
-    setAppMode(defaultMode);
+    setAppMode(defaultMode, { silent: true });
 
     applyZoom();
     applyFcZoom();
