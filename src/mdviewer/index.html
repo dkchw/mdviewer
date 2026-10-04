@@ -4568,11 +4568,8 @@
         <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
         <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
       </div>
-        <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
-        <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
-      </div>
       <div class="fc-shortcuts-hint">
-        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>D / A</b> : Repeat &nbsp;•&nbsp; <b>M</b> : Mark &nbsp;•&nbsp; <b>Shift+D</b> : Drill Settings &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>Esc</b> : Exit
+        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>D / A</b> : Repeat &nbsp;•&nbsp; <b>K / Shift+M</b> : Mark &nbsp;•&nbsp; <b>Shift+D</b> : Drill &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>1 / M / Esc</b> : Outline
       </div>
     </div>
     <!-- Flashcard Right Sidebar: Overview & Search -->
@@ -8971,12 +8968,12 @@
         continue;
       }
 
-      const breadcrumb = getBreadcrumb(h);
-      const frontText = h.text + (breadcrumb ? ' ' + breadcrumb : '');
-      const backText = getCardBackRawText(h);
-
       let isMatch = true;
+      let breadcrumb = null;
       if(query){
+        breadcrumb = getBreadcrumb(h);
+        const frontText = h.text + (breadcrumb ? ' ' + breadcrumb : '');
+        const backText = getCardBackRawText(h);
         const frontMatch = frontText.toLowerCase().includes(lowerQ);
         const backMatch = backText.toLowerCase().includes(lowerQ);
         if(fcSearchScope === 'front'){
@@ -8986,11 +8983,17 @@
         } else {
           isMatch = frontMatch || backMatch;
         }
+      } else if (fcSearchScope === 'all') {
+        if (items.length >= MAX_VISIBLE_OVERVIEW) {
+          matchCount = flashcardList.length;
+          break;
+        }
       }
 
       if(isMatch){
         matchCount++;
         if (items.length < MAX_VISIBLE_OVERVIEW) {
+          if (breadcrumb === null) breadcrumb = getBreadcrumb(h);
           const snippet = getCardBackSnippet(h, query);
           const titleHtml = highlightMatches(h.text, query);
           const bcHtml = breadcrumb ? highlightMatches(breadcrumb, query) : '';
@@ -10064,7 +10067,16 @@
     fcCard.style.transform = '';
     fcCard.style.transition = '';
     isFlippingAnim = false;
+    let targetCardFile = null;
+    let targetCardLine = 0;
     if (isFolderDeck) {
+      const activeCard = (flashcardList && flashcardList.length > 0 && currentCardIndex >= 0 && currentCardIndex < flashcardList.length)
+        ? flashcardList[currentCardIndex]
+        : null;
+      if (activeCard && activeCard.file_path) {
+        targetCardFile = activeCard.file_path;
+        targetCardLine = activeCard.line || 0;
+      }
       saveConfig({ lastFolderDeck: null, lastAppMode: currentAppMode || 'outline' });
       try {
         sessionStorage.removeItem('mdv_folder_deck');
@@ -10080,7 +10092,10 @@
     if(mainToolbar) mainToolbar.style.display = 'flex';
     scroller.style.display = 'block';
     if(typeof syncUrlState === 'function') syncUrlState('replace');
-    render();
+
+    if (targetCardFile && targetCardFile !== currentFilePath) {
+      openFile(targetCardFile, { mode: 'outline', line: targetCardLine });
+    }
   }
 
   if(flashcardModeBtn) flashcardModeBtn.addEventListener('click', enterFlashcardMode);
@@ -10581,12 +10596,12 @@
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'd' || e.key === 'D')){
       e.preventDefault();
       if(typeof repeatCurrentCard === 'function') repeatCurrentCard();
-    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')){
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')){
       e.preventDefault();
       if(typeof toggleMarkCurrentCard === 'function') toggleMarkCurrentCard();
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && e.shiftKey && (e.key === 'm' || e.key === 'M')){
       e.preventDefault();
-      if(typeof openDrillModal === 'function') openDrillModal('marked');
+      if(typeof toggleMarkCurrentCard === 'function') toggleMarkCurrentCard();
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'j' || e.key === 'J' || e.key === 'g' || e.key === 'G')){
       e.preventDefault();
       if(typeof openJumpToCardModal === 'function') openJumpToCardModal();
@@ -10614,7 +10629,7 @@
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'r' || e.key === 'R')){
       e.preventDefault();
       playCurrentCardAudio();
-    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key)){
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && /^[5-9]$/.test(e.key)){
       const num = parseInt(e.key, 10);
       if(playCurrentCardAudioAtIndex(num - 1)){
         e.preventDefault();
@@ -11960,12 +11975,32 @@
 
     if (cachedMissingCount === null) {
       if (flashcardList && flashcardList.length > 0) {
-        cachedMissingCount = flashcardList.filter(h => {
-          const slug = getCardSlug(h);
-          const textKey = h.text ? `text::${h.text.trim().toLowerCase()}` : '';
-          const levelKey = `H${h.level || 2}::${(h.text || '').trim()}`;
-          return !currentFileAiCards || (!currentFileAiCards.has(slug) && !currentFileAiCards.has(levelKey) && (!textKey || !currentFileAiCards.has(textKey)));
-        }).length;
+        if (flashcardList.length > 200) {
+          cachedMissingCount = 0;
+          setTimeout(() => {
+            if (!flashcardList || flashcardList.length === 0) return;
+            const cnt = flashcardList.filter(h => {
+              const slug = getCardSlug(h);
+              const textKey = h.text ? `text::${h.text.trim().toLowerCase()}` : '';
+              const levelKey = `H${h.level || 2}::${(h.text || '').trim()}`;
+              return !currentFileAiCards || (!currentFileAiCards.has(slug) && !currentFileAiCards.has(levelKey) && (!textKey || !currentFileAiCards.has(textKey)));
+            }).length;
+            cachedMissingCount = cnt;
+            if (fcHeaderMissingCount) fcHeaderMissingCount.textContent = cnt;
+            if (fcHeaderGenMissingBtn) {
+              fcHeaderGenMissingBtn.style.display = (cnt > 0) ? 'inline-flex' : 'none';
+              fcHeaderGenMissingBtn.title = `Generate AI notes for ${cnt} cards missing AI in current deck`;
+            }
+            if (fcSideMissingCount) fcSideMissingCount.textContent = cnt;
+          }, 40);
+        } else {
+          cachedMissingCount = flashcardList.filter(h => {
+            const slug = getCardSlug(h);
+            const textKey = h.text ? `text::${h.text.trim().toLowerCase()}` : '';
+            const levelKey = `H${h.level || 2}::${(h.text || '').trim()}`;
+            return !currentFileAiCards || (!currentFileAiCards.has(slug) && !currentFileAiCards.has(levelKey) && (!textKey || !currentFileAiCards.has(textKey)));
+          }).length;
+        }
       } else {
         cachedMissingCount = 0;
       }
@@ -12176,6 +12211,11 @@
     if (fcInfoCardBadge) {
       fcInfoCardBadge.textContent = `H${h.level} • ${h.text}`;
       fcInfoCardBadge.title = `File: ${cardFilePath}\nSlug: ${slug}`;
+    }
+
+    // Performance Optimization: Skip network fetch if AI panel is closed and viewing original back
+    if (!isFcInfoPanelOpen && cardBackViewMode === 'original') {
+      return;
     }
 
     try {
@@ -16788,6 +16828,27 @@
       if (!isFlashcardMode) {
         if ((lines && lines.length > 0) || isFolderDeck) {
           enterFlashcardMode(options);
+        } else if (currentFilePath) {
+          openFile(currentFilePath, { mode: 'flashcard' });
+        } else {
+          try {
+            const rawDeck = sessionStorage.getItem('mdv_folder_deck');
+            if (rawDeck) {
+              const d = JSON.parse(rawDeck);
+              if (d && d.folder) {
+                loadFolderDeck(d.folder, d.level, d.recursive, d.cardIndex || 0);
+                return;
+              }
+            }
+          } catch(e) {}
+          const lastFile = localStorage.getItem('mdviewer-last-file');
+          if (lastFile) {
+            openFile(lastFile, { mode: 'flashcard' });
+          } else {
+            showToast('Please open a markdown file or folder deck first.', 3000);
+            setAppMode('outline');
+            return;
+          }
         }
       }
     } else {
@@ -19222,7 +19283,6 @@
       }
     }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-    if (typeof isFlashcardMode !== 'undefined' && isFlashcardMode) return;
 
     if (e.key === '1') {
       e.preventDefault();
@@ -19269,6 +19329,7 @@
 
   window.openFile = openFile;
   window.setAppMode = setAppMode;
+  window.isFlashcardMode = () => isFlashcardMode;
   window.getCurrentAppMode = () => currentAppMode;
   window.getCurrentFilePath = () => currentFilePath;
   window.massiveShieldState = massiveShieldState;
