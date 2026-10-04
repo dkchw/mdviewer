@@ -906,6 +906,31 @@
   }
   .fc-shortcuts-hint b{color:#a9b1d6;}
 
+  /* Temporary Flashcard Drill / Spaced Repetition */
+  .fc-drill-banner{
+    display:flex;align-items:center;gap:10px;padding:6px 14px;
+    background:rgba(247,118,142,0.14);border:1px solid rgba(247,118,142,0.38);
+    border-radius:6px;margin-bottom:12px;font-size:12px;color:#f7768e;
+    user-select:none;animation:fadeIn 0.2s ease;
+  }
+  .fc-drill-banner .fc-drill-tag{
+    font-weight:700;display:inline-flex;align-items:center;gap:4px;
+  }
+  .fc-drill-banner .fc-drill-desc{
+    color:#a9b1d6;font-size:11.5px;
+  }
+  .fc-drill-banner button{
+    background:#242737;color:var(--fg);border:1px solid var(--border);
+    padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;
+    transition:background .15s, border-color .15s;
+  }
+  .fc-drill-banner button:hover{
+    background:rgba(158,206,106,0.2);color:#9ece6a;border-color:#9ece6a;
+  }
+  #fcRepeatBtn:hover{
+    background:rgba(247,118,142,0.28) !important;border-color:#f7768e !important;
+  }
+
   #flashcardModeBtn{
     background:#242737;color:var(--accent);border:1px solid rgba(122,162,247,0.4);font-weight:600;
   }
@@ -4385,6 +4410,7 @@
       <div class="sep"></div>
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
       <button id="fcJumpToolbarBtn" title="Jump directly to any card (J / G)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.12);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🎯 Jump</button>
+      <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(247,118,142,0.12);color:#f7768e;border:1px solid rgba(247,118,142,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">2, 2</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
       <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
@@ -4409,6 +4435,7 @@
           </div>
           <div class="fc-badge" id="fcLevelBadge">H1</div>
           <div class="fc-breadcrumb" id="fcBreadcrumb"></div>
+          <div id="fcDrillBanner" class="fc-drill-banner" style="display:none;"></div>
           <div class="fc-front-title" id="fcFrontTitle">Title</div>
           <div class="fc-front-media" id="fcFrontMedia" style="display:none;"></div>
           <div class="fc-hint">Click card or press <b>Space / W / Enter</b> to flip • <b>R</b> for audio</div>
@@ -4444,6 +4471,7 @@
               </div>
             </div>
           </div>
+          <div id="fcDrillBackBanner" class="fc-drill-banner" style="display:none;margin:8px 16px 0 16px;"></div>
           <div id="fcBackAiBar" class="fc-back-ai-bar" style="display:none;">
             <span id="fcBackAiProvIcon" style="color:var(--accent);font-weight:700;">✨</span>
             <span class="fc-back-ai-label" id="fcBackAiProvName" style="font-weight:700;color:var(--accent);">OpenRouter</span>
@@ -4489,11 +4517,12 @@
       <div id="fcNavControls">
         <button id="fcPrevBtn" title="Previous card (← Left Arrow)">◀ Prev</button>
         <button id="fcFlipBtn" title="Flip card (Space / W / Enter)">Flip Card</button>
+        <button id="fcRepeatBtn" title="Repeat this card via temporary algorithm (D / A)" style="background:rgba(247, 118, 142, 0.16);color:#f7768e;border:1px solid rgba(247, 118, 142, 0.45);font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">🔁 Repeat <span id="fcRepeatNavIntervals" style="font-size:11px;opacity:0.9;font-weight:normal;">(+2, +2)</span></button>
         <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
         <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
       </div>
       <div class="fc-shortcuts-hint">
-        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>C</b> : 2-Col &nbsp;•&nbsp; <b>F</b> : Fullscreen &nbsp;•&nbsp; <b>Esc</b> : Exit
+        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>D / A</b> : Repeat &nbsp;•&nbsp; <b>Shift+D</b> : Drill Settings &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>Esc</b> : Exit
       </div>
     </div>
     <!-- Flashcard Right Sidebar: Overview & Search -->
@@ -5229,6 +5258,75 @@
         <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="last" style="font-size:11px;padding:3px 9px;">⏭ Last</button>
       </div>
       <div id="fcJumpDeckInfo" style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Temporary Flashcard Algorithm (Drill / Spaced Repetition) Modal -->
+<div id="fcDrillModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog" style="max-width:480px;">
+    <div class="ai-modal-header">
+      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🔁 Temporary Drill Algorithm</span>
+      <button class="term-action-btn close" id="fcDrillCloseBtn" title="Close (Esc)">✕</button>
+    </div>
+    <div class="ai-modal-body" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.45;">
+        Configure a custom card repetition schedule for this study session. When you click <b>Repeat</b> or press <b>D</b>, the card will reappear at these card intervals.
+      </div>
+      
+      <div class="ai-modal-field">
+        <label for="fcDrillIntervalsInput" style="font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+          <span>Repetition Intervals (card offsets):</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:normal;">e.g. 2, 2</span>
+        </label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+          <input type="text" id="fcDrillIntervalsInput" class="ai-modal-input" value="2, 2" spellcheck="false" style="font-size:16px;font-weight:700;padding:8px 12px;font-family:monospace;letter-spacing:1px;background:#141620;border:1px solid var(--accent);border-radius:6px;color:#fff;" />
+        </div>
+      </div>
+
+      <!-- Realtime explanation preview -->
+      <div id="fcDrillExplanation" style="font-size:12px;color:#7aa2f7;background:rgba(122,162,247,0.1);border:1px solid rgba(122,162,247,0.25);border-radius:6px;padding:9px 12px;line-height:1.4;">
+        Card will reappear after <b>2 cards</b>, and again after another <b>2 cards</b>.
+      </div>
+
+      <!-- Quick Preset Intervals -->
+      <div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;">Quick Presets:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="2, 2" style="font-size:11px;padding:3px 9px;">2, 2 (Standard Drill)</button>
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="1, 3" style="font-size:11px;padding:3px 9px;">1, 3 (Quick Check)</button>
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="2, 4" style="font-size:11px;padding:3px 9px;">2, 4 (Expanding)</button>
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="3, 3" style="font-size:11px;padding:3px 9px;">3, 3 (Medium)</button>
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="1, 2, 4" style="font-size:11px;padding:3px 9px;">1, 2, 4 (3 Steps)</button>
+          <button type="button" class="fc-btn-secondary fc-drill-preset-btn" data-intervals="5" style="font-size:11px;padding:3px 9px;">5 (Single Repeat)</button>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px;border-top:1px solid var(--border);">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="fcDrillAutoAdvanceCheck" checked style="accent-color:var(--accent);" />
+          <span>Auto-advance to next card when pressing Repeat (<b>D / A</b>)</span>
+        </label>
+      </div>
+
+      <!-- Active Drills Status & Management -->
+      <div style="padding-top:8px;border-top:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11.5px;font-weight:600;color:var(--muted);">Active Queued Repetitions:</span>
+          <span id="fcDrillActiveCount" style="font-size:11px;color:#bb9af7;font-weight:700;">0 cards</span>
+        </div>
+        <div id="fcDrillActiveList" style="max-height:100px;overflow-y:auto;font-size:11px;color:var(--fg);background:#10121a;border:1px solid var(--border);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;">
+          <span style="color:var(--muted);font-style:italic;">No cards currently scheduled for repetition.</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" id="fcDrillClearAllBtn" class="fc-btn-secondary" style="font-size:10.5px;padding:2px 8px;color:#f7768e;border-color:rgba(247,118,142,0.35);">🗑️ Clear All Queued Repetitions</button>
+        </div>
+      </div>
+    </div>
+    <div class="ai-modal-footer">
+      <button class="fc-btn-secondary" id="fcDrillCancelBtn">Cancel</button>
+      <button class="fc-btn-primary" id="fcDrillSaveBtn" style="font-weight:700;">💾 Save & Apply</button>
     </div>
   </div>
 </div>
@@ -8775,11 +8873,14 @@
           const isActive = (i === currentCardIndex);
           const aiBadge = hasAi ? '<span class="fc-item-ai-badge" title="Has saved AI supplement">✨</span>' : '';
           const deleteAiBtn = hasAi ? `<button type="button" class="fc-item-delete-ai-btn" data-card-index="${i}" data-slug="${escapeHtml(slug)}" title="Delete AI output for this card">🗑️</button>` : '';
+          const repeatBadge = h._isRepeatCard ? `<span class="fc-item-badge" style="color:#f7768e;border-color:rgba(247,118,142,0.45);background:rgba(247,118,142,0.12);font-weight:700;">🔁 Drill ${h._drillStep}/${h._drillTotalSteps}</span>` : '';
+          const repeatBorder = h._isRepeatCard ? 'border-color:rgba(247,118,142,0.45);' : '';
 
           items.push(`
-            <div class="fc-card-item${isActive ? ' active' : ''}" data-card-index="${i}">
+            <div class="fc-card-item${isActive ? ' active' : ''}${h._isRepeatCard ? ' fc-card-drill-item' : ''}" data-card-index="${i}" style="${repeatBorder}">
               <div class="fc-item-top">
                 <span class="fc-item-num">#${i + 1}</span>
+                ${repeatBadge}
                 <span class="fc-item-badge" style="color:var(--h${h.level});border-color:var(--h${h.level});">H${h.level}</span>
                 <span class="fc-item-title" style="color:var(--h${h.level});">${titleHtml}</span>
                 ${aiBadge}
@@ -9368,7 +9469,36 @@
       setTimeout(() => playCurrentCardAudioAtIndex(0), 120);
     }
 
-    fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length}`;
+    // Render Drill Banners if active
+    const drillBannerHtml = (h && h._isRepeatCard) ? `
+      <span class="fc-drill-tag">🔁 Temporary Drill (Step ${h._drillStep} of ${h._drillTotalSteps})</span>
+      <span class="fc-drill-desc">Displayed again after ${h._drillOffset} card${h._drillOffset > 1 ? 's' : ''}</span>
+      <button type="button" style="margin-left:auto;font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="window.dismissCurrentDrill(event)" title="Mark as mastered and skip further repetitions">✓ Mastered</button>
+    ` : '';
+    const fcDrillBanner = document.getElementById('fcDrillBanner');
+    const fcDrillBackBanner = document.getElementById('fcDrillBackBanner');
+    if (fcDrillBanner) {
+      if (drillBannerHtml) {
+        fcDrillBanner.innerHTML = drillBannerHtml;
+        fcDrillBanner.style.display = 'flex';
+      } else {
+        fcDrillBanner.style.display = 'none';
+      }
+    }
+    if (fcDrillBackBanner) {
+      if (drillBannerHtml) {
+        fcDrillBackBanner.innerHTML = drillBannerHtml;
+        fcDrillBackBanner.style.display = 'flex';
+      } else {
+        fcDrillBackBanner.style.display = 'none';
+      }
+    }
+
+    if (h && h._isRepeatCard) {
+      fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length} (🔁 Drill ${h._drillStep}/${h._drillTotalSteps})`;
+    } else {
+      fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length}`;
+    }
     if(fcCardCount) fcCardCount.textContent = flashcardList.length;
     updateOverviewActiveItem();
     if (typeof updateFcInfoForCurrentCard === 'function') {
@@ -9542,6 +9672,42 @@
     }
     isFlippingAnim = false;
     currentBackPageIndex = 0;
+
+    // Process drill progression for repeated cards
+    const leavingCard = flashcardList[currentCardIndex];
+    if (leavingCard && leavingCard._isRepeatCard && !leavingCard._drillProcessed) {
+      leavingCard._drillProcessed = true;
+      if (leavingCard._drillRemainingIntervals && leavingCard._drillRemainingIntervals.length > 0) {
+        const nextOffset = leavingCard._drillRemainingIntervals[0];
+        const remaining = leavingCard._drillRemainingIntervals.slice(1);
+        const nextStep = leavingCard._drillStep + 1;
+        const targetIdx = Math.min(flashcardList.length, currentCardIndex + 1 + nextOffset);
+        const nextRepeatItem = {
+          ...leavingCard,
+          _isRepeatCard: true,
+          _drillId: leavingCard._drillId,
+          _drillStep: nextStep,
+          _drillTotalSteps: leavingCard._drillTotalSteps,
+          _drillRemainingIntervals: remaining,
+          _drillOffset: nextOffset,
+          _drillProcessed: false
+        };
+        flashcardList.splice(targetIdx, 0, nextRepeatItem);
+        if (typeof fcActiveDrills !== 'undefined' && fcActiveDrills.has(leavingCard._drillId)) {
+          const rec = fcActiveDrills.get(leavingCard._drillId);
+          rec.currentStep = nextStep;
+        }
+        if (typeof updateDrillUI === 'function') updateDrillUI();
+        showToast(`🔁 Next repetition scheduled after ${nextOffset} card${nextOffset > 1 ? 's' : ''} (Step ${nextStep}/${leavingCard._drillTotalSteps})`, 2500);
+      } else {
+        if (typeof fcActiveDrills !== 'undefined' && leavingCard._drillId) {
+          fcActiveDrills.delete(leavingCard._drillId);
+        }
+        if (typeof updateDrillUI === 'function') updateDrillUI();
+        showToast(`🎉 Drill completed for "${leavingCard.text || 'Card'}"!`, 3000);
+      }
+    }
+
     currentCardIndex = (currentCardIndex + 1) % flashcardList.length;
     renderCurrentCard();
     if(typeof syncUrlState === 'function') syncUrlState('replace');
@@ -10135,8 +10301,20 @@
         if(typeof closeJumpToCardModal === 'function') closeJumpToCardModal();
         return;
       }
+      const dm = document.getElementById('fcDrillModal');
+      if(dm && (dm.style.display !== 'none' || dm.classList.contains('active'))){
+        e.preventDefault();
+        if(typeof closeDrillModal === 'function') closeDrillModal();
+        return;
+      }
     }
     if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'd' || e.key === 'D')){
+      e.preventDefault();
+      if(typeof openDrillModal === 'function') openDrillModal();
+      return;
+    }
 
     if((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')){
       e.preventDefault();
@@ -10177,6 +10355,9 @@
       } else {
         exitFlashcardMode();
       }
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'd' || e.key === 'D')){
+      e.preventDefault();
+      if(typeof repeatCurrentCard === 'function') repeatCurrentCard();
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'j' || e.key === 'J' || e.key === 'g' || e.key === 'G')){
       e.preventDefault();
       if(typeof openJumpToCardModal === 'function') openJumpToCardModal();
@@ -10227,7 +10408,7 @@
           flipFlashcard();
         }
       }
-    } else if(e.key === ']' || e.key === 'PageUp' || e.key === 'ArrowUp' || (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'd' || e.key === 'D'))){
+    } else if(e.key === ']' || e.key === 'PageUp' || e.key === 'ArrowUp'){
       e.preventDefault();
       if(fcCard && fcCard.classList.contains('flipped')){
         if(fcTwoColumn){
@@ -14701,6 +14882,246 @@
   window.closeJumpToCardModal = closeJumpToCardModal;
   window.executeJumpToCard = executeJumpToCard;
 
+  // =========================================================================
+  // Temporary Flashcard Algorithm (Drill / Spaced Repetition) Controller
+  // =========================================================================
+  let fcDrillIntervals = [2, 2];
+  try {
+    const saved = localStorage.getItem('mdv_drill_intervals');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) fcDrillIntervals = parsed;
+    }
+  } catch(e) {}
+
+  let fcDrillAutoAdvance = true;
+  try {
+    const auto = localStorage.getItem('mdv_drill_auto_advance');
+    if (auto !== null) fcDrillAutoAdvance = auto === 'true';
+  } catch(e) {}
+
+  const fcActiveDrills = new Map(); // drillId -> { id, text, intervals, currentStep, totalSteps, origIndex }
+
+  function parseDrillIntervals(inputStr) {
+    if (!inputStr || typeof inputStr !== 'string') return [2, 2];
+    const clean = inputStr.replace(/[\[\]]/g, '');
+    const parts = clean.split(/[\s,;+]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1);
+    return parts.length > 0 ? parts : [2, 2];
+  }
+
+  function formatDrillExplanation(intervals) {
+    if (!intervals || intervals.length === 0) {
+      return 'No repetitions configured. Card will not reappear.';
+    }
+    if (intervals.length === 1) {
+      return `Card will reappear once after <b>${intervals[0]} card${intervals[0] > 1 ? 's' : ''}</b>.`;
+    }
+    if (intervals.length === 2) {
+      return `Card will reappear after <b>${intervals[0]} card${intervals[0] > 1 ? 's' : ''}</b>, and again after another <b>${intervals[1]} card${intervals[1] > 1 ? 's' : ''}</b>.`;
+    }
+    const parts = intervals.map((n, idx) => {
+      if (idx === 0) return `after <b>${n} card${n > 1 ? 's' : ''}</b>`;
+      if (idx === intervals.length - 1) return `and finally after another <b>${n} card${n > 1 ? 's' : ''}</b>`;
+      return `then after another <b>${n} card${n > 1 ? 's' : ''}</b>`;
+    });
+    return `Card will reappear ` + parts.join(', ') + '.';
+  }
+
+  function updateDrillUI() {
+    const toolbarIntervals = document.getElementById('fcDrillToolbarIntervals');
+    const toolbarActiveBadge = document.getElementById('fcDrillActiveToolbarBadge');
+    if (toolbarIntervals) {
+      toolbarIntervals.textContent = fcDrillIntervals.join(', ');
+    }
+    const activeCount = fcActiveDrills.size;
+    if (toolbarActiveBadge) {
+      if (activeCount > 0) {
+        toolbarActiveBadge.textContent = String(activeCount);
+        toolbarActiveBadge.style.display = 'inline-block';
+      } else {
+        toolbarActiveBadge.style.display = 'none';
+      }
+    }
+
+    const navIntervals = document.getElementById('fcRepeatNavIntervals');
+    if (navIntervals) {
+      navIntervals.textContent = `(+${fcDrillIntervals.join(', +')})`;
+    }
+
+    const modalActiveCount = document.getElementById('fcDrillActiveCount');
+    const modalActiveList = document.getElementById('fcDrillActiveList');
+    if (modalActiveCount) {
+      modalActiveCount.textContent = `${activeCount} card${activeCount === 1 ? '' : 's'}`;
+    }
+    if (modalActiveList) {
+      if (activeCount === 0) {
+        modalActiveList.innerHTML = '<span style="color:var(--muted);font-style:italic;">No cards currently scheduled for repetition.</span>';
+      } else {
+        let html = '';
+        fcActiveDrills.forEach((info, id) => {
+          const title = escapeHtml(info.text || 'Card');
+          html += `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;background:rgba(255,255,255,0.04);border-radius:4px;gap:6px;">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;" title="${title}">🔁 <b>${title}</b></span>
+              <span style="color:#bb9af7;font-size:10px;margin-left:auto;white-space:nowrap;">Step ${info.currentStep}/${info.totalSteps}</span>
+              <button type="button" class="fc-btn-secondary" style="font-size:10px;padding:1px 5px;color:#f7768e;border-color:rgba(247,118,142,0.3);cursor:pointer;" onclick="window.removeDrillById('${id}')" title="Cancel this drill">✕</button>
+            </div>
+          `;
+        });
+        modalActiveList.innerHTML = html;
+      }
+    }
+  }
+
+  function repeatCurrentCard(customIntervals = null) {
+    if (!flashcardList || flashcardList.length === 0) {
+      showToast('⚠️ No active flashcards to repeat.');
+      return;
+    }
+    const currentH = flashcardList[currentCardIndex];
+    if (!currentH) return;
+
+    const intervals = (Array.isArray(customIntervals) && customIntervals.length > 0)
+      ? customIntervals.slice()
+      : fcDrillIntervals.slice();
+    if (intervals.length === 0) intervals.push(2, 2);
+
+    const firstOffset = intervals[0];
+    const remaining = intervals.slice(1);
+
+    let drillId = currentH._drillId;
+    if (!drillId) {
+      drillId = 'drill_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    }
+
+    fcActiveDrills.set(drillId, {
+      id: drillId,
+      text: currentH.text,
+      origIndex: (currentH._origIndex !== undefined ? currentH._origIndex : currentCardIndex),
+      intervals: intervals.slice(),
+      totalSteps: intervals.length,
+      currentStep: 1
+    });
+
+    const targetIdx = Math.min(flashcardList.length, currentCardIndex + 1 + firstOffset);
+    const repeatItem = {
+      ...currentH,
+      _isRepeatCard: true,
+      _drillId: drillId,
+      _drillStep: 1,
+      _drillTotalSteps: intervals.length,
+      _drillRemainingIntervals: remaining,
+      _drillOffset: firstOffset,
+      _drillProcessed: false,
+      _origIndex: (currentH._origIndex !== undefined ? currentH._origIndex : currentCardIndex)
+    };
+
+    flashcardList.splice(targetIdx, 0, repeatItem);
+    updateDrillUI();
+    renderCardOverview();
+    showToast(`🔁 Card scheduled to display again after ${firstOffset} card${firstOffset > 1 ? 's' : ''} (Step 1/${intervals.length})`, 3000);
+
+    if (fcDrillAutoAdvance) {
+      nextFlashcard();
+    }
+  }
+  window.repeatCurrentCard = repeatCurrentCard;
+
+  window.dismissCurrentDrill = function(e) {
+    if (e) e.stopPropagation();
+    const h = flashcardList[currentCardIndex];
+    if (h && h._isRepeatCard) {
+      h._drillRemainingIntervals = [];
+      h._drillProcessed = true;
+      if (h._drillId) fcActiveDrills.delete(h._drillId);
+      updateDrillUI();
+      showToast('✓ Card marked as mastered; future repetitions skipped', 2500);
+      const banner = document.getElementById('fcDrillBanner');
+      if (banner) banner.style.display = 'none';
+      const backBanner = document.getElementById('fcDrillBackBanner');
+      if (backBanner) backBanner.style.display = 'none';
+    }
+  };
+
+  window.removeDrillById = function(drillId) {
+    fcActiveDrills.delete(drillId);
+    flashcardList = flashcardList.filter(card => !card._isRepeatCard || card._drillId !== drillId);
+    if (currentCardIndex >= flashcardList.length) {
+      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    }
+    renderCurrentCard();
+    renderCardOverview();
+    updateDrillUI();
+    showToast('✓ Drill removed', 2000);
+  };
+
+  window.clearAllDrills = function() {
+    fcActiveDrills.clear();
+    const prevLen = flashcardList.length;
+    flashcardList = flashcardList.filter(card => !card._isRepeatCard);
+    const removedCount = prevLen - flashcardList.length;
+    if (currentCardIndex >= flashcardList.length) {
+      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    }
+    renderCurrentCard();
+    renderCardOverview();
+    updateDrillUI();
+    showToast(`✓ Cleared all drill repetitions (${removedCount} cards removed)`, 3000);
+  };
+
+  function openDrillModal() {
+    const modal = document.getElementById('fcDrillModal');
+    const input = document.getElementById('fcDrillIntervalsInput');
+    const expl = document.getElementById('fcDrillExplanation');
+    const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
+    if (!modal) return;
+
+    if (input) input.value = fcDrillIntervals.join(', ');
+    if (expl) expl.innerHTML = formatDrillExplanation(fcDrillIntervals);
+    if (autoCheck) autoCheck.checked = fcDrillAutoAdvance;
+
+    updateDrillUI();
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    setTimeout(() => {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 40);
+  }
+  window.openDrillModal = openDrillModal;
+
+  function closeDrillModal() {
+    const modal = document.getElementById('fcDrillModal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('active');
+    }
+  }
+  window.closeDrillModal = closeDrillModal;
+
+  function executeSaveDrillSettings() {
+    const input = document.getElementById('fcDrillIntervalsInput');
+    const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
+    if (input) {
+      fcDrillIntervals = parseDrillIntervals(input.value);
+      try {
+        localStorage.setItem('mdv_drill_intervals', JSON.stringify(fcDrillIntervals));
+      } catch(e) {}
+    }
+    if (autoCheck) {
+      fcDrillAutoAdvance = !!autoCheck.checked;
+      try {
+        localStorage.setItem('mdv_drill_auto_advance', String(fcDrillAutoAdvance));
+      } catch(e) {}
+    }
+    updateDrillUI();
+    closeDrillModal();
+    showToast(`✓ Temporary algorithm updated: [${fcDrillIntervals.join(', ')}]`, 3000);
+  }
+  window.executeSaveDrillSettings = executeSaveDrillSettings;
+
   // Folder Deck Controller
   function openFolderDeckModal(folderPath = '', folderName = '') {
     pendingFolderDeckPath = folderPath || '';
@@ -14891,6 +15312,60 @@
       goToCard(targetIdx);
       closeJumpToCardModal();
       showToast(`🎯 Jumped to Card #${(targetIdx + 1).toLocaleString()} of ${total.toLocaleString()}`, 2000);
+    });
+  });
+
+  // Temporary Flashcard Algorithm (Drill) Event Listeners
+  const fcDrillToolbarBtn = document.getElementById('fcDrillToolbarBtn');
+  const fcDrillCloseBtn = document.getElementById('fcDrillCloseBtn');
+  const fcDrillCancelBtn = document.getElementById('fcDrillCancelBtn');
+  const fcDrillSaveBtn = document.getElementById('fcDrillSaveBtn');
+  const fcDrillIntervalsInput = document.getElementById('fcDrillIntervalsInput');
+  const fcDrillClearAllBtn = document.getElementById('fcDrillClearAllBtn');
+  const fcRepeatBtn = document.getElementById('fcRepeatBtn');
+
+  if (fcDrillToolbarBtn) fcDrillToolbarBtn.addEventListener('click', openDrillModal);
+  if (fcDrillCloseBtn) fcDrillCloseBtn.addEventListener('click', closeDrillModal);
+  if (fcDrillCancelBtn) fcDrillCancelBtn.addEventListener('click', closeDrillModal);
+  if (fcDrillSaveBtn) fcDrillSaveBtn.addEventListener('click', executeSaveDrillSettings);
+  if (fcDrillClearAllBtn) fcDrillClearAllBtn.addEventListener('click', () => {
+    window.clearAllDrills();
+    updateDrillUI();
+  });
+
+  if (fcRepeatBtn) {
+    fcRepeatBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      repeatCurrentCard();
+    });
+  }
+
+  if (fcDrillIntervalsInput) {
+    fcDrillIntervalsInput.addEventListener('input', () => {
+      const parsed = parseDrillIntervals(fcDrillIntervalsInput.value);
+      const expl = document.getElementById('fcDrillExplanation');
+      if (expl) expl.innerHTML = formatDrillExplanation(parsed);
+    });
+    fcDrillIntervalsInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeSaveDrillSettings();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDrillModal();
+      }
+    });
+  }
+
+  document.querySelectorAll('.fc-drill-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.intervals;
+      if (fcDrillIntervalsInput && val) {
+        fcDrillIntervalsInput.value = val;
+        const parsed = parseDrillIntervals(val);
+        const expl = document.getElementById('fcDrillExplanation');
+        if (expl) expl.innerHTML = formatDrillExplanation(parsed);
+      }
     });
   });
 
@@ -18188,6 +18663,7 @@
     applyZoom();
     applyFcZoom();
     updateFcAnimationUI();
+    updateDrillUI();
     window.openFile = openFile;
     window.loadFolderDeck = loadFolderDeck;
     window.setActiveFolderTreeRow = setActiveFolderTreeRow;
@@ -18198,6 +18674,12 @@
     window.getCurrentFileAiCards = () => currentFileAiCards;
     window.getCurrentCardIndex = () => currentCardIndex;
     window.setCurrentCardIndex = (i) => { currentCardIndex = i; renderCurrentCard(); };
+    window.repeatCurrentCard = repeatCurrentCard;
+    window.openDrillModal = openDrillModal;
+    window.closeDrillModal = closeDrillModal;
+    window.setDrillIntervals = (arr) => { fcDrillIntervals = arr; updateDrillUI(); };
+    window.getDrillIntervals = () => fcDrillIntervals;
+    window.getActiveDrills = () => fcActiveDrills;
 
     await loadAiPrompts();
     await loadAiSettings();
