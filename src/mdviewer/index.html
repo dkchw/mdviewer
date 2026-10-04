@@ -931,6 +931,46 @@
     background:rgba(247,118,142,0.28) !important;border-color:#f7768e !important;
   }
 
+  /* Marked Card Continuous Loop */
+  .fc-mark-banner{
+    display:flex;align-items:center;gap:10px;padding:6px 14px;
+    background:rgba(224,175,104,0.14);border:1px solid rgba(224,175,104,0.4);
+    border-radius:6px;margin-bottom:12px;font-size:12px;color:#e0af68;
+    user-select:none;animation:fadeIn 0.2s ease;
+  }
+  .fc-mark-banner .fc-mark-tag{
+    font-weight:700;display:inline-flex;align-items:center;gap:4px;color:#e0af68;
+  }
+  .fc-mark-banner .fc-mark-desc{
+    color:#dcd7ba;font-size:11.5px;
+  }
+  .fc-mark-banner button{
+    background:#242737;color:var(--fg);border:1px solid rgba(224,175,104,0.35);
+    padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;
+    transition:background .15s, border-color .15s;
+  }
+  .fc-mark-banner button:hover{
+    background:rgba(247,118,142,0.2);color:#f7768e;border-color:#f7768e;
+  }
+  #fcMarkBtn:hover{
+    background:rgba(224,175,104,0.28) !important;border-color:#e0af68 !important;
+  }
+  .fc-card-drill-item.fc-card-marked-item,
+  .fc-card-item.fc-card-marked-item{
+    border-color:rgba(224,175,104,0.5) !important;
+  }
+  .fc-drill-tab-btn{
+    background:transparent;border:none;border-bottom:2px solid transparent;
+    color:var(--muted);font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer;
+    transition:all .15s ease;
+  }
+  .fc-drill-tab-btn:hover{
+    color:#dcd7ba;
+  }
+  .fc-drill-tab-btn.active{
+    color:#fff;border-bottom-color:var(--accent);
+  }
+
   #flashcardModeBtn{
     background:#242737;color:var(--accent);border:1px solid rgba(122,162,247,0.4);font-weight:600;
   }
@@ -4411,6 +4451,7 @@
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
       <button id="fcJumpToolbarBtn" title="Jump directly to any card (J / G)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.12);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🎯 Jump</button>
       <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(247,118,142,0.12);color:#f7768e;border:1px solid rgba(247,118,142,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">2, 2</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
+      <button id="fcMarkedToolbarBtn" title="Marked Cards repeating until unmarked (M)" style="font-size:11.5px;padding:3px 9px;background:rgba(224,175,104,0.12);color:#e0af68;border:1px solid rgba(224,175,104,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">⭐ Marked: <span id="fcMarkedToolbarCount">0</span></button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
       <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
@@ -4428,6 +4469,7 @@
               <button id="fcFrontZoomIn" title="Increase text size (+ or Ctrl++)">A+</button>
             </div>
             <button id="fcFrontAudioBtn" style="display:none;background:rgba(122,162,247,0.18);color:#7aa2f7;border:1px solid rgba(122,162,247,0.4);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Play card audio (R)">🔊 Audio (R)</button>
+            <button id="fcFrontMarkBtn" style="background:rgba(224,175,104,0.15);color:#e0af68;border:1px solid rgba(224,175,104,0.35);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Mark this card to repeat every N cards until unmarked (M)">⭐ Mark</button>
             <button id="fcFrontGenBackBtn" style="display:none;background:rgba(187,154,247,0.18);color:#bb9af7;border:1px solid rgba(187,154,247,0.4);font-weight:600;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;" title="Generate card back with AI">⚡ Gen Back</button>
             <button id="fcFrontEditBtn" title="Edit Card Content (Ctrl+E)">✏️ Edit</button>
             <button id="fcFrontAnimBtn" title="Toggle flashcard animation (turn off for instant flip)">🎬 Anim: On</button>
@@ -4436,6 +4478,7 @@
           <div class="fc-badge" id="fcLevelBadge">H1</div>
           <div class="fc-breadcrumb" id="fcBreadcrumb"></div>
           <div id="fcDrillBanner" class="fc-drill-banner" style="display:none;"></div>
+          <div id="fcMarkBanner" class="fc-mark-banner" style="display:none;"></div>
           <div class="fc-front-title" id="fcFrontTitle">Title</div>
           <div class="fc-front-media" id="fcFrontMedia" style="display:none;"></div>
           <div class="fc-hint">Click card or press <b>Space / W / Enter</b> to flip • <b>R</b> for audio</div>
@@ -4472,6 +4515,7 @@
             </div>
           </div>
           <div id="fcDrillBackBanner" class="fc-drill-banner" style="display:none;margin:8px 16px 0 16px;"></div>
+          <div id="fcMarkBackBanner" class="fc-mark-banner" style="display:none;margin:8px 16px 0 16px;"></div>
           <div id="fcBackAiBar" class="fc-back-ai-bar" style="display:none;">
             <span id="fcBackAiProvIcon" style="color:var(--accent);font-weight:700;">✨</span>
             <span class="fc-back-ai-label" id="fcBackAiProvName" style="font-weight:700;color:var(--accent);">OpenRouter</span>
@@ -4518,11 +4562,12 @@
         <button id="fcPrevBtn" title="Previous card (← Left Arrow)">◀ Prev</button>
         <button id="fcFlipBtn" title="Flip card (Space / W / Enter)">Flip Card</button>
         <button id="fcRepeatBtn" title="Repeat this card via temporary algorithm (D / A)" style="background:rgba(247, 118, 142, 0.16);color:#f7768e;border:1px solid rgba(247, 118, 142, 0.45);font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">🔁 Repeat <span id="fcRepeatNavIntervals" style="font-size:11px;opacity:0.9;font-weight:normal;">(+2, +2)</span></button>
+        <button id="fcMarkBtn" title="Mark card to repeat every N cards until unmarked (M)" style="background:rgba(224,175,104,0.16);color:#e0af68;border:1px solid rgba(224,175,104,0.45);font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">⭐ Mark</button>
         <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
         <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
       </div>
       <div class="fc-shortcuts-hint">
-        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>D / A</b> : Repeat &nbsp;•&nbsp; <b>Shift+D</b> : Drill Settings &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>Esc</b> : Exit
+        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>D / A</b> : Repeat &nbsp;•&nbsp; <b>M</b> : Mark &nbsp;•&nbsp; <b>Shift+D</b> : Drill Settings &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>Esc</b> : Exit
       </div>
     </div>
     <!-- Flashcard Right Sidebar: Overview & Search -->
@@ -4545,6 +4590,7 @@
           <button data-scope="front" title="Search front title & breadcrumb">Front</button>
           <button data-scope="back" title="Search back content">Back</button>
           <button id="fcSearchAiFilterBtn" data-scope="ai" title="Filter overview to show only cards with saved AI supplements">✨ AI Only <span id="fcSearchAiCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
+          <button id="fcSearchMarkFilterBtn" data-scope="mark" title="Filter overview to show only marked repeating cards">⭐ Marked <span id="fcSearchMarkCount" class="badge" style="background:rgba(224,175,104,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
       </div>
       <div class="fc-card-list" id="fcCardList"></div>
@@ -5262,14 +5308,71 @@
   </div>
 </div>
 
-<!-- Temporary Flashcard Algorithm (Drill / Spaced Repetition) Modal -->
+<!-- Temporary Flashcard Algorithm & Spaced Repetition Modal -->
 <div id="fcDrillModal" class="ai-modal-overlay" style="display:none;">
-  <div class="ai-modal-dialog" style="max-width:480px;">
+  <div class="ai-modal-dialog" style="max-width:500px;">
     <div class="ai-modal-header">
-      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🔁 Temporary Drill Algorithm</span>
+      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🔁 Flashcard Repetition & Algorithm</span>
       <button class="term-action-btn close" id="fcDrillCloseBtn" title="Close (Esc)">✕</button>
     </div>
-    <div class="ai-modal-body" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+    
+    <!-- Tab Navigation -->
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);padding:0 16px;background:#141620;">
+      <button type="button" class="fc-drill-tab-btn active" id="fcTabBtnMarked" style="display:inline-flex;align-items:center;gap:6px;">⭐ Marked Cards Loop <span id="fcModalMarkedBadge" class="badge" style="background:#e0af68;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
+      <button type="button" class="fc-drill-tab-btn" id="fcTabBtnDrill" style="display:inline-flex;align-items:center;gap:6px;">🔁 Drill Algorithm (D) <span id="fcModalDrillBadge" class="badge" style="background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
+    </div>
+
+    <!-- Tab Pane 1: Marked Card Continuous Loop -->
+    <div id="fcTabPaneMarked" class="ai-modal-body" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.45;">
+        Mark cards to repeat every <b>N</b> cards continuously in an indefinite loop until you unmark them. Press <b>M</b> or click <b>⭐ Mark</b> on any card.
+      </div>
+
+      <div class="ai-modal-field">
+        <label for="fcMarkIntervalInput" style="font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+          <span>Repeat Marked Cards Every:</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:normal;">number of cards (N)</span>
+        </label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+          <input type="number" id="fcMarkIntervalInput" class="ai-modal-input" min="1" max="1000" value="5" style="font-size:16px;font-weight:700;padding:8px 12px;font-family:monospace;letter-spacing:1px;background:#141620;border:1px solid #e0af68;border-radius:6px;color:#fff;width:120px;" />
+          <span style="font-size:12px;color:var(--muted);">cards offset</span>
+        </div>
+      </div>
+
+      <!-- Realtime explanation preview -->
+      <div id="fcMarkExplanation" style="font-size:12px;color:#e0af68;background:rgba(224,175,104,0.1);border:1px solid rgba(224,175,104,0.28);border-radius:6px;padding:9px 12px;line-height:1.4;">
+        Marked cards will repeat every <b>5 cards</b> indefinitely until you unmark them.
+      </div>
+
+      <!-- Quick Preset Intervals -->
+      <div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;">Quick Presets:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="2" style="font-size:11px;padding:3px 9px;">2 cards (Intense)</button>
+          <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="3" style="font-size:11px;padding:3px 9px;">3 cards (Frequent)</button>
+          <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="5" style="font-size:11px;padding:3px 9px;">5 cards (Balanced - Default)</button>
+          <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="7" style="font-size:11px;padding:3px 9px;">7 cards</button>
+          <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="10" style="font-size:11px;padding:3px 9px;">10 cards (Spaced)</button>
+        </div>
+      </div>
+
+      <!-- Active Marked Cards Status & Management -->
+      <div style="padding-top:8px;border-top:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11.5px;font-weight:600;color:var(--muted);">Active Marked Cards:</span>
+          <span id="fcMarkedActiveCount" style="font-size:11px;color:#e0af68;font-weight:700;">0 cards</span>
+        </div>
+        <div id="fcMarkedActiveList" style="max-height:120px;overflow-y:auto;font-size:11px;color:var(--fg);background:#10121a;border:1px solid var(--border);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;">
+          <span style="color:var(--muted);font-style:italic;">No cards currently marked. Press <b>M</b> or click <b>⭐ Mark</b> on any card.</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" id="fcMarkedClearAllBtn" class="fc-btn-secondary" style="font-size:10.5px;padding:2px 8px;color:#f7768e;border-color:rgba(247,118,142,0.35);">🗑️ Unmark All Cards</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Pane 2: Temporary Drill Algorithm -->
+    <div id="fcTabPaneDrill" class="ai-modal-body" style="padding:18px 20px;display:none;flex-direction:column;gap:14px;">
       <div style="font-size:12.5px;color:var(--muted);line-height:1.45;">
         Configure a custom card repetition schedule for this study session. When you click <b>Repeat</b> or press <b>D</b>, the card will reappear at these card intervals.
       </div>
@@ -8841,8 +8944,12 @@
       const h = flashcardList[i];
       const slug = getCardSlug(h);
       const hasAi = typeof currentFileAiCards !== 'undefined' && currentFileAiCards.has(slug);
+      const isMarked = (typeof isCardMarked === 'function') && isCardMarked(h);
 
       if(fcSearchScope === 'ai' && !hasAi){
+        continue;
+      }
+      if(fcSearchScope === 'mark' && !isMarked){
         continue;
       }
 
@@ -8873,13 +8980,17 @@
           const isActive = (i === currentCardIndex);
           const aiBadge = hasAi ? '<span class="fc-item-ai-badge" title="Has saved AI supplement">✨</span>' : '';
           const deleteAiBtn = hasAi ? `<button type="button" class="fc-item-delete-ai-btn" data-card-index="${i}" data-slug="${escapeHtml(slug)}" title="Delete AI output for this card">🗑️</button>` : '';
+          const markedBadge = isMarked ? `<span class="fc-item-badge" style="color:#e0af68;border-color:rgba(224,175,104,0.45);background:rgba(224,175,104,0.14);font-weight:700;">⭐ Marked</span>` : '';
           const repeatBadge = h._isRepeatCard ? `<span class="fc-item-badge" style="color:#f7768e;border-color:rgba(247,118,142,0.45);background:rgba(247,118,142,0.12);font-weight:700;">🔁 Drill ${h._drillStep}/${h._drillTotalSteps}</span>` : '';
-          const repeatBorder = h._isRepeatCard ? 'border-color:rgba(247,118,142,0.45);' : '';
+          let itemBorder = '';
+          if (isMarked) itemBorder = 'border-color:rgba(224,175,104,0.5);';
+          else if (h._isRepeatCard) itemBorder = 'border-color:rgba(247,118,142,0.45);';
 
           items.push(`
-            <div class="fc-card-item${isActive ? ' active' : ''}${h._isRepeatCard ? ' fc-card-drill-item' : ''}" data-card-index="${i}" style="${repeatBorder}">
+            <div class="fc-card-item${isActive ? ' active' : ''}${h._isRepeatCard ? ' fc-card-drill-item' : ''}${isMarked ? ' fc-card-marked-item' : ''}" data-card-index="${i}" style="${itemBorder}">
               <div class="fc-item-top">
                 <span class="fc-item-num">#${i + 1}</span>
+                ${markedBadge}
                 ${repeatBadge}
                 <span class="fc-item-badge" style="color:var(--h${h.level});border-color:var(--h${h.level});">H${h.level}</span>
                 <span class="fc-item-title" style="color:var(--h${h.level});">${titleHtml}</span>
@@ -9494,8 +9605,74 @@
       }
     }
 
-    if (h && h._isRepeatCard) {
-      fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length} (🔁 Drill ${h._drillStep}/${h._drillTotalSteps})`;
+    // Render Marked Card Banners and Button States
+    const isMarked = (typeof isCardMarked === 'function') && isCardMarked(h);
+    const fcMarkBanner = document.getElementById('fcMarkBanner');
+    const fcMarkBackBanner = document.getElementById('fcMarkBackBanner');
+    const fcFrontMarkBtn = document.getElementById('fcFrontMarkBtn');
+    const fcMarkBtn = document.getElementById('fcMarkBtn');
+
+    if (fcFrontMarkBtn) {
+      if (isMarked) {
+        fcFrontMarkBtn.textContent = '⭐ Marked';
+        fcFrontMarkBtn.style.background = 'rgba(224, 175, 104, 0.32)';
+        fcFrontMarkBtn.style.borderColor = '#e0af68';
+        fcFrontMarkBtn.style.fontWeight = '700';
+        fcFrontMarkBtn.title = 'Card is marked. Click to unmark and stop repetitions (M)';
+      } else {
+        fcFrontMarkBtn.textContent = '⭐ Mark';
+        fcFrontMarkBtn.style.background = 'rgba(224, 175, 104, 0.14)';
+        fcFrontMarkBtn.style.borderColor = 'rgba(224, 175, 104, 0.35)';
+        fcFrontMarkBtn.style.fontWeight = '500';
+        fcFrontMarkBtn.title = 'Mark this card to repeat every N cards until unmarked (M)';
+      }
+    }
+
+    if (fcMarkBtn) {
+      if (isMarked) {
+        fcMarkBtn.innerHTML = `⭐ Marked <span style="font-size:11px;opacity:0.9;font-weight:normal;">(every ${fcMarkRepeatInterval})</span>`;
+        fcMarkBtn.style.background = 'rgba(224, 175, 104, 0.32)';
+        fcMarkBtn.style.borderColor = '#e0af68';
+        fcMarkBtn.style.fontWeight = '700';
+        fcMarkBtn.title = 'Card is marked. Click to unmark and stop repetitions (M)';
+      } else {
+        fcMarkBtn.innerHTML = `⭐ Mark`;
+        fcMarkBtn.style.background = 'rgba(224, 175, 104, 0.16)';
+        fcMarkBtn.style.borderColor = 'rgba(224, 175, 104, 0.45)';
+        fcMarkBtn.style.fontWeight = '700';
+        fcMarkBtn.title = 'Mark card to repeat every N cards until unmarked (M)';
+      }
+    }
+
+    const markBannerHtml = isMarked ? `
+      <span class="fc-mark-tag">⭐ Marked Card</span>
+      <span class="fc-mark-desc">Repeating every ${fcMarkRepeatInterval} cards until unmarked</span>
+      <button type="button" style="margin-left:auto;font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="window.toggleMarkCurrentCard(event)" title="Unmark card and stop repetitions">✕ Unmark</button>
+    ` : '';
+
+    if (fcMarkBanner) {
+      if (markBannerHtml) {
+        fcMarkBanner.innerHTML = markBannerHtml;
+        fcMarkBanner.style.display = 'flex';
+      } else {
+        fcMarkBanner.style.display = 'none';
+      }
+    }
+    if (fcMarkBackBanner) {
+      if (markBannerHtml) {
+        fcMarkBackBanner.innerHTML = markBannerHtml;
+        fcMarkBackBanner.style.display = 'flex';
+      } else {
+        fcMarkBackBanner.style.display = 'none';
+      }
+    }
+
+    const statDetails = [];
+    if (isMarked) statDetails.push('⭐ Marked');
+    if (h && h._isRepeatCard) statDetails.push(`🔁 Drill ${h._drillStep}/${h._drillTotalSteps}`);
+
+    if (statDetails.length > 0) {
+      fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length} (${statDetails.join(' • ')})`;
     } else {
       fcStats.textContent = `Card ${currentCardIndex + 1} of ${flashcardList.length}`;
     }
@@ -9705,6 +9882,33 @@
         }
         if (typeof updateDrillUI === 'function') updateDrillUI();
         showToast(`🎉 Drill completed for "${leavingCard.text || 'Card'}"!`, 3000);
+      }
+    }
+
+    // Process marked card repetition loop (keep repeating until unmarked)
+    if (leavingCard && typeof isCardMarked === 'function' && isCardMarked(leavingCard)) {
+      const leavingKey = getCardKey(leavingCard);
+      if (leavingKey && fcMarkedCards.has(leavingKey)) {
+        if (leavingCard._isMarkedRepeat) {
+          leavingCard._markProcessed = true;
+        }
+        // Check if an unprocessed repeat instance is already scheduled ahead
+        const hasFutureScheduled = flashcardList.some(c => c._isMarkedRepeat && c._markCardKey === leavingKey && !c._markProcessed);
+        if (!hasFutureScheduled) {
+          let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
+          if (targetIdx >= flashcardList.length) {
+            targetIdx = targetIdx % Math.max(1, flashcardList.length);
+          }
+          const nextRepeatItem = {
+            ...leavingCard,
+            _isRepeatCard: false,
+            _isMarkedRepeat: true,
+            _markCardKey: leavingKey,
+            _markRepeatInterval: fcMarkRepeatInterval,
+            _markProcessed: false
+          };
+          flashcardList.splice(targetIdx, 0, nextRepeatItem);
+        }
       }
     }
 
@@ -10358,6 +10562,12 @@
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'd' || e.key === 'D')){
       e.preventDefault();
       if(typeof repeatCurrentCard === 'function') repeatCurrentCard();
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')){
+      e.preventDefault();
+      if(typeof toggleMarkCurrentCard === 'function') toggleMarkCurrentCard();
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && e.shiftKey && (e.key === 'm' || e.key === 'M')){
+      e.preventDefault();
+      if(typeof openDrillModal === 'function') openDrillModal('marked');
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'j' || e.key === 'J' || e.key === 'g' || e.key === 'G')){
       e.preventDefault();
       if(typeof openJumpToCardModal === 'function') openJumpToCardModal();
@@ -15069,26 +15279,231 @@
     showToast(`✓ Cleared all drill repetitions (${removedCount} cards removed)`, 3000);
   };
 
-  function openDrillModal() {
+  // =========================================================================
+  // Marked Cards Repetition Loop Controller
+  // =========================================================================
+  let fcMarkRepeatInterval = 5;
+  try {
+    const saved = localStorage.getItem('mdv_mark_repeat_interval');
+    if (saved) {
+      const val = parseInt(saved, 10);
+      if (!isNaN(val) && val >= 1) fcMarkRepeatInterval = val;
+    }
+  } catch(e) {}
+
+  const fcMarkedCards = new Map(); // cardKey -> { key, title, filePath, level, markedAt }
+
+  function getCardKey(h) {
+    if (!h) return '';
+    if (h._markCardKey) return h._markCardKey;
+    const fp = h.file_path || (typeof currentFilePath !== 'undefined' ? currentFilePath : '') || '';
+    const slug = typeof getCardSlug === 'function' ? getCardSlug(h) : (h.slug || (h.text || ''));
+    return `${fp}::${slug}`;
+  }
+  window.getCardKey = getCardKey;
+
+  function isCardMarked(h) {
+    if (!h) return false;
+    const key = getCardKey(h);
+    return fcMarkedCards.has(key);
+  }
+  window.isCardMarked = isCardMarked;
+
+  function formatMarkExplanation(interval) {
+    const n = Math.max(1, parseInt(interval, 10) || 5);
+    return `Marked cards will repeat every <b>${n} card${n > 1 ? 's' : ''}</b> indefinitely until you unmark them.`;
+  }
+
+  function updateMarkedUI() {
+    const toolbarCount = document.getElementById('fcMarkedToolbarCount');
+    const toolbarBtn = document.getElementById('fcMarkedToolbarBtn');
+    const searchMarkCount = document.getElementById('fcSearchMarkCount');
+    const modalBadge = document.getElementById('fcModalMarkedBadge');
+    const activeCountEl = document.getElementById('fcMarkedActiveCount');
+    const activeListEl = document.getElementById('fcMarkedActiveList');
+    const intervalInput = document.getElementById('fcMarkIntervalInput');
+    const explEl = document.getElementById('fcMarkExplanation');
+
+    const count = fcMarkedCards.size;
+    if (toolbarCount) toolbarCount.textContent = String(count);
+    if (searchMarkCount) searchMarkCount.textContent = String(count);
+    if (toolbarBtn) {
+      if (count > 0) {
+        toolbarBtn.style.background = 'rgba(224, 175, 104, 0.25)';
+        toolbarBtn.style.borderColor = '#e0af68';
+      } else {
+        toolbarBtn.style.background = 'rgba(224, 175, 104, 0.12)';
+        toolbarBtn.style.borderColor = 'rgba(224, 175, 104, 0.35)';
+      }
+    }
+    if (modalBadge) {
+      if (count > 0) {
+        modalBadge.textContent = String(count);
+        modalBadge.style.display = 'inline-block';
+      } else {
+        modalBadge.style.display = 'none';
+      }
+    }
+    if (activeCountEl) {
+      activeCountEl.textContent = `${count} card${count === 1 ? '' : 's'}`;
+    }
+    if (intervalInput && document.activeElement !== intervalInput) {
+      intervalInput.value = fcMarkRepeatInterval;
+    }
+    if (explEl) {
+      explEl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval);
+    }
+
+    if (activeListEl) {
+      if (count === 0) {
+        activeListEl.innerHTML = '<span style="color:var(--muted);font-style:italic;">No cards currently marked. Press <b>M</b> or click <b>⭐ Mark</b> on any card.</span>';
+      } else {
+        let html = '';
+        fcMarkedCards.forEach((info, key) => {
+          const title = escapeHtml(info.title || 'Card');
+          html += `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:4px;gap:6px;">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;" title="${title}">⭐ <b>${title}</b></span>
+              <span style="color:#e0af68;font-size:10px;margin-left:auto;white-space:nowrap;">every ${fcMarkRepeatInterval} cards</span>
+              <button type="button" class="fc-btn-secondary" style="font-size:10.5px;padding:1px 6px;color:#f7768e;border-color:rgba(247,118,142,0.3);cursor:pointer;" onclick="window.unmarkCardByKey('${escapeHtml(key)}')" title="Unmark this card">✕ Unmark</button>
+            </div>
+          `;
+        });
+        activeListEl.innerHTML = html;
+      }
+    }
+  }
+  window.updateMarkedUI = updateMarkedUI;
+
+  function markCard(h, key) {
+    const rawTitle = (h.text || 'Card').replace(/!?\[([^\]]*)\]\((?:[^()]|\([^()]*\))+\)/g, '$1').replace(/\[sound:[^\]]+\]/g, '').trim();
+    const title = rawTitle || `Card ${currentCardIndex + 1}`;
+    fcMarkedCards.set(key, {
+      key: key,
+      title: title,
+      filePath: h.file_path || (typeof currentFilePath !== 'undefined' ? currentFilePath : '') || '',
+      level: h.level || 2,
+      markedAt: Date.now()
+    });
+
+    let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
+    if (targetIdx >= flashcardList.length) {
+      targetIdx = targetIdx % Math.max(1, flashcardList.length);
+    }
+    const repeatItem = {
+      ...h,
+      _isRepeatCard: false,
+      _isMarkedRepeat: true,
+      _markCardKey: key,
+      _markRepeatInterval: fcMarkRepeatInterval,
+      _markProcessed: false
+    };
+    flashcardList.splice(targetIdx, 0, repeatItem);
+
+    updateMarkedUI();
+    renderCurrentCard();
+    renderCardOverview();
+    showToast(`⭐ Card marked! Repeating every ${fcMarkRepeatInterval} cards until unmarked.`, 3000);
+  }
+  window.markCard = markCard;
+
+  function unmarkCardByKey(key) {
+    if (!fcMarkedCards.has(key)) return;
+    const info = fcMarkedCards.get(key);
+    fcMarkedCards.delete(key);
+
+    // Remove any queued repeat instances for this card
+    flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === key));
+    if (currentCardIndex >= flashcardList.length) {
+      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    }
+
+    updateMarkedUI();
+    renderCurrentCard();
+    renderCardOverview();
+    showToast(`✓ Unmarked "${info?.title || 'Card'}". Repetitions stopped.`, 2500);
+  }
+  window.unmarkCardByKey = unmarkCardByKey;
+
+  function unmarkAllCards() {
+    const count = fcMarkedCards.size;
+    if (count === 0) {
+      showToast('No cards currently marked.');
+      return;
+    }
+    fcMarkedCards.clear();
+    flashcardList = flashcardList.filter(c => !c._isMarkedRepeat);
+    if (currentCardIndex >= flashcardList.length) {
+      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    }
+    updateMarkedUI();
+    renderCurrentCard();
+    renderCardOverview();
+    showToast(`✓ All ${count} marked cards removed. Repetitions stopped.`, 3000);
+  }
+  window.unmarkAllCards = unmarkAllCards;
+
+  function toggleMarkCurrentCard(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!flashcardList || flashcardList.length === 0) return;
+    const h = flashcardList[currentCardIndex];
+    if (!h) return;
+    const key = getCardKey(h);
+    if (!key) return;
+
+    if (fcMarkedCards.has(key)) {
+      unmarkCardByKey(key);
+    } else {
+      markCard(h, key);
+    }
+  }
+  window.toggleMarkCurrentCard = toggleMarkCurrentCard;
+
+  function switchDrillModalTab(tabName) {
+    const tabMarked = document.getElementById('fcTabBtnMarked');
+    const tabDrill = document.getElementById('fcTabBtnDrill');
+    const paneMarked = document.getElementById('fcTabPaneMarked');
+    const paneDrill = document.getElementById('fcTabPaneDrill');
+
+    if (tabName === 'drill') {
+      if (tabMarked) tabMarked.classList.remove('active');
+      if (tabDrill) tabDrill.classList.add('active');
+      if (paneMarked) paneMarked.style.display = 'none';
+      if (paneDrill) paneDrill.style.display = 'flex';
+      const input = document.getElementById('fcDrillIntervalsInput');
+      if (input) { input.focus(); input.select(); }
+    } else {
+      if (tabDrill) tabDrill.classList.remove('active');
+      if (tabMarked) tabMarked.classList.add('active');
+      if (paneDrill) paneDrill.style.display = 'none';
+      if (paneMarked) paneMarked.style.display = 'flex';
+      const input = document.getElementById('fcMarkIntervalInput');
+      if (input) { input.focus(); input.select(); }
+    }
+  }
+  window.switchDrillModalTab = switchDrillModalTab;
+
+  function openDrillModal(initialTab = 'marked') {
     const modal = document.getElementById('fcDrillModal');
     const input = document.getElementById('fcDrillIntervalsInput');
     const expl = document.getElementById('fcDrillExplanation');
     const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
+    const markInput = document.getElementById('fcMarkIntervalInput');
+    const markExpl = document.getElementById('fcMarkExplanation');
     if (!modal) return;
 
     if (input) input.value = fcDrillIntervals.join(', ');
     if (expl) expl.innerHTML = formatDrillExplanation(fcDrillIntervals);
     if (autoCheck) autoCheck.checked = fcDrillAutoAdvance;
+    if (markInput) markInput.value = fcMarkRepeatInterval;
+    if (markExpl) markExpl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval);
 
     updateDrillUI();
+    updateMarkedUI();
+    switchDrillModalTab(typeof initialTab === 'string' ? initialTab : 'marked');
+
     modal.style.display = 'flex';
     modal.classList.add('active');
-    setTimeout(() => {
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    }, 40);
   }
   window.openDrillModal = openDrillModal;
 
@@ -15104,6 +15519,7 @@
   function executeSaveDrillSettings() {
     const input = document.getElementById('fcDrillIntervalsInput');
     const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
+    const markInput = document.getElementById('fcMarkIntervalInput');
     if (input) {
       fcDrillIntervals = parseDrillIntervals(input.value);
       try {
@@ -15116,9 +15532,19 @@
         localStorage.setItem('mdv_drill_auto_advance', String(fcDrillAutoAdvance));
       } catch(e) {}
     }
+    if (markInput) {
+      const val = parseInt(markInput.value, 10);
+      if (!isNaN(val) && val >= 1) {
+        fcMarkRepeatInterval = val;
+        try {
+          localStorage.setItem('mdv_mark_repeat_interval', String(fcMarkRepeatInterval));
+        } catch(e) {}
+      }
+    }
     updateDrillUI();
+    updateMarkedUI();
     closeDrillModal();
-    showToast(`✓ Temporary algorithm updated: [${fcDrillIntervals.join(', ')}]`, 3000);
+    showToast(`✓ Repetition settings updated! Marked loop: ${fcMarkRepeatInterval} cards • Drill: [${fcDrillIntervals.join(', ')}]`, 3500);
   }
   window.executeSaveDrillSettings = executeSaveDrillSettings;
 
@@ -15315,16 +15741,24 @@
     });
   });
 
-  // Temporary Flashcard Algorithm (Drill) Event Listeners
+  // Temporary Flashcard Algorithm & Marked Cards Event Listeners
   const fcDrillToolbarBtn = document.getElementById('fcDrillToolbarBtn');
+  const fcMarkedToolbarBtn = document.getElementById('fcMarkedToolbarBtn');
   const fcDrillCloseBtn = document.getElementById('fcDrillCloseBtn');
   const fcDrillCancelBtn = document.getElementById('fcDrillCancelBtn');
   const fcDrillSaveBtn = document.getElementById('fcDrillSaveBtn');
   const fcDrillIntervalsInput = document.getElementById('fcDrillIntervalsInput');
   const fcDrillClearAllBtn = document.getElementById('fcDrillClearAllBtn');
   const fcRepeatBtn = document.getElementById('fcRepeatBtn');
+  const fcMarkBtn = document.getElementById('fcMarkBtn');
+  const fcFrontMarkBtn = document.getElementById('fcFrontMarkBtn');
+  const fcTabBtnMarked = document.getElementById('fcTabBtnMarked');
+  const fcTabBtnDrill = document.getElementById('fcTabBtnDrill');
+  const fcMarkIntervalInput = document.getElementById('fcMarkIntervalInput');
+  const fcMarkedClearAllBtn = document.getElementById('fcMarkedClearAllBtn');
 
-  if (fcDrillToolbarBtn) fcDrillToolbarBtn.addEventListener('click', openDrillModal);
+  if (fcDrillToolbarBtn) fcDrillToolbarBtn.addEventListener('click', () => openDrillModal('drill'));
+  if (fcMarkedToolbarBtn) fcMarkedToolbarBtn.addEventListener('click', () => openDrillModal('marked'));
   if (fcDrillCloseBtn) fcDrillCloseBtn.addEventListener('click', closeDrillModal);
   if (fcDrillCancelBtn) fcDrillCancelBtn.addEventListener('click', closeDrillModal);
   if (fcDrillSaveBtn) fcDrillSaveBtn.addEventListener('click', executeSaveDrillSettings);
@@ -15332,6 +15766,13 @@
     window.clearAllDrills();
     updateDrillUI();
   });
+  if (fcMarkedClearAllBtn) fcMarkedClearAllBtn.addEventListener('click', () => {
+    window.unmarkAllCards();
+    updateMarkedUI();
+  });
+
+  if (fcTabBtnMarked) fcTabBtnMarked.addEventListener('click', () => switchDrillModalTab('marked'));
+  if (fcTabBtnDrill) fcTabBtnDrill.addEventListener('click', () => switchDrillModalTab('drill'));
 
   if (fcRepeatBtn) {
     fcRepeatBtn.addEventListener('click', (e) => {
@@ -15339,6 +15780,47 @@
       repeatCurrentCard();
     });
   }
+
+  if (fcMarkBtn) {
+    fcMarkBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMarkCurrentCard();
+    });
+  }
+
+  if (fcFrontMarkBtn) {
+    fcFrontMarkBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMarkCurrentCard();
+    });
+  }
+
+  if (fcMarkIntervalInput) {
+    fcMarkIntervalInput.addEventListener('input', () => {
+      const expl = document.getElementById('fcMarkExplanation');
+      if (expl) expl.innerHTML = formatMarkExplanation(fcMarkIntervalInput.value);
+    });
+    fcMarkIntervalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeSaveDrillSettings();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDrillModal();
+      }
+    });
+  }
+
+  document.querySelectorAll('.fc-mark-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.interval;
+      if (fcMarkIntervalInput && val) {
+        fcMarkIntervalInput.value = val;
+        const expl = document.getElementById('fcMarkExplanation');
+        if (expl) expl.innerHTML = formatMarkExplanation(val);
+      }
+    });
+  });
 
   if (fcDrillIntervalsInput) {
     fcDrillIntervalsInput.addEventListener('input', () => {
@@ -15368,6 +15850,9 @@
       }
     });
   });
+
+  // Initial sync of Marked UI
+  updateMarkedUI();
 
 
 
@@ -18555,6 +19040,7 @@
       }
     }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    if (typeof isFlashcardMode !== 'undefined' && isFlashcardMode) return;
 
     if (e.key === '1') {
       e.preventDefault();
