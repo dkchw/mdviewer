@@ -16931,6 +16931,11 @@
         });
         const data = await res.json();
         if (data.status === 'ok') {
+          try {
+            localStorage.setItem('mdviewer_last_workspace', data.directory);
+            if (data.name) localStorage.setItem('mdviewer_workspace_name', data.name);
+          } catch(e) {}
+          saveConfig({ last_active_workspace: data.directory });
           showAppToast(`✓ Switched to ${data.name} (${data.md_count} notes)`, 2200);
           await loadWorkspaceInfo();
           if (typeof initSidebar === 'function') await initSidebar();
@@ -16952,6 +16957,12 @@
         });
         const data = await res.json();
         if (data.status === 'ok') {
+          try {
+            if (localStorage.getItem('mdviewer_last_workspace') === path) {
+              localStorage.removeItem('mdviewer_last_workspace');
+              localStorage.removeItem('mdviewer_workspace_name');
+            }
+          } catch(e) {}
           showAppToast('✓ Unlinked folder', 2000);
           await loadWorkspaceInfo();
           if (typeof initSidebar === 'function') await initSidebar();
@@ -17062,7 +17073,12 @@
       closeWorkspaceDropdown();
       try {
         const info = await fetch('/api/workspace/info').then(r => r.json());
-        if (info.default_library) await switchWorkspace(info.default_library);
+        if (info.default_library) {
+          try {
+            localStorage.setItem('mdviewer_last_workspace', info.default_library);
+          } catch(e) {}
+          await switchWorkspace(info.default_library);
+        }
       } catch(e) {
         console.error(e);
       }
@@ -17073,6 +17089,25 @@
         const res = await fetch('/api/workspace/info');
         const data = await res.json();
         if (data.status === 'ok') {
+          // If server defaulted to default_library, but user previously had an active linked workspace, restore it
+          let savedWs = null;
+          try { savedWs = localStorage.getItem('mdviewer_last_workspace'); } catch(e) {}
+          if (!savedWs && typeof savedConfig !== 'undefined' && savedConfig.last_active_workspace) {
+            savedWs = savedConfig.last_active_workspace;
+          }
+          if (savedWs && data.directory !== savedWs && data.is_default_library) {
+            const isKnown = (data.linked_folders || []).some(f => f.resolved_path === savedWs || f.path === savedWs);
+            if (isKnown) {
+              console.log('Restoring previous linked workspace:', savedWs);
+              await switchWorkspace(savedWs);
+              return;
+            }
+          }
+
+          try {
+            localStorage.setItem('mdviewer_last_workspace', data.directory);
+            if (data.name) localStorage.setItem('mdviewer_workspace_name', data.name);
+          } catch(e) {}
           if (currentPathSpan) {
             currentPathSpan.textContent = data.directory || '...';
             currentPathSpan.title = data.directory || '';
@@ -17287,6 +17322,11 @@
 
           if (data.status === 'ok') {
             closeModal();
+            try {
+              localStorage.setItem('mdviewer_last_workspace', data.directory);
+              if (data.name) localStorage.setItem('mdviewer_workspace_name', data.name);
+            } catch(e) {}
+            saveConfig({ last_active_workspace: data.directory });
             showAppToast(`✓ Linked workspace: ${data.name} (${data.md_count} notes)`, 2600);
 
             // Update title and linked list dropdown

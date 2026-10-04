@@ -2360,6 +2360,7 @@ class WorkspaceState:
     def __init__(self, directory: str, is_standalone: bool = True, path_prefix: str = ""):
         self.lock = threading.Lock()
         self.directory = os.path.abspath(directory)
+        self.last_active_workspace = self.directory
         self.is_standalone = is_standalone
         self.path_prefix = path_prefix or get_default_path_prefix()
         self.linked_folders = self.load_linked_folders()
@@ -2390,6 +2391,7 @@ class WorkspaceState:
             if not os.path.isdir(abs_dir):
                 return False
             self.directory = abs_dir
+            self.last_active_workspace = abs_dir
             self.is_standalone = is_standalone
             if abs_dir in self.recent_directories:
                 self.recent_directories.remove(abs_dir)
@@ -2478,6 +2480,7 @@ class WorkspaceState:
             abs_p = os.path.abspath(resolved)
             entry = self.ensure_linked_folder(abs_p, name=name, path_prefix=applied_pr or "")
             self.directory = abs_p
+            self.last_active_workspace = abs_p
             self.is_standalone = False
             if abs_p in self.recent_directories:
                 self.recent_directories.remove(abs_p)
@@ -2495,10 +2498,14 @@ class WorkspaceState:
             if os.path.abspath(self.directory) == target:
                 if self.linked_folders:
                     self.directory = self.linked_folders[0]["resolved_path"]
+                    self.last_active_workspace = self.directory
                     self.is_standalone = False
                 else:
                     self.directory = os.path.abspath(DEFAULT_LIBRARY_PATH)
+                    self.last_active_workspace = self.directory
                     self.is_standalone = True
+            else:
+                self.last_active_workspace = self.directory
             self.save_config()
             init_supplement_db(self.directory)
             return True, "Folder unlinked successfully"
@@ -2539,6 +2546,7 @@ class WorkspaceState:
                         cfg = json.load(f)
                 except Exception:
                     cfg = {}
+            cfg["last_active_workspace"] = self.directory
             cfg["library_dir"] = self.directory
             cfg["path_prefix"] = self.path_prefix
             cfg["recent_directories"] = self.recent_directories
@@ -2610,24 +2618,50 @@ def get_library_dir(custom_path=None, custom_prefix=None) -> tuple[str, bool]:
     """
     if custom_path:
         resolved, _ = resolve_fs_path(custom_path, custom_prefix)
-        if resolved:
-            return resolved, False
+        if resolved and os.path.isdir(resolved):
+            return resolved, (os.path.abspath(resolved) == os.path.abspath(DEFAULT_LIBRARY_PATH))
 
     env_dir = os.environ.get("MDVIEWER_LIBRARY_DIR")
     if env_dir:
         resolved_env, _ = resolve_fs_path(env_dir, custom_prefix)
-        if resolved_env:
-            return resolved_env, True
+        if resolved_env and os.path.isdir(resolved_env):
+            return resolved_env, (os.path.abspath(resolved_env) == os.path.abspath(DEFAULT_LIBRARY_PATH))
 
     config_path = os.path.expanduser("~/.mdviewer_config.json")
     if os.path.isfile(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
+                
+                # 1. First priority: Check explicitly saved last_active_workspace
+                saved_ws = cfg.get("last_active_workspace") or cfg.get("active_workspace")
+                if saved_ws:
+                    resolved_ws, _ = resolve_fs_path(saved_ws, custom_prefix or cfg.get("path_prefix"))
+                    if resolved_ws and os.path.isdir(resolved_ws):
+                        is_std = (os.path.abspath(resolved_ws) == os.path.abspath(DEFAULT_LIBRARY_PATH))
+                        return resolved_ws, is_std
+
+                # 2. Second priority: Check library_dir if it's a valid non-default workspace
                 saved_lib = cfg.get("library_dir")
                 if saved_lib:
                     resolved_cfg, _ = resolve_fs_path(saved_lib, custom_prefix or cfg.get("path_prefix"))
-                    if resolved_cfg:
+                    if resolved_cfg and os.path.isdir(resolved_cfg):
+                        if os.path.abspath(resolved_cfg) != os.path.abspath(DEFAULT_LIBRARY_PATH):
+                            return resolved_cfg, False
+
+                # 3. Third priority: Check if any linked_folders exist in config
+                linked_folders = cfg.get("linked_folders", [])
+                for f in linked_folders:
+                    raw_p = f.get("resolved_path") or f.get("path")
+                    if raw_p:
+                        resolved_f, _ = resolve_fs_path(raw_p, custom_prefix or f.get("prefix") or cfg.get("path_prefix"))
+                        if resolved_f and os.path.isdir(resolved_f):
+                            return resolved_f, False
+
+                # 4. Fallback to saved default library if present
+                if saved_lib:
+                    resolved_cfg, _ = resolve_fs_path(saved_lib, custom_prefix or cfg.get("path_prefix"))
+                    if resolved_cfg and os.path.isdir(resolved_cfg):
                         return resolved_cfg, True
         except Exception:
             pass
@@ -3276,6 +3310,7 @@ def main():
                 self.send_json(200, {
                     "status": "ok",
                     "directory": cur_dir,
+                    "last_active_workspace": cur_dir,
                     "name": os.path.basename(cur_dir) or cur_dir,
                     "path_prefix": cur_pr,
                     "is_distrobox": is_distrobox_environment(),
@@ -3291,6 +3326,7 @@ def main():
                 self.send_json(200, {
                     "status": "ok",
                     "active_directory": workspace_state.get_directory(),
+                    "last_active_workspace": workspace_state.get_directory(),
                     "default_library": os.path.abspath(DEFAULT_LIBRARY_PATH),
                     "linked_folders": workspace_state.get_linked_folders()
                 })
@@ -3370,6 +3406,12 @@ def main():
                     config_data.update(new_patch)
 
                     cur_dir = workspace_state.get_directory()
+                    config_data["last_active_workspace"] = cur_dir
+                    config_data["library_dir"] = cur_dir
+                    config_data["path_prefix"] = workspace_state.get_prefix()
+                    config_data["linked_folders"] = workspace_state.linked_folders
+                    config_data["recent_directories"] = workspace_state.recent_directories
+
                     if "workspace_history" not in config_data or not isinstance(config_data["workspace_history"], dict):
                         config_data["workspace_history"] = {}
                     if cur_dir not in config_data["workspace_history"] or not isinstance(config_data["workspace_history"][cur_dir], dict):
@@ -4141,6 +4183,7 @@ def main():
                     self.send_json(200, {
                         "status": "ok",
                         "directory": resolved,
+                        "last_active_workspace": resolved,
                         "name": os.path.basename(resolved),
                         "applied_prefix": applied_pr or "",
                         "md_count": md_cnt,
@@ -4187,6 +4230,7 @@ def main():
                         "folder": entry,
                         "linked_folders": workspace_state.get_linked_folders(),
                         "directory": entry["resolved_path"],
+                        "last_active_workspace": entry["resolved_path"],
                         "name": entry["name"],
                         "default_file": first_file,
                         "md_count": entry["md_count"],
