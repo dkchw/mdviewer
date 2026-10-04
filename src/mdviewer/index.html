@@ -488,7 +488,15 @@
   }
   .fc-filter-group button.active{background:#2c3040;color:var(--accent);font-weight:600;}
   .fc-filter-group button:not(:last-child){border-right:1px solid var(--border);}
-  .fc-stats{margin-left:auto;color:#a9b1d6;font-size:12px;font-weight:600;}
+  .fc-stats{
+    margin-left:auto;color:#a9b1d6;font-size:12px;font-weight:600;
+    cursor:pointer;padding:3px 8px;border-radius:4px;
+    transition:background .15s, color .15s, border-color .15s;
+    user-select:none;border:1px solid transparent;
+  }
+  .fc-stats:hover{
+    background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);
+  }
 
   #flashcardMainArea{
     display:flex;flex-direction:row;flex:1 1 auto;overflow:hidden;position:relative;
@@ -4376,10 +4384,11 @@
       <div class="sep"></div>
       <div class="sep"></div>
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
+      <button id="fcJumpToolbarBtn" title="Jump directly to any card (J / G)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.12);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🎯 Jump</button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
       <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
-      <div class="fc-stats" id="fcStats">0 / 0</div>
+      <div class="fc-stats" id="fcStats" title="Click to Jump to Card (or press J / G)" onclick="if(window.openJumpToCardModal) window.openJumpToCardModal();">0 / 0</div>
     </div>
     <div id="flashcardMainArea">
       <div id="flashcardStage">
@@ -4480,10 +4489,11 @@
       <div id="fcNavControls">
         <button id="fcPrevBtn" title="Previous card (← Left Arrow)">◀ Prev</button>
         <button id="fcFlipBtn" title="Flip card (Space / W / Enter)">Flip Card</button>
+        <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
         <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
       </div>
       <div class="fc-shortcuts-hint">
-        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>C</b> : 2-Col &nbsp;•&nbsp; <b>F</b> : Fullscreen &nbsp;•&nbsp; <b>Esc</b> : Exit
+        <b>← / →</b> : Prev/Next Card &nbsp;•&nbsp; <b>Space / W / Enter</b> : Flip &nbsp;•&nbsp; <b>J / G</b> : Jump &nbsp;•&nbsp; <b>T</b> : Swap AI/Orig Back &nbsp;•&nbsp; <b>I</b> : AI Info &nbsp;•&nbsp; <b>O</b> : Overview &nbsp;•&nbsp; <b>C</b> : 2-Col &nbsp;•&nbsp; <b>F</b> : Fullscreen &nbsp;•&nbsp; <b>Esc</b> : Exit
       </div>
     </div>
     <!-- Flashcard Right Sidebar: Overview & Search -->
@@ -5195,6 +5205,33 @@
   </div>
 </div>
 
+<!-- Jump to Card Modal -->
+<div id="fcJumpModal" class="ai-modal-overlay" style="display:none;">
+  <div class="ai-modal-dialog" style="max-width:440px;">
+    <div class="ai-modal-header">
+      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🎯 Jump to Flashcard</span>
+      <button class="term-action-btn close" id="fcJumpCloseBtn" title="Close (Esc)">✕</button>
+    </div>
+    <div class="ai-modal-body" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;color:var(--fg);display:flex;justify-content:space-between;align-items:center;">
+        <span id="fcJumpRangeLabel" style="font-weight:600;">Card Number:</span>
+        <span id="fcJumpTotalBadge" style="font-size:11.5px;color:#7aa2f7;background:rgba(122,162,247,0.12);padding:2px 8px;border-radius:12px;border:1px solid rgba(122,162,247,0.3);">1 of 5,009</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="fcJumpInput" class="ai-modal-input" min="1" max="5009" value="1" style="font-size:18px;font-weight:700;text-align:center;padding:10px 12px;flex:1;letter-spacing:1px;background:#141620;border:1px solid var(--accent);border-radius:6px;color:#fff;" />
+        <button type="button" id="fcJumpSubmitBtn" class="fc-btn-primary" style="font-size:14px;padding:10px 18px;font-weight:700;height:46px;">🚀 Go</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin-top:2px;">
+        <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="first" style="font-size:11px;padding:3px 9px;">⏮ 1 (Start)</button>
+        <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="25%" style="font-size:11px;padding:3px 9px;">25%</button>
+        <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="50%" style="font-size:11px;padding:3px 9px;">50%</button>
+        <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="75%" style="font-size:11px;padding:3px 9px;">75%</button>
+        <button type="button" class="fc-btn-secondary fc-quick-jump-btn" data-target="last" style="font-size:11px;padding:3px 9px;">⏭ Last</button>
+      </div>
+      <div id="fcJumpDeckInfo" style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Generate All Files in Folder Modal -->
 <div id="fcFolderGenerateModal" class="ai-modal-overlay" style="display:none;">
@@ -8347,14 +8384,16 @@
   window.getFlashcardList = () => flashcardList;
   window.getCurrentCardIndex = () => currentCardIndex;
   window.getCurrentCardAudioUrls = () => currentCardAudioUrls;
-  window.goToCard = (idx) => {
+  function goToCard(idx) {
+    if(!flashcardList || flashcardList.length === 0) return;
     if(idx >= 0 && idx < flashcardList.length){
       currentCardIndex = idx;
       renderCurrentCard();
       updateOverviewActiveItem();
       if(typeof syncUrlState === 'function') syncUrlState('replace');
     }
-  };
+  }
+  window.goToCard = goToCard;
 
   function initCardAudioElements(container){
     if(!container) return;
@@ -8678,6 +8717,27 @@
     const items = [];
     let matchCount = 0;
     const MAX_VISIBLE_OVERVIEW = 100; // Cap DOM elements at 100 for instant 60 FPS rendering
+
+    // Direct card number jump support in Overview search
+    const numMatch = query.match(/^\s*#?\s*(\d+)$/);
+    if (numMatch) {
+      const jumpIdx = parseInt(numMatch[1], 10) - 1;
+      if (jumpIdx >= 0 && jumpIdx < flashcardList.length) {
+        const targetCard = flashcardList[jumpIdx];
+        const targetTitle = escapeHtml(targetCard.text || `Card ${jumpIdx + 1}`);
+        const isActive = (jumpIdx === currentCardIndex);
+        items.push(`
+          <div class="fc-card-item fc-jump-pin-item${isActive ? ' active' : ''}" data-card-index="${jumpIdx}" style="background:rgba(122,162,247,0.18);border:1px solid #7aa2f7;box-shadow:0 2px 10px rgba(122,162,247,0.25);">
+            <div class="fc-item-top">
+              <span class="fc-item-num" style="color:#7aa2f7;font-weight:700;">🎯 Jump</span>
+              <span class="fc-item-badge" style="color:var(--accent);border-color:var(--accent);">Card #${jumpIdx + 1}</span>
+              <span class="fc-item-title" style="color:#fff;font-weight:700;">${targetTitle}</span>
+            </div>
+            <div class="fc-item-snippet" style="color:#a9b1d6;font-size:11px;">Press Enter or click to jump directly to this card</div>
+          </div>
+        `);
+      }
+    }
 
     for(let i = 0; i < flashcardList.length; i++){
       const h = flashcardList[i];
@@ -10069,6 +10129,12 @@
         fcBatchDrawer.style.display = 'none';
         return;
       }
+      const jm = document.getElementById('fcJumpModal');
+      if(jm && (jm.style.display !== 'none' || jm.classList.contains('active'))){
+        e.preventDefault();
+        if(typeof closeJumpToCardModal === 'function') closeJumpToCardModal();
+        return;
+      }
     }
     if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -10111,6 +10177,9 @@
       } else {
         exitFlashcardMode();
       }
+    } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'j' || e.key === 'J' || e.key === 'g' || e.key === 'G')){
+      e.preventDefault();
+      if(typeof openJumpToCardModal === 'function') openJumpToCardModal();
     } else if(!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'i' || e.key === 'I')){
       e.preventDefault();
       toggleFcInfoPanel();
@@ -10460,6 +10529,13 @@
         }
       }
 
+      if (isFolderDeck || isFlashcardMode) {
+        const h = (url.hash || '').replace(/^#/, '').trim();
+        if (/^(?:card[=-]?|c)?\d+$/i.test(h)) {
+          url.hash = '';
+        }
+      }
+
       const newUrlStr = url.pathname + url.search + url.hash;
       const currUrlStr = window.location.pathname + window.location.search + window.location.hash;
       if(newUrlStr !== currUrlStr){
@@ -10473,44 +10549,106 @@
     } catch(e) {}
   }
 
+  function parseRequestedCardNumber() {
+    try {
+      const hash = (window.location.hash || '').replace(/^#/, '').trim();
+      if (hash) {
+        if (hash.includes('=')) {
+          try {
+            const hp = new URLSearchParams(hash);
+            if (hp.has('card')) {
+              const c = parseInt(hp.get('card'), 10);
+              if (!isNaN(c) && c >= 1) return c;
+            }
+          } catch(e) {}
+        }
+        const m = hash.match(/^(?:card[=-]?|c)?(\d+)/i);
+        if (m) {
+          const c = parseInt(m[1], 10);
+          if (!isNaN(c) && c >= 1) return c;
+        }
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('card')) {
+        const c = parseInt(urlParams.get('card'), 10);
+        if (!isNaN(c) && c >= 1) return c;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function parseRequestedFlipped() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('flipped')) {
+        return urlParams.get('flipped') === '1';
+      }
+      const hash = (window.location.hash || '').toLowerCase();
+      if (hash.includes('flipped=1') || hash.includes('flipped=true')) {
+        return true;
+      }
+    } catch(e) {}
+    return null;
+  }
+
   async function restoreTabState(isFromPopstate = false){
     const urlParams = new URLSearchParams(window.location.search);
+    const reqCardNum = parseRequestedCardNumber();
+    const reqCardIdx = reqCardNum !== null ? reqCardNum - 1 : null;
+    const reqFlipped = parseRequestedFlipped();
 
-    // 1. Check if Folder Deck was active (URL, sessionStorage, or savedConfig)
+    // 1. Check if Folder Deck was active (URL, in-memory, sessionStorage, or savedConfig)
     const urlMode = urlParams.get('mode');
     const urlFolder = urlParams.get('folder');
     let savedFolderDeck = null;
     if (savedConfig.lastFolderDeck && savedConfig.lastFolderDeck.folder) {
       savedFolderDeck = savedConfig.lastFolderDeck;
     }
-    if (!savedFolderDeck && !isFromPopstate) {
+    if (!savedFolderDeck) {
       try {
         const raw = sessionStorage.getItem('mdv_folder_deck');
         if (raw) savedFolderDeck = JSON.parse(raw);
       } catch(e) {}
     }
 
-    const isFolderDeckRequested = (urlMode === 'folder_deck' && urlFolder) ||
-      (!isFromPopstate && !urlParams.get('file') && (savedConfig.lastAppMode === 'folder_deck' || urlMode === 'folder_deck') && savedFolderDeck);
+    const isFolderDeckRequested = (urlMode === 'folder_deck') || (!!urlFolder) ||
+      (!urlParams.get('file') && (isFolderDeck || savedConfig.lastAppMode === 'folder_deck' || sessionStorage.getItem('mdv_tab_mode') === 'folder_deck') && (folderDeckInfo?.folderPath || savedFolderDeck?.folder));
 
     if (isFolderDeckRequested) {
-      const folderPath = urlFolder || (savedFolderDeck ? savedFolderDeck.folder : '');
-      const level = urlParams.get('level') || (savedFolderDeck ? savedFolderDeck.level : '2');
+      const folderPath = urlFolder || (isFolderDeck && folderDeckInfo ? folderDeckInfo.folderPath : '') || (savedFolderDeck ? savedFolderDeck.folder : '');
+      const level = urlParams.get('level') || (isFolderDeck && folderDeckInfo ? folderDeckInfo.targetLevel : '') || (savedFolderDeck ? savedFolderDeck.level : '2');
       const recursive = urlParams.has('recursive') ? (urlParams.get('recursive') === '1') : (savedFolderDeck ? savedFolderDeck.recursive !== false : true);
+      
       let cardIdx = 0;
-      if (urlParams.has('card')) {
-        const c = parseInt(urlParams.get('card'), 10);
-        if (!isNaN(c) && c >= 1) cardIdx = c - 1;
+      if (reqCardIdx !== null) {
+        cardIdx = reqCardIdx;
       } else if (savedFolderDeck && typeof savedFolderDeck.cardIndex === 'number') {
         cardIdx = savedFolderDeck.cardIndex;
       }
 
       if (folderPath) {
+        // Fast path: if folder deck is already loaded in-memory, jump immediately without re-fetching all cards over network!
+        if (isFolderDeck && folderDeckInfo && folderDeckInfo.folderPath === folderPath && flashcardList && flashcardList.length > 0) {
+          currentCardIndex = Math.min(Math.max(0, cardIdx), flashcardList.length - 1);
+          if (fcCard) {
+            if (reqFlipped !== null) {
+              if (reqFlipped) fcCard.classList.add('flipped');
+              else fcCard.classList.remove('flipped');
+            }
+          }
+          renderCurrentCard();
+          updateOverviewActiveItem();
+          return;
+        }
+
         ensureAncestorsExpanded(folderPath + '/dummy');
         expandedFolders.add(folderPath);
         saveExpandedFolders();
         if (typeof initSidebar === 'function') await initSidebar();
         await loadFolderDeck(folderPath, level, recursive, cardIdx);
+        if (reqFlipped && fcCard) {
+          fcCard.classList.add('flipped');
+        }
         return;
       }
     }
@@ -10537,9 +10675,8 @@
     const filter = urlParams.get('filter') || (!isFromPopstate ? sessionStorage.getItem('mdv_tab_filter') : null) || 'outline';
     
     let card = null;
-    if(urlParams.has('card')){
-      const c = parseInt(urlParams.get('card'), 10);
-      if(!isNaN(c) && c >= 1) card = c - 1;
+    if(reqCardIdx !== null){
+      card = reqCardIdx;
     } else if(!isFromPopstate && sessionStorage.getItem('mdv_tab_card') != null){
       const c = parseInt(sessionStorage.getItem('mdv_tab_card'), 10);
       if(!isNaN(c) && c >= 0) card = c;
@@ -10554,11 +10691,24 @@
       if(!isNaN(p) && p >= 0) page = p;
     }
 
-    let flipped = false;
-    if(urlParams.has('flipped')){
-      flipped = urlParams.get('flipped') === '1';
-    } else if(!isFromPopstate && sessionStorage.getItem('mdv_tab_flipped') === '1'){
+    let flipped = reqFlipped === true;
+    if(!flipped && !isFromPopstate && sessionStorage.getItem('mdv_tab_flipped') === '1'){
       flipped = true;
+    }
+
+    // Fast path: if single file flashcard mode is already active for this file, jump immediately in memory
+    if (isFlashcardMode && !isFolderDeck && currentFilePath === targetFile && flashcardList && flashcardList.length > 0) {
+      if (card !== null) {
+        currentCardIndex = Math.min(Math.max(0, card), flashcardList.length - 1);
+      }
+      if (page !== null) currentBackPageIndex = page;
+      if (fcCard) {
+        if (flipped) fcCard.classList.add('flipped');
+        else fcCard.classList.remove('flipped');
+      }
+      renderCurrentCard();
+      updateOverviewActiveItem();
+      return;
     }
 
     const line = urlParams.has('line') ? parseInt(urlParams.get('line'), 10) - 1 : null;
@@ -10575,6 +10725,10 @@
   }
 
   window.addEventListener('popstate', () => {
+    restoreTabState(true);
+  });
+
+  window.addEventListener('hashchange', () => {
     restoreTabState(true);
   });
 
@@ -14484,6 +14638,69 @@
     fcSuppDeleteSelectedBtn.addEventListener('click', deleteSelectedSupplements);
   }
 
+  // Jump to Card Controller
+  function openJumpToCardModal(){
+    if(!isFlashcardMode || !flashcardList || flashcardList.length === 0){
+      showToast('⚠️ No active flashcards to jump to.');
+      return;
+    }
+    const modal = document.getElementById('fcJumpModal');
+    const input = document.getElementById('fcJumpInput');
+    const rangeLabel = document.getElementById('fcJumpRangeLabel');
+    const totalBadge = document.getElementById('fcJumpTotalBadge');
+    const deckInfo = document.getElementById('fcJumpDeckInfo');
+    if(!modal || !input) return;
+
+    const total = flashcardList.length;
+    const current = currentCardIndex + 1;
+    input.min = 1;
+    input.max = total;
+    input.value = current;
+
+    if(rangeLabel) rangeLabel.textContent = `Card Number (1 – ${total.toLocaleString()}):`;
+    if(totalBadge) totalBadge.textContent = `Current: #${current.toLocaleString()} / ${total.toLocaleString()}`;
+    if(deckInfo) {
+      if (isFolderDeck && folderDeckInfo) {
+        deckInfo.textContent = `📁 Folder Deck: ${folderDeckInfo.folderName} (${total.toLocaleString()} cards from ${folderDeckInfo.totalFiles} files)`;
+      } else {
+        deckInfo.textContent = `📄 Single-File Deck (${total.toLocaleString()} cards)`;
+      }
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 40);
+  }
+
+  function closeJumpToCardModal(){
+    const modal = document.getElementById('fcJumpModal');
+    if(modal){
+      modal.style.display = 'none';
+      modal.classList.remove('active');
+    }
+  }
+
+  function executeJumpToCard(){
+    const input = document.getElementById('fcJumpInput');
+    if(!input || !flashcardList || flashcardList.length === 0) return;
+    let target = parseInt(input.value, 10);
+    if(isNaN(target)){
+      showToast('⚠️ Please enter a valid card number.');
+      return;
+    }
+    target = Math.max(1, Math.min(target, flashcardList.length));
+    goToCard(target - 1);
+    closeJumpToCardModal();
+    showToast(`🎯 Jumped to Card #${target.toLocaleString()} of ${flashcardList.length.toLocaleString()}`, 2000);
+  }
+
+  window.openJumpToCardModal = openJumpToCardModal;
+  window.closeJumpToCardModal = closeJumpToCardModal;
+  window.executeJumpToCard = executeJumpToCard;
+
   // Folder Deck Controller
   function openFolderDeckModal(folderPath = '', folderName = '') {
     pendingFolderDeckPath = folderPath || '';
@@ -14635,6 +14852,47 @@
       showToast('⏹ Generation stopped by user');
     });
   }
+
+  // Jump to Card Event Listeners
+  const fcJumpCloseBtn = document.getElementById('fcJumpCloseBtn');
+  const fcJumpSubmitBtn = document.getElementById('fcJumpSubmitBtn');
+  const fcJumpInput = document.getElementById('fcJumpInput');
+  const fcJumpToolbarBtn = document.getElementById('fcJumpToolbarBtn');
+  const fcJumpNavBtn = document.getElementById('fcJumpNavBtn');
+
+  if (fcJumpCloseBtn) fcJumpCloseBtn.addEventListener('click', closeJumpToCardModal);
+  if (fcJumpSubmitBtn) fcJumpSubmitBtn.addEventListener('click', executeJumpToCard);
+  if (fcJumpToolbarBtn) fcJumpToolbarBtn.addEventListener('click', openJumpToCardModal);
+  if (fcJumpNavBtn) fcJumpNavBtn.addEventListener('click', openJumpToCardModal);
+
+  if (fcJumpInput) {
+    fcJumpInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeJumpToCard();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeJumpToCardModal();
+      }
+    });
+  }
+
+  document.querySelectorAll('.fc-quick-jump-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!flashcardList || flashcardList.length === 0) return;
+      const t = btn.dataset.target;
+      const total = flashcardList.length;
+      let targetIdx = 0;
+      if (t === 'first') targetIdx = 0;
+      else if (t === 'last') targetIdx = total - 1;
+      else if (t === '25%') targetIdx = Math.floor(total * 0.25);
+      else if (t === '50%') targetIdx = Math.floor(total * 0.50);
+      else if (t === '75%') targetIdx = Math.floor(total * 0.75);
+      goToCard(targetIdx);
+      closeJumpToCardModal();
+      showToast(`🎯 Jumped to Card #${(targetIdx + 1).toLocaleString()} of ${total.toLocaleString()}`, 2000);
+    });
+  });
 
 
 
