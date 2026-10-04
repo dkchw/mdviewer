@@ -47,9 +47,13 @@ except ImportError:
 
 import unicodedata
 
+_ASSETS_CACHE = {}
+GLOBAL_WORKSPACE_STATE = None
+
 def serve_static_media(handler, directory, rel_path):
     if not rel_path:
         return False
+    ws = getattr(handler, 'workspace_state', None) or GLOBAL_WORKSPACE_STATE
     # Strip any query parameters or hash fragments
     unquoted = urllib.parse.unquote(rel_path.lstrip('/\\')).replace('\\', '/')
     clean_path = urllib.parse.urlsplit(unquoted).path
@@ -64,30 +68,45 @@ def serve_static_media(handler, directory, rel_path):
                 target = cand_target
                 break
 
-    # If not found directly, check if the file exists inside any assets/ directory in workspace
+    # Check if clean_path is an allowed absolute path or path with leading slash
+    if not target or not os.path.isfile(target):
+        cand_abs = os.path.abspath(clean_path if clean_path.startswith('/') else ('/' + clean_path))
+        if os.path.isfile(cand_abs) and (not ws or ws.is_path_allowed(cand_abs)):
+            target = cand_abs
+
+    # Check other allowed workspace linked folders
+    if not target or not os.path.isfile(target):
+        if ws:
+            for lf in ws.linked_folders:
+                lp = lf.get("resolved_path")
+                if lp:
+                    cand_l = safe_rel_path(lp, clean_path)
+                    if cand_l and os.path.isfile(cand_l):
+                        target = cand_l
+                        break
+
+    # If not found directly, check if the file exists inside any assets/ directory using cache
     if not target or not os.path.isfile(target):
         fname = os.path.basename(clean_path)
         fname_nfc = unicodedata.normalize('NFC', fname)
         fname_lower = fname_nfc.lower()
-        candidate = None
-        for root, dirs, files in os.walk(directory):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.obsidian', '.venv')]
-            if os.path.basename(root) == 'assets':
-                # Direct match
-                if fname in files:
-                    candidate = os.path.join(root, fname)
-                    break
-                # Unicode-normalized & case-insensitive match
-                for f in files:
-                    f_nfc = unicodedata.normalize('NFC', f)
-                    if f_nfc == fname_nfc or f_nfc.lower() == fname_lower:
-                        candidate = os.path.join(root, f)
-                        break
-                if candidate:
-                    break
-        if candidate and os.path.isfile(candidate):
-            target = candidate
+        now = time.time()
+        
+        cache_entry = _ASSETS_CACHE.get(directory)
+        if cache_entry and (now - cache_entry[1] < 120.0):
+            target = cache_entry[0].get(fname_lower)
         else:
+            assets_map = {}
+            for root, dirs, files in os.walk(directory):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.obsidian', '.venv', '.git')]
+                if os.path.basename(root) == 'assets':
+                    for f in files:
+                        f_nfc = unicodedata.normalize('NFC', f)
+                        assets_map[f_nfc.lower()] = os.path.join(root, f)
+            _ASSETS_CACHE[directory] = (assets_map, now)
+            target = assets_map.get(fname_lower)
+
+        if not target or not os.path.isfile(target):
             return False
 
     mime_type, _ = mimetypes.guess_type(target)
@@ -2935,6 +2954,8 @@ def main():
     custom_prefix = args.prefix or os.environ.get("MDVIEWER_PATH_PREFIX") or get_default_path_prefix()
     initial_dir, is_standalone = get_library_dir(args.directory, custom_prefix)
     workspace_state = WorkspaceState(initial_dir, is_standalone, custom_prefix)
+    global GLOBAL_WORKSPACE_STATE
+    GLOBAL_WORKSPACE_STATE = workspace_state
     directory = workspace_state.get_directory()
     init_supplement_db(directory)
 
@@ -2971,7 +2992,21 @@ def main():
             except Exception:
                 pass
 
-            # 3. Fall back to global active workspace
+            # 3. Check Referer header for ?ws=
+            referer = self.headers.get('Referer', '')
+            if referer and 'ws=' in referer:
+                try:
+                    ref_parsed = urllib.parse.urlparse(referer)
+                    ref_qp = urllib.parse.parse_qs(ref_parsed.query)
+                    ref_ws = ref_qp.get('ws', [''])[0].strip()
+                    if ref_ws:
+                        resolved, _ = resolve_fs_path(ref_ws, workspace_state.get_prefix())
+                        if resolved and os.path.isdir(resolved) and workspace_state.is_path_allowed(resolved):
+                            return resolved
+                except Exception:
+                    pass
+
+            # 4. Fall back to global active workspace
             return workspace_state.get_directory()
 
         def do_GET(self):

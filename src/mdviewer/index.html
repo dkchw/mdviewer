@@ -5545,22 +5545,6 @@
   let currentFilePath = '';
   let currentCard = null;
 
-  function resolveMediaUrl(cleanUrl, cardFilePath){
-    if(!cleanUrl) return '';
-    cleanUrl = cleanUrl.trim();
-    if(cleanUrl.startsWith('/') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')){
-      return cleanUrl;
-    }
-    if(cleanUrl.startsWith('./')){
-      cleanUrl = cleanUrl.substring(2);
-    }
-    const fp = cardFilePath || (typeof currentCard !== 'undefined' && currentCard && currentCard.file_path) || (typeof currentFilePath !== 'undefined' ? currentFilePath : '');
-    if(fp && fp.includes('/')){
-      return fp.substring(0, fp.lastIndexOf('/') + 1) + cleanUrl;
-    }
-    return cleanUrl;
-  }
-
   // --- Per-Tab Workspace Isolation Support ---
   function getActiveTabWorkspace() {
     try {
@@ -5573,6 +5557,29 @@
       if (sessWs && sessWs.trim()) return sessWs.trim();
     } catch(e) {}
     return null;
+  }
+
+  function resolveMediaUrl(cleanUrl, cardFilePath){
+    if(!cleanUrl) return '';
+    cleanUrl = cleanUrl.trim();
+    if(cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('data:')){
+      return cleanUrl;
+    }
+    if(cleanUrl.startsWith('./')){
+      cleanUrl = cleanUrl.substring(2);
+    }
+    let res = cleanUrl;
+    if(!cleanUrl.startsWith('/')){
+      const fp = cardFilePath || (typeof currentCard !== 'undefined' && currentCard && currentCard.file_path) || (typeof currentFilePath !== 'undefined' ? currentFilePath : '');
+      if(fp && fp.includes('/')){
+        res = fp.substring(0, fp.lastIndexOf('/') + 1) + cleanUrl;
+      }
+    }
+    const tabWs = typeof getActiveTabWorkspace === 'function' ? getActiveTabWorkspace() : null;
+    if(tabWs && !res.includes('ws=')){
+      res += (res.includes('?') ? '&' : '?') + 'ws=' + encodeURIComponent(tabWs);
+    }
+    return res;
   }
 
   function setActiveTabWorkspace(wsPath, wsName) {
@@ -8337,6 +8344,18 @@
     }
   };
 
+  window.getFlashcardList = () => flashcardList;
+  window.getCurrentCardIndex = () => currentCardIndex;
+  window.getCurrentCardAudioUrls = () => currentCardAudioUrls;
+  window.goToCard = (idx) => {
+    if(idx >= 0 && idx < flashcardList.length){
+      currentCardIndex = idx;
+      renderCurrentCard();
+      updateOverviewActiveItem();
+      if(typeof syncUrlState === 'function') syncUrlState('replace');
+    }
+  };
+
   function initCardAudioElements(container){
     if(!container) return;
     const wraps = container.querySelectorAll('.fc-audio-wrap');
@@ -8390,10 +8409,10 @@
     const textToScan = ((h && h.text) ? h.text : '') + '\n' + (origBack || '');
     const cardFilePath = (h && h.file_path) || currentFilePath;
 
-    // 1. Markdown audio links: ![alt](url)
-    const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    // 1. Markdown audio links: ![alt](url) or [alt](url)
+    const mdAudioRegex = /!?\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\)/g;
     let m;
-    while((m = mdImgRegex.exec(textToScan)) !== null){
+    while((m = mdAudioRegex.exec(textToScan)) !== null){
       const u = m[2].trim();
       if(/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(u)){
         const res = resolveMediaUrl(u, cardFilePath);
@@ -8462,9 +8481,7 @@
       } catch(e) {
         console.warn('Audio play error:', e);
       }
-    }
-
-    if(currentCardAudioUrls.length > 0){
+    } else if(currentCardAudioUrls.length > 0){
       const idx = Math.max(0, Math.min(targetIndex, currentCardAudioUrls.length - 1));
       currentCardAudioIndex = idx;
       updateAudioReplayButtons(idx, currentCardAudioUrls.length);
@@ -9149,7 +9166,7 @@
 
     // Extract any image embeds from front heading text
     const frontImgs = [];
-    let cleanFrontTitle = (h.text || '').replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+    let cleanFrontTitle = (h.text || '').replace(/!?\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\)/g, (m, alt, url) => {
       const u = url.trim();
       if (!/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(u)) {
         frontImgs.push({ alt: alt || 'Card Image', url: u });
@@ -10843,9 +10860,10 @@
   }
 
   // Enhanced, Vivid, Full-Featured Markdown Renderer (GFM Tables, Callouts, Key Badges, Code Cards, Colored Headers)
-  function renderEnhancedMarkdown(src) {
+  function renderEnhancedMarkdown(src, cardFilePath) {
     if (!src) return '';
     const escape = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const curFp = cardFilePath || (typeof currentCard !== 'undefined' && currentCard && currentCard.file_path) || (typeof currentFilePath !== 'undefined' ? currentFilePath : '');
 
     // 1. Extract Fenced Code Blocks first
     const codeBlocks = [];
@@ -10895,9 +10913,9 @@
       s = s.replace(/`([^`]+)`/g, (m, code) => saveToken(`<code class="fc-md-inline-code">${escape(code)}</code>`));
 
       // Images & Audio embeds: ![alt](url)
-      s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+      s = s.replace(/!\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\)/g, (m, alt, url) => {
         const cleanUrl = url.trim();
-        const resolvedUrl = resolveMediaUrl(cleanUrl);
+        const resolvedUrl = resolveMediaUrl(cleanUrl, curFp);
         if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(cleanUrl)) {
           return saveToken(`
             <div class="fc-audio-wrap" data-audio-src="${resolvedUrl}" onclick="if(event.target.tagName!=='AUDIO'){event.stopPropagation();playEmbedAudio(this);}" title="Click to play">
@@ -10916,7 +10934,7 @@
         if (!cleanUrl.startsWith('assets/') && !cleanUrl.startsWith('/') && !cleanUrl.startsWith('http')) {
           cleanUrl = 'assets/' + cleanUrl;
         }
-        const resolvedUrl = resolveMediaUrl(cleanUrl);
+        const resolvedUrl = resolveMediaUrl(cleanUrl, curFp);
         return saveToken(`
           <div class="fc-audio-wrap" data-audio-src="${resolvedUrl}" onclick="if(event.target.tagName!=='AUDIO'){event.stopPropagation();playEmbedAudio(this);}" title="Click to play">
             <button type="button" class="fc-audio-play-btn" onclick="event.stopPropagation();playEmbedAudio(this);" title="Play / Pause">▶</button>
@@ -10926,9 +10944,20 @@
         `);
       });
 
-      // Links: [text](url)
-      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, text, url) => {
-        return saveToken(`<a class="fc-md-link" href="${url.trim()}" target="_blank" rel="noopener">${escape(text)}</a>`);
+      // Links: [text](url) - also check if link is an audio file
+      s = s.replace(/\[([^\]]+)\]\(((?:[^()]|\([^()]*\))+)\)/g, (m, text, url) => {
+        const cleanUrl = url.trim();
+        if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(cleanUrl)) {
+          const resolvedUrl = resolveMediaUrl(cleanUrl, curFp);
+          return saveToken(`
+            <div class="fc-audio-wrap" data-audio-src="${resolvedUrl}" onclick="if(event.target.tagName!=='AUDIO'){event.stopPropagation();playEmbedAudio(this);}" title="Click to play">
+              <button type="button" class="fc-audio-play-btn" onclick="event.stopPropagation();playEmbedAudio(this);" title="Play / Pause">▶</button>
+              <audio controls preload="auto" src="${resolvedUrl}" onclick="event.stopPropagation();"></audio>
+              <span class="fc-audio-caption" onclick="event.stopPropagation();playEmbedAudio(this);" style="cursor:pointer;" title="Click to play">🔊 ${escape(text || 'Audio')}</span>
+            </div>
+          `);
+        }
+        return saveToken(`<a class="fc-md-link" href="${cleanUrl}" target="_blank" rel="noopener">${escape(text)}</a>`);
       });
 
       // Escape remaining characters
@@ -11618,7 +11647,9 @@
       }
     }
 
-    renderBackFaceContent();
+    if (cardBackViewMode !== 'original') {
+      renderBackFaceContent();
+    }
 
     if (isFcInfoPanelOpen) {
       displayActivePromptContent();
@@ -11956,7 +11987,8 @@
       return;
     }
 
-    fcBackContent.innerHTML = `<div class="fc-enhanced-markdown">${renderEnhancedMarkdown(rawText)}</div>`;
+    const curFp = (h && h.file_path) || currentFilePath || '';
+    fcBackContent.innerHTML = `<div class="fc-enhanced-markdown">${renderEnhancedMarkdown(rawText, curFp)}</div>`;
     initCardAudioElements(fcBackContent);
   }
 
@@ -15526,6 +15558,7 @@
       attachDocCheckboxes();
       attachDocCodeCopyButtons();
       attachDocImageLightboxes();
+      attachDocMediaElements(docBody, currentFilePath);
       updateDoublePageLayout();
 
     } catch (err) {
@@ -15738,11 +15771,186 @@
     if (!docBody) return;
     const images = docBody.querySelectorAll('img');
     images.forEach(img => {
+      const rawSrc = img.getAttribute('src') || '';
+      if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(rawSrc)) return;
       img.addEventListener('click', (e) => {
         e.stopPropagation();
         if (typeof openImageModal === 'function') {
           openImageModal(img.src, img.alt);
         }
+      });
+    });
+  }
+
+  function attachDocMediaElements(container, filePath) {
+    if (!container) return;
+    const curFp = filePath || currentFilePath || '';
+    const audioExtRegex = /\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i;
+
+    // 1. Convert any <img> tags with audio sources to interactive audio elements
+    const images = Array.from(container.querySelectorAll('img'));
+    images.forEach(img => {
+      const rawSrc = img.getAttribute('src') || '';
+      if (audioExtRegex.test(rawSrc)) {
+        const resolved = resolveMediaUrl(rawSrc, curFp);
+        const alt = img.getAttribute('alt') || '';
+        const wrap = document.createElement('div');
+        wrap.className = 'fc-audio-wrap doc-audio-wrap';
+        wrap.setAttribute('data-audio-src', resolved);
+        wrap.style.cssText = 'margin: 8px 0; max-width: 520px;';
+        wrap.innerHTML = `
+          <button type="button" class="fc-audio-play-btn" title="Play / Pause">▶</button>
+          <audio controls preload="none" src="${resolved}" style="width:100%;max-width:320px;"></audio>
+          <span class="fc-audio-caption" style="cursor:pointer;" title="Click to play">🔊 ${escapeHtml(alt || 'Audio')}</span>
+        `;
+        img.parentNode.replaceChild(wrap, img);
+      } else if (rawSrc && !rawSrc.startsWith('http://') && !rawSrc.startsWith('https://') && !rawSrc.startsWith('data:')) {
+        const resolved = resolveMediaUrl(rawSrc, curFp);
+        if (resolved !== rawSrc) {
+          img.src = resolved;
+        }
+      }
+    });
+
+    // 2. Also resolve relative <audio src="..."> tags
+    const audios = Array.from(container.querySelectorAll('audio'));
+    audios.forEach(audio => {
+      const rawSrc = audio.getAttribute('src');
+      if (rawSrc && !rawSrc.startsWith('http://') && !rawSrc.startsWith('https://')) {
+        const resolved = resolveMediaUrl(rawSrc, curFp);
+        if (resolved !== rawSrc) audio.src = resolved;
+      }
+    });
+
+    // 3. Convert Anki [sound:...] and unparsed markdown audio/image links in text nodes
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const candidateNodes = [];
+    while (walker.nextNode()) {
+      const val = walker.currentNode.nodeValue;
+      if (val && (val.includes('[sound:') || val.includes(']('))) {
+        candidateNodes.push(walker.currentNode);
+      }
+    }
+    candidateNodes.forEach(node => {
+      const val = node.nodeValue;
+      const embedRegex = /\[sound:([^\]]+)\]|(!?\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\))/g;
+      if (!embedRegex.test(val)) return;
+      embedRegex.lastIndex = 0;
+      const fragment = document.createDocumentFragment();
+      let lastIdx = 0;
+      let m;
+      let hasReplaced = false;
+
+      while ((m = embedRegex.exec(val)) !== null) {
+        let replacementNode = null;
+        if (m[1]) {
+          // Anki [sound:...]
+          let soundUrl = m[1].trim();
+          if (!soundUrl.startsWith('assets/') && !soundUrl.startsWith('/') && !soundUrl.startsWith('http')) {
+            soundUrl = 'assets/' + soundUrl;
+          }
+          const resolved = resolveMediaUrl(soundUrl, curFp);
+          const wrap = document.createElement('span');
+          wrap.className = 'fc-audio-wrap doc-audio-wrap';
+          wrap.setAttribute('data-audio-src', resolved);
+          wrap.style.cssText = 'margin: 6px 0; max-width: 520px;';
+          wrap.innerHTML = `
+            <button type="button" class="fc-audio-play-btn" title="Play / Pause">▶</button>
+            <audio controls preload="none" src="${resolved}" style="width:100%;max-width:320px;"></audio>
+            <span class="fc-audio-caption" style="cursor:pointer;" title="Click to play">🔊 Audio</span>
+          `;
+          replacementNode = wrap;
+        } else if (m[2]) {
+          // Markdown ![alt](url) or [alt](url)
+          const isImgSyntax = m[2].startsWith('!');
+          const alt = m[3] || '';
+          const targetUrl = m[4].trim();
+          if (audioExtRegex.test(targetUrl)) {
+            const resolved = resolveMediaUrl(targetUrl, curFp);
+            const wrap = document.createElement('span');
+            wrap.className = 'fc-audio-wrap doc-audio-wrap';
+            wrap.setAttribute('data-audio-src', resolved);
+            wrap.style.cssText = 'margin: 6px 0; max-width: 520px;';
+            wrap.innerHTML = `
+              <button type="button" class="fc-audio-play-btn" title="Play / Pause">▶</button>
+              <audio controls preload="none" src="${resolved}" style="width:100%;max-width:320px;"></audio>
+              <span class="fc-audio-caption" style="cursor:pointer;" title="Click to play">🔊 ${escapeHtml(alt || 'Audio')}</span>
+            `;
+            replacementNode = wrap;
+          } else if (isImgSyntax && /\.(png|jpe?g|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(targetUrl)) {
+            const resolved = resolveMediaUrl(targetUrl, curFp);
+            const img = document.createElement('img');
+            img.src = resolved;
+            img.alt = alt;
+            img.loading = 'lazy';
+            img.style.maxWidth = '100%';
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (typeof openImageModal === 'function') openImageModal(img.src, img.alt);
+            });
+            replacementNode = img;
+          }
+        }
+
+        if (replacementNode) {
+          hasReplaced = true;
+          if (m.index > lastIdx) {
+            fragment.appendChild(document.createTextNode(val.substring(lastIdx, m.index)));
+          }
+          fragment.appendChild(replacementNode);
+          lastIdx = embedRegex.lastIndex;
+        }
+      }
+
+      if (hasReplaced) {
+        if (lastIdx < val.length) {
+          fragment.appendChild(document.createTextNode(val.substring(lastIdx)));
+        }
+        if (node.parentNode) {
+          node.parentNode.replaceChild(fragment, node);
+        }
+      }
+    });
+
+    // 4. Attach play/pause handlers on all .doc-audio-wrap
+    const wraps = container.querySelectorAll('.doc-audio-wrap');
+    wraps.forEach(wrap => {
+      const audio = wrap.querySelector('audio');
+      const btn = wrap.querySelector('.fc-audio-play-btn');
+      const caption = wrap.querySelector('.fc-audio-caption');
+      if (!audio || audio._docInit) return;
+      audio._docInit = true;
+
+      const togglePlay = (e) => {
+        if (e) e.stopPropagation();
+        if (!audio.paused && !audio.ended) {
+          audio.pause();
+        } else {
+          document.querySelectorAll('audio').forEach(o => {
+            if (o !== audio && !o.paused) o.pause();
+          });
+          if (audio.ended || (audio.duration && audio.currentTime >= audio.duration - 0.1)) {
+            audio.currentTime = 0;
+          }
+          audio.play().catch(err => console.log('Audio playback error:', err));
+        }
+      };
+
+      if (btn) btn.addEventListener('click', togglePlay);
+      if (caption) caption.addEventListener('click', togglePlay);
+
+      audio.addEventListener('play', () => {
+        wrap.classList.add('fc-audio-active');
+        if (btn) btn.textContent = '⏸';
+      });
+      audio.addEventListener('pause', () => {
+        wrap.classList.remove('fc-audio-active');
+        if (btn) btn.textContent = '▶';
+      });
+      audio.addEventListener('ended', () => {
+        wrap.classList.remove('fc-audio-active');
+        if (btn) btn.textContent = '▶';
       });
     });
   }
@@ -16104,6 +16312,8 @@
       // Image lightboxes in live preview
       const imgs = liveBody.querySelectorAll('img');
       imgs.forEach(img => {
+        const rawSrc = img.getAttribute('src') || '';
+        if (/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(rawSrc)) return;
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           if (typeof openImageModal === 'function') {
@@ -16111,6 +16321,8 @@
           }
         });
       });
+
+      attachDocMediaElements(liveBody, currentFilePath);
 
       requestAnimationFrame(() => {
         if (typeof updateLivePreviewLineNumbers === 'function') {
