@@ -2437,8 +2437,9 @@ class WorkspaceState:
                     })
         return valid_folders
 
-    def get_linked_folders(self) -> list:
+    def get_linked_folders(self, active_dir: Optional[str] = None) -> list:
         with self.lock:
+            effective_dir = os.path.abspath(active_dir) if active_dir else self.directory
             result = []
             for f in self.linked_folders:
                 abs_p = f.get("resolved_path")
@@ -2447,7 +2448,7 @@ class WorkspaceState:
                     entry = dict(f)
                     entry["md_count"] = md_cnt
                     entry["asset_count"] = asset_cnt
-                    entry["is_active"] = (abs_p == self.directory)
+                    entry["is_active"] = (abs_p == effective_dir)
                     result.append(entry)
             return result
 
@@ -2514,13 +2515,16 @@ class WorkspaceState:
         if not target_path:
             return False
         abs_target = os.path.abspath(target_path)
-        if abs_target.startswith(os.path.abspath(self.directory)):
+        if abs_target == os.path.abspath(self.directory) or abs_target.startswith(os.path.abspath(self.directory) + os.sep):
             return True
-        if abs_target.startswith(os.path.abspath(DEFAULT_LIBRARY_PATH)):
+        if abs_target == os.path.abspath(DEFAULT_LIBRARY_PATH) or abs_target.startswith(os.path.abspath(DEFAULT_LIBRARY_PATH) + os.sep):
             return True
         for lf in self.linked_folders:
             p = lf.get("resolved_path")
-            if p and abs_target.startswith(os.path.abspath(p)):
+            if p and (abs_target == os.path.abspath(p) or abs_target.startswith(os.path.abspath(p) + os.sep)):
+                return True
+        for rd in self.recent_directories:
+            if rd and (abs_target == os.path.abspath(rd) or abs_target.startswith(os.path.abspath(rd) + os.sep)):
                 return True
         return False
 
@@ -2947,8 +2951,31 @@ def main():
             except Exception:
                 pass
 
+        def get_effective_directory(self) -> str:
+            # 1. Check HTTP header X-Workspace-Path
+            ws_header = self.headers.get('X-Workspace-Path', '').strip()
+            if ws_header:
+                resolved, _ = resolve_fs_path(ws_header, workspace_state.get_prefix())
+                if resolved and os.path.isdir(resolved) and workspace_state.is_path_allowed(resolved):
+                    return resolved
+
+            # 2. Check query param 'ws'
+            try:
+                parsed = urllib.parse.urlparse(self.path)
+                qp = urllib.parse.parse_qs(parsed.query)
+                ws_param = qp.get('ws', [''])[0].strip()
+                if ws_param:
+                    resolved, _ = resolve_fs_path(ws_param, workspace_state.get_prefix())
+                    if resolved and os.path.isdir(resolved) and workspace_state.is_path_allowed(resolved):
+                        return resolved
+            except Exception:
+                pass
+
+            # 3. Fall back to global active workspace
+            return workspace_state.get_directory()
+
         def do_GET(self):
-            directory = workspace_state.get_directory()
+            directory = self.get_effective_directory()
             parsed = urllib.parse.urlparse(self.path)
             
             if parsed.path == '/':
@@ -3167,7 +3194,7 @@ def main():
                             config_data = json.load(f)
                     except:
                         pass
-                cur_dir = workspace_state.get_directory()
+                cur_dir = directory
                 ws_history = config_data.get("workspace_history", {})
                 if isinstance(ws_history, dict) and cur_dir in ws_history and isinstance(ws_history[cur_dir], dict):
                     for k, v in ws_history[cur_dir].items():
@@ -3294,7 +3321,7 @@ def main():
                 self.send_json(200, {"status": "ok", "recent_apkgs": recent})
             elif parsed.path == '/api/engine/info':
                 rust_info = get_rust_info()
-                cur_dir = workspace_state.get_directory()
+                cur_dir = directory
                 self.send_json(200, {
                     "status": "ok",
                     "rust": rust_info,
@@ -3304,7 +3331,7 @@ def main():
                     "is_distrobox": is_distrobox_environment()
                 })
             elif parsed.path == '/api/workspace/info':
-                cur_dir = workspace_state.get_directory()
+                cur_dir = directory
                 cur_pr = workspace_state.get_prefix()
                 md_cnt, asset_cnt = count_directory_markdown_files(cur_dir)
                 self.send_json(200, {
@@ -3316,19 +3343,20 @@ def main():
                     "is_distrobox": is_distrobox_environment(),
                     "default_library": os.path.abspath(DEFAULT_LIBRARY_PATH),
                     "is_default_library": (os.path.abspath(cur_dir) == os.path.abspath(DEFAULT_LIBRARY_PATH)),
-                    "linked_folders": workspace_state.get_linked_folders(),
+                    "linked_folders": workspace_state.get_linked_folders(active_dir=cur_dir),
                     "recent_directories": workspace_state.recent_directories,
                     "md_count": md_cnt,
                     "asset_count": asset_cnt,
                     "default_file": find_first_markdown_file(cur_dir)
                 })
             elif parsed.path == '/api/workspace/linked_folders':
+                cur_dir = directory
                 self.send_json(200, {
                     "status": "ok",
-                    "active_directory": workspace_state.get_directory(),
-                    "last_active_workspace": workspace_state.get_directory(),
+                    "active_directory": cur_dir,
+                    "last_active_workspace": cur_dir,
                     "default_library": os.path.abspath(DEFAULT_LIBRARY_PATH),
-                    "linked_folders": workspace_state.get_linked_folders()
+                    "linked_folders": workspace_state.get_linked_folders(active_dir=cur_dir)
                 })
             elif parsed.path == '/api/library/search':
                 query_params = urllib.parse.parse_qs(parsed.query)
@@ -3387,7 +3415,7 @@ def main():
                 self.end_headers()
 
         def do_POST(self):
-            directory = workspace_state.get_directory()
+            directory = self.get_effective_directory()
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path == '/api/config':
                 content_length = int(self.headers.get('Content-Length', 0))
@@ -3405,9 +3433,9 @@ def main():
                     
                     config_data.update(new_patch)
 
-                    cur_dir = workspace_state.get_directory()
-                    config_data["last_active_workspace"] = cur_dir
-                    config_data["library_dir"] = cur_dir
+                    cur_dir = directory
+                    config_data["last_active_workspace"] = workspace_state.get_directory()
+                    config_data["library_dir"] = workspace_state.get_directory()
                     config_data["path_prefix"] = workspace_state.get_prefix()
                     config_data["linked_folders"] = workspace_state.linked_folders
                     config_data["recent_directories"] = workspace_state.recent_directories
@@ -4246,12 +4274,12 @@ def main():
                     payload = json.loads(post_data.decode('utf-8'))
                     raw_p = payload.get('path', '').strip()
                     ok, msg = workspace_state.unlink_folder(raw_p)
-                    cur_dir = workspace_state.get_directory()
+                    cur_dir = self.get_effective_directory()
                     rust_index_library(cur_dir)
                     self.send_json(200, {
                         "status": "ok",
                         "message": msg,
-                        "linked_folders": workspace_state.get_linked_folders(),
+                        "linked_folders": workspace_state.get_linked_folders(active_dir=cur_dir),
                         "active_directory": cur_dir,
                         "active_name": os.path.basename(cur_dir) or cur_dir,
                         "default_file": find_first_markdown_file(cur_dir)
@@ -4274,10 +4302,10 @@ def main():
                         self.send_json(400, {"status": "error", "message": f"Directory not found: {raw_src}"})
                         return
 
-                    directory = workspace_state.get_directory()
+                    target_dir = self.get_effective_directory()
                     if not subfolder:
                         subfolder = os.path.basename(os.path.abspath(src_path))
-                    target_dst = safe_rel_path(directory, subfolder) or os.path.join(directory, subfolder)
+                    target_dst = safe_rel_path(target_dir, subfolder) or os.path.join(target_dir, subfolder)
                     res = import_folder_into_library(src_path, target_dst, use_rust=use_rust)
                     self.send_json(200, res)
                 except Exception as e:

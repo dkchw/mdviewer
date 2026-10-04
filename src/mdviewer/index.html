@@ -5561,6 +5561,58 @@
     return cleanUrl;
   }
 
+  // --- Per-Tab Workspace Isolation Support ---
+  function getActiveTabWorkspace() {
+    try {
+      const u = new URL(window.location.href);
+      const urlWs = u.searchParams.get('ws');
+      if (urlWs && urlWs.trim()) return urlWs.trim();
+    } catch(e) {}
+    try {
+      const sessWs = sessionStorage.getItem('mdv_tab_workspace');
+      if (sessWs && sessWs.trim()) return sessWs.trim();
+    } catch(e) {}
+    return null;
+  }
+
+  function setActiveTabWorkspace(wsPath, wsName) {
+    if (!wsPath) return;
+    try {
+      sessionStorage.setItem('mdv_tab_workspace', wsPath);
+      if (wsName) sessionStorage.setItem('mdv_tab_workspace_name', wsName);
+    } catch(e) {}
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get('ws') !== wsPath) {
+        u.searchParams.set('ws', wsPath);
+        window.history.replaceState({}, '', u.toString());
+      }
+    } catch(e) {}
+  }
+
+  // Intercept all fetch requests to automatically attach this tab's active workspace
+  const _origFetch = window.fetch;
+  window.fetch = function(input, init = {}) {
+    const tabWs = getActiveTabWorkspace();
+    if (tabWs) {
+      if (init && init.headers) {
+        if (init.headers instanceof Headers) {
+          if (!init.headers.has('X-Workspace-Path')) init.headers.set('X-Workspace-Path', tabWs);
+        } else if (Array.isArray(init.headers)) {
+          const hasH = init.headers.some(([k]) => k.toLowerCase() === 'x-workspace-path');
+          if (!hasH) init.headers.push(['X-Workspace-Path', tabWs]);
+        } else if (typeof init.headers === 'object') {
+          if (!init.headers['X-Workspace-Path']) init.headers['X-Workspace-Path'] = tabWs;
+        }
+      } else {
+        init = Object.assign({}, init, {
+          headers: { 'X-Workspace-Path': tabWs }
+        });
+      }
+    }
+    return _origFetch.call(this, input, init);
+  };
+
   let savedConfig = {};
   try {
     const r = await fetch('/api/config');
@@ -10318,6 +10370,10 @@
   function syncUrlState(action = 'replace'){
     try {
       const url = new URL(window.location.href);
+      const tabWs = typeof getActiveTabWorkspace === 'function' ? getActiveTabWorkspace() : null;
+      if (tabWs) {
+        url.searchParams.set('ws', tabWs);
+      }
       if (isFolderDeck && folderDeckInfo) {
         url.searchParams.set('mode', 'folder_deck');
         url.searchParams.set('folder', folderDeckInfo.folderPath || '');
@@ -16931,6 +16987,7 @@
         });
         const data = await res.json();
         if (data.status === 'ok') {
+          setActiveTabWorkspace(data.directory, data.name);
           try {
             localStorage.setItem('mdviewer_last_workspace', data.directory);
             if (data.name) localStorage.setItem('mdviewer_workspace_name', data.name);
@@ -16958,6 +17015,13 @@
         const data = await res.json();
         if (data.status === 'ok') {
           try {
+            if (sessionStorage.getItem('mdv_tab_workspace') === path) {
+              sessionStorage.removeItem('mdv_tab_workspace');
+              sessionStorage.removeItem('mdv_tab_workspace_name');
+              const u = new URL(window.location.href);
+              u.searchParams.delete('ws');
+              window.history.replaceState({}, '', u.toString());
+            }
             if (localStorage.getItem('mdviewer_last_workspace') === path) {
               localStorage.removeItem('mdviewer_last_workspace');
               localStorage.removeItem('mdviewer_workspace_name');
@@ -17074,6 +17138,7 @@
       try {
         const info = await fetch('/api/workspace/info').then(r => r.json());
         if (info.default_library) {
+          setActiveTabWorkspace(info.default_library, 'Standalone Library');
           try {
             localStorage.setItem('mdviewer_last_workspace', info.default_library);
           } catch(e) {}
@@ -17089,18 +17154,26 @@
         const res = await fetch('/api/workspace/info');
         const data = await res.json();
         if (data.status === 'ok') {
-          // If server defaulted to default_library, but user previously had an active linked workspace, restore it
-          let savedWs = null;
-          try { savedWs = localStorage.getItem('mdviewer_last_workspace'); } catch(e) {}
-          if (!savedWs && typeof savedConfig !== 'undefined' && savedConfig.last_active_workspace) {
-            savedWs = savedConfig.last_active_workspace;
-          }
-          if (savedWs && data.directory !== savedWs && data.is_default_library) {
-            const isKnown = (data.linked_folders || []).some(f => f.resolved_path === savedWs || f.path === savedWs);
-            if (isKnown) {
-              console.log('Restoring previous linked workspace:', savedWs);
-              await switchWorkspace(savedWs);
-              return;
+          const currentTabWs = getActiveTabWorkspace();
+          if (currentTabWs && data.directory) {
+            setActiveTabWorkspace(data.directory, data.name);
+          } else if (!currentTabWs) {
+            // Fresh tab without per-tab workspace yet: check if there's a remembered workspace
+            let savedWs = null;
+            try { savedWs = localStorage.getItem('mdviewer_last_workspace'); } catch(e) {}
+            if (!savedWs && typeof savedConfig !== 'undefined' && savedConfig.last_active_workspace) {
+              savedWs = savedConfig.last_active_workspace;
+            }
+            if (savedWs && data.directory !== savedWs && data.is_default_library) {
+              const isKnown = (data.linked_folders || []).some(f => f.resolved_path === savedWs || f.path === savedWs);
+              if (isKnown) {
+                console.log('Restoring previous linked workspace in fresh tab:', savedWs);
+                await switchWorkspace(savedWs);
+                return;
+              }
+            }
+            if (data.directory) {
+              setActiveTabWorkspace(data.directory, data.name);
             }
           }
 
@@ -17237,6 +17310,8 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     window.openFolderImportModal = openModal;
     window.closeFolderImportModal = closeModal;
+    window.switchWorkspace = switchWorkspace;
+    window.unlinkWorkspace = unlinkWorkspace;
 
     if (pathInput) {
       pathInput.addEventListener('input', () => {
@@ -17322,6 +17397,7 @@
 
           if (data.status === 'ok') {
             closeModal();
+            setActiveTabWorkspace(data.directory, data.name);
             try {
               localStorage.setItem('mdviewer_last_workspace', data.directory);
               if (data.name) localStorage.setItem('mdviewer_workspace_name', data.name);
