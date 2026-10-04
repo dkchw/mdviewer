@@ -26,6 +26,8 @@ import concurrent.futures
 import collections
 import mimetypes
 import tempfile
+import zipfile
+import io
 
 try:
     from .anki import inspect_apkg, import_apkg, find_recent_apkgs, sanitize_filename, split_markdown_deck
@@ -200,6 +202,180 @@ def safe_rel_path(directory, rel_path):
         except Exception:
             return None
     return target
+
+def export_study_session(directory: str, session_name: str, cards: List[Dict[str, Any]], ws_state=None) -> Tuple[bool, bytes, str, str]:
+    """
+    Exports a study session as Markdown (.md) or a ZIP bundle with media assets (.zip).
+    Returns (is_zip, data_bytes, filename, content_type).
+    """
+    clean_title = (session_name or "Study Session").strip()
+    safe_name = sanitize_filename(clean_title) or "study_session"
+
+    # Regex patterns for media
+    sound_pattern = re.compile(r'\[sound:([^\]]+)\]', re.IGNORECASE)
+    img_md_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)', re.IGNORECASE)
+    img_html_pattern = re.compile(r'<img\s+[^>]*?src=["\']([^"\']+)["\']', re.IGNORECASE)
+    audio_html_pattern = re.compile(r'<audio\s+[^>]*?src=["\']([^"\']+)["\']', re.IGNORECASE)
+
+    media_map = {}  # clean_ref -> disk_abs_path
+    seen_dest_names = {}  # zip_rel_path -> disk_abs_path
+
+    def resolve_media_disk_path(ref_path: str, card_fp: str) -> Optional[str]:
+        if not ref_path:
+            return None
+        # Skip external web protocols and data URIs
+        if ref_path.startswith(('http://', 'https://', 'data:', '//')):
+            return None
+        unquoted = urllib.parse.unquote(ref_path.split('?')[0].split('#')[0]).strip()
+        clean = unquoted.lstrip('/\\').replace('\\', '/')
+        if not clean:
+            return None
+
+        # 1. safe_rel_path against workspace root directory
+        cand = safe_rel_path(directory, clean)
+        if cand and os.path.isfile(cand):
+            return cand
+
+        # 2. relative to card's file_path directory if provided
+        if card_fp:
+            card_resolved = safe_rel_path(directory, card_fp) or os.path.join(directory, card_fp)
+            base_dir = os.path.dirname(card_resolved)
+            if os.path.isdir(base_dir):
+                c2 = os.path.abspath(os.path.join(base_dir, clean))
+                if os.path.isfile(c2):
+                    return c2
+
+        # 3. check linked folders if ws_state provided
+        if ws_state and hasattr(ws_state, 'linked_folders'):
+            for lf in ws_state.linked_folders:
+                lp = lf.get("resolved_path")
+                if lp:
+                    c3 = safe_rel_path(lp, clean)
+                    if c3 and os.path.isfile(c3):
+                        return c3
+
+        # 4. Search in any assets/ directory in workspace
+        fname = os.path.basename(clean)
+        fname_nfc = unicodedata.normalize('NFC', fname).lower()
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.obsidian', '.venv', '.git')]
+            if os.path.basename(root) == 'assets':
+                for f in files:
+                    if unicodedata.normalize('NFC', f).lower() == fname_nfc:
+                        return os.path.join(root, f)
+
+        # 5. Fallback search anywhere in directory for exact filename if it has media extension
+        ext = os.path.splitext(fname)[1].lower()
+        if ext in ('.mp3', '.wav', '.ogg', '.m4a', '.opus', '.aac', '.flac', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'):
+            for root, dirs, files in os.walk(directory):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '.obsidian', '.venv', '.git')]
+                for f in files:
+                    if unicodedata.normalize('NFC', f).lower() == fname_nfc:
+                        return os.path.join(root, f)
+
+        return None
+
+    # First pass: find all media in all cards
+    for card in cards:
+        card_fp = card.get('file_path') or card.get('filePath') or ''
+        combined_text = (card.get('text') or '') + '\n' + (card.get('card_content') or '')
+        
+        # sound tags
+        for m in sound_pattern.finditer(combined_text):
+            ref = m.group(1).strip()
+            if ref not in media_map:
+                p = resolve_media_disk_path(ref, card_fp)
+                if p:
+                    media_map[ref] = p
+        
+        # markdown images
+        for m in img_md_pattern.finditer(combined_text):
+            ref = m.group(2).strip()
+            if ref not in media_map:
+                p = resolve_media_disk_path(ref, card_fp)
+                if p:
+                    media_map[ref] = p
+
+        # html images
+        for m in img_html_pattern.finditer(combined_text):
+            ref = m.group(1).strip()
+            if ref not in media_map:
+                p = resolve_media_disk_path(ref, card_fp)
+                if p:
+                    media_map[ref] = p
+
+        # html audio
+        for m in audio_html_pattern.finditer(combined_text):
+            ref = m.group(1).strip()
+            if ref not in media_map:
+                p = resolve_media_disk_path(ref, card_fp)
+                if p:
+                    media_map[ref] = p
+
+    # Assign unique zip filenames for resolved media
+    zip_dest_map = {}  # ref -> destination relative path in zip e.g. "assets/foo.png"
+    for ref, disk_path in media_map.items():
+        base = os.path.basename(disk_path)
+        dest = f"assets/{base}"
+        # deduplicate if needed
+        counter = 1
+        name_no_ext, ext = os.path.splitext(base)
+        while dest in seen_dest_names and seen_dest_names[dest] != disk_path:
+            dest = f"assets/{name_no_ext}_{counter}{ext}"
+            counter += 1
+        seen_dest_names[dest] = disk_path
+        zip_dest_map[ref] = dest
+
+    # Second pass: construct markdown content and rewrite media references if zipping
+    md_lines = [f"# Study Session: {clean_title}", ""]
+    has_media = len(zip_dest_map) > 0
+
+    for card in cards:
+        front = (card.get('text') or card.get('title') or 'Card').strip()
+        back = (card.get('card_content') or '').strip()
+
+        if has_media:
+            # Rewrite media references to use relative assets/ path
+            for ref, dest in zip_dest_map.items():
+                front = front.replace(f"[sound:{ref}]", f"[sound:{dest}]")
+                front = front.replace(f"({ref})", f"({dest})")
+                front = front.replace(f'src="{ref}"', f'src="{dest}"')
+                front = front.replace(f"src='{ref}'", f"src='{dest}'")
+
+                back = back.replace(f"[sound:{ref}]", f"[sound:{dest}]")
+                back = back.replace(f"({ref})", f"({dest})")
+                back = back.replace(f'src="{ref}"', f'src="{dest}"')
+                back = back.replace(f"src='{ref}'", f"src='{dest}'")
+
+        md_lines.append(f"## {front}")
+        if back:
+            md_lines.append(back)
+        else:
+            md_lines.append("")
+        md_lines.append("")
+
+    full_md_content = "\n".join(md_lines).strip() + "\n"
+
+    if not has_media:
+        # Return plain markdown file!
+        filename = f"{safe_name}.md"
+        return (False, full_md_content.encode('utf-8'), filename, "text/markdown; charset=utf-8")
+    else:
+        # Bundle into ZIP archive!
+        bio = io.BytesIO()
+        with zipfile.ZipFile(bio, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            # Add markdown file
+            zf.writestr(f"{safe_name}.md", full_md_content.encode('utf-8'))
+            # Add media files
+            for dest, disk_path in seen_dest_names.items():
+                try:
+                    if os.path.isfile(disk_path):
+                        zf.write(disk_path, arcname=dest)
+                except Exception:
+                    pass
+        zip_bytes = bio.getvalue()
+        filename = f"{safe_name}.zip"
+        return (True, zip_bytes, filename, "application/zip")
 
 def get_buffer_base_dir(directory):
     ws_hash = hashlib.sha256(os.path.abspath(directory).encode('utf-8')).hexdigest()[:16]
@@ -4402,6 +4578,26 @@ def main():
                     os.makedirs(os.path.dirname(target_new), exist_ok=True)
                     os.rename(target_old, target_new)
                     self.send_json(200, {"status": "ok"})
+                except Exception as e:
+                    self.send_json(500, {"status": "error", "message": str(e)})
+
+            elif parsed.path == '/api/session/export':
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                try:
+                    payload = json.loads(post_data.decode('utf-8'))
+                    session_name = payload.get('sessionName', 'Study Session')
+                    cards = payload.get('cards', [])
+                    is_zip, data_bytes, filename, content_type = export_study_session(
+                        directory, session_name, cards, ws_state=workspace_state
+                    )
+                    self.send_response(200)
+                    self.send_header('Content-Type', content_type)
+                    encoded_fn = urllib.parse.quote(filename)
+                    self.send_header('Content-Disposition', f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_fn}')
+                    self.send_header('Content-Length', str(len(data_bytes)))
+                    self.end_headers()
+                    self.wfile.write(data_bytes)
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
             else:

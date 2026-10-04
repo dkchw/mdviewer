@@ -4453,12 +4453,21 @@
       <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">Off</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
       <button id="fcStopDrillToolbarBtn" title="Stop drill repetitions and turn drill OFF" style="display:none;font-size:11px;padding:3px 8px;background:rgba(247,118,142,0.18);color:#f7768e;border:1px solid rgba(247,118,142,0.45);border-radius:4px;font-weight:700;cursor:pointer;align-items:center;gap:3px;">⏹ Stop Drill</button>
       <button id="fcMarkedToolbarBtn" title="Marked Cards repeating until unmarked (M)" style="font-size:11.5px;padding:3px 9px;background:rgba(224,175,104,0.12);color:#e0af68;border:1px solid rgba(224,175,104,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">⭐ Marked: <span id="fcMarkedToolbarCount">0</span></button>
+      <button id="fcSessionToolbarBtn" title="Study Sessions & Marked Cards Manager" style="font-size:11.5px;padding:3px 9px;background:rgba(187,154,247,0.12);color:#bb9af7;border:1px solid rgba(187,154,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">📚 Session: <span id="fcSessionToolbarStatus">Live</span> (<span id="fcSessionToolbarCount">0</span>)</button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
       <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
       <div class="fc-stats" id="fcStats" title="Click to Jump to Card (or press J / G)" onclick="if(window.openJumpToCardModal) window.openJumpToCardModal();">0 / 0</div>
     </div>
     <div id="flashcardMainArea">
+      <div id="fcSessionReviewBanner" style="display:none;align-items:center;justify-content:space-between;padding:6px 14px;background:rgba(187,154,247,0.18);border:1px solid rgba(187,154,247,0.4);border-radius:6px;margin:0 16px 8px 16px;font-size:12px;color:#c0caf5;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:700;color:#bb9af7;">📚 Studying Session:</span>
+          <span id="fcSessionReviewTitle" style="font-weight:600;">Session Name</span>
+          <span id="fcSessionReviewCount" style="color:var(--muted);font-size:11px;">(0 cards)</span>
+        </div>
+        <button type="button" id="fcSessionReviewExitBtn" class="fc-btn-secondary" style="font-size:11px;padding:2px 8px;color:#f7768e;border-color:rgba(247,118,142,0.4);cursor:pointer;" title="Exit session study and return to original deck">✕ Exit Session Study</button>
+      </div>
       <div id="flashcardStage">
       <div id="flashcard" class="flashcard">
         <!-- Front Face -->
@@ -5312,16 +5321,17 @@
 
 <!-- Temporary Flashcard Algorithm & Spaced Repetition Modal -->
 <div id="fcDrillModal" class="ai-modal-overlay" style="display:none;">
-  <div class="ai-modal-dialog" style="max-width:500px;">
+  <div class="ai-modal-dialog" style="max-width:580px;">
     <div class="ai-modal-header">
-      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🔁 Flashcard Repetition & Algorithm</span>
+      <span class="ai-modal-title" style="display:flex;align-items:center;gap:8px;">🔁 Flashcards Repetition & Study Sessions</span>
       <button class="term-action-btn close" id="fcDrillCloseBtn" title="Close (Esc)">✕</button>
     </div>
     
     <!-- Tab Navigation -->
-    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);padding:0 16px;background:#141620;">
-      <button type="button" class="fc-drill-tab-btn active" id="fcTabBtnMarked" style="display:inline-flex;align-items:center;gap:6px;">⭐ Marked Cards Loop <span id="fcModalMarkedBadge" class="badge" style="background:#e0af68;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
-      <button type="button" class="fc-drill-tab-btn" id="fcTabBtnDrill" style="display:inline-flex;align-items:center;gap:6px;">🔁 Drill Algorithm (D) <span id="fcModalDrillBadge" class="badge" style="background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);padding:0 16px;background:#141620;overflow-x:auto;">
+      <button type="button" class="fc-drill-tab-btn active" id="fcTabBtnMarked" style="display:inline-flex;align-items:center;gap:6px;">⭐ Marked Loop <span id="fcModalMarkedBadge" class="badge" style="background:#e0af68;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
+      <button type="button" class="fc-drill-tab-btn" id="fcTabBtnDrill" style="display:inline-flex;align-items:center;gap:6px;">🔁 Drill Algorithm <span id="fcModalDrillBadge" class="badge" style="background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
+      <button type="button" class="fc-drill-tab-btn" id="fcTabBtnSessions" style="display:inline-flex;align-items:center;gap:6px;">📚 Study Sessions <span id="fcModalSessionsBadge" class="badge" style="background:#bb9af7;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;display:none;">0</span></button>
     </div>
 
     <!-- Tab Pane 1: Marked Card Continuous Loop -->
@@ -5341,14 +5351,9 @@
         </div>
       </div>
 
-      <!-- Realtime explanation preview -->
-      <div id="fcMarkExplanation" style="font-size:12px;color:#e0af68;background:rgba(224,175,104,0.1);border:1px solid rgba(224,175,104,0.28);border-radius:6px;padding:9px 12px;line-height:1.4;">
-        Marked cards will repeat every <b>5 cards</b> indefinitely until you unmark them.
-      </div>
-
       <!-- Quick Preset Intervals -->
       <div>
-        <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;">Quick Presets:</div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;">Repeat Interval Presets:</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="2" style="font-size:11px;padding:3px 9px;">2 cards (Intense)</button>
           <button type="button" class="fc-btn-secondary fc-mark-preset-btn" data-interval="3" style="font-size:11px;padding:3px 9px;">3 cards (Frequent)</button>
@@ -5358,10 +5363,39 @@
         </div>
       </div>
 
+      <!-- Display Limit Configuration (Default: 10) -->
+      <div class="ai-modal-field" style="padding-top:10px;border-top:1px solid var(--border);">
+        <label for="fcMarkDisplayLimitInput" style="font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+          <span>Display Limit per Card (Graduation Limit):</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:normal;">times to display (default: 10)</span>
+        </label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+          <input type="number" id="fcMarkDisplayLimitInput" class="ai-modal-input" min="1" max="1000" value="10" style="font-size:16px;font-weight:700;padding:8px 12px;font-family:monospace;letter-spacing:1px;background:#141620;border:1px solid #e0af68;border-radius:6px;color:#fff;width:120px;" />
+          <span style="font-size:12px;color:var(--muted);">displays before graduating from loop</span>
+        </div>
+      </div>
+
+      <!-- Quick Preset Display Limits -->
+      <div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;">Display Limit Presets:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <button type="button" class="fc-btn-secondary fc-limit-preset-btn" data-limit="3" style="font-size:11px;padding:3px 9px;">3 displays</button>
+          <button type="button" class="fc-btn-secondary fc-limit-preset-btn" data-limit="5" style="font-size:11px;padding:3px 9px;">5 displays</button>
+          <button type="button" class="fc-btn-secondary fc-limit-preset-btn" data-limit="10" style="font-size:11px;padding:3px 9px;">10 displays (Default)</button>
+          <button type="button" class="fc-btn-secondary fc-limit-preset-btn" data-limit="15" style="font-size:11px;padding:3px 9px;">15 displays</button>
+          <button type="button" class="fc-btn-secondary fc-limit-preset-btn" data-limit="20" style="font-size:11px;padding:3px 9px;">20 displays (Mastery)</button>
+        </div>
+      </div>
+
+      <!-- Realtime explanation preview -->
+      <div id="fcMarkExplanation" style="font-size:12px;color:#e0af68;background:rgba(224,175,104,0.1);border:1px solid rgba(224,175,104,0.28);border-radius:6px;padding:9px 12px;line-height:1.4;">
+        Marked cards will repeat every <b>5 cards</b> and disappear/graduate after <b>10 displays</b> (cards remain preserved in your study session).
+      </div>
+
       <!-- Active Marked Cards Status & Management -->
       <div style="padding-top:8px;border-top:1px solid var(--border);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-size:11.5px;font-weight:600;color:var(--muted);">Active Marked Cards:</span>
+          <span style="font-size:11.5px;font-weight:600;color:var(--muted);">Active Marked Cards in Current Loop:</span>
           <span id="fcMarkedActiveCount" style="font-size:11px;color:#e0af68;font-weight:700;">0 cards</span>
         </div>
         <div id="fcMarkedActiveList" style="max-height:120px;overflow-y:auto;font-size:11px;color:var(--fg);background:#10121a;border:1px solid var(--border);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;">
@@ -5442,6 +5476,54 @@
         </div>
       </div>
     </div>
+
+    <!-- Tab Pane 3: Study Sessions & Marked Words Management -->
+    <div id="fcTabPaneSessions" class="ai-modal-body" style="padding:18px 20px;display:none;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;">
+      
+      <!-- Current Live Session Section -->
+      <div style="background:#10121a;border:1px solid rgba(187,154,247,0.3);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:700;font-size:13.5px;color:#c0caf5;">📚 Current Session:</span>
+              <span id="fcCurrentSessionNameBadge" style="font-weight:700;color:#bb9af7;">Live Session</span>
+              <span id="fcCurrentSessionSavedBadge" style="font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;background:rgba(224,175,104,0.18);color:#e0af68;border:1px solid rgba(224,175,104,0.35);">Unsaved</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:2px;" id="fcCurrentSessionSubtitle">
+              0 marked words recorded in this session.
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button type="button" id="fcSessionSaveCurrentBtn" class="fc-btn-primary" style="font-size:11px;padding:4px 10px;background:#bb9af7;color:#1a1b26;font-weight:700;border-radius:4px;cursor:pointer;" title="Save this session with custom name">💾 Save Session</button>
+            <button type="button" id="fcSessionNewBtn" class="fc-btn-secondary" style="font-size:11px;padding:4px 9px;border-radius:4px;cursor:pointer;" title="Start a fresh recording session">✨ New Session</button>
+            <button type="button" id="fcSessionStudyLiveBtn" class="fc-btn-secondary" style="font-size:11px;padding:4px 9px;color:#7aa2f7;border-color:rgba(122,162,247,0.4);border-radius:4px;cursor:pointer;" title="Study marked cards in this session">▶ Study</button>
+            <button type="button" id="fcSessionExportLiveBtn" class="fc-btn-secondary" style="font-size:11px;padding:4px 9px;color:#9ece6a;border-color:rgba(158,206,106,0.4);border-radius:4px;cursor:pointer;" title="Export session as Markdown (.md) or ZIP with media">⬇ Export</button>
+          </div>
+        </div>
+
+        <!-- Live Session Words List -->
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span>Words Marked in Current Session:</span>
+            <span id="fcCurrentSessionWordCount" style="font-size:11px;color:#bb9af7;font-weight:700;">0 words</span>
+          </div>
+          <div id="fcCurrentSessionWordsList" style="max-height:140px;overflow-y:auto;font-size:11px;background:#141620;border:1px solid var(--border);border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:5px;">
+            <span style="color:var(--muted);font-style:italic;">No words marked in this session yet. Press <b>M</b> or click <b>⭐ Mark</b> on any card while studying.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved Sessions Management Section -->
+      <div style="padding-top:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12.5px;font-weight:700;color:#c0caf5;">💾 Saved Study Sessions (<span id="fcSavedSessionsCount">0</span>)</span>
+        </div>
+        <div id="fcSavedSessionsList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          <!-- Dynamically populated saved sessions -->
+        </div>
+      </div>
+    </div>
+
     <div class="ai-modal-footer">
       <button class="fc-btn-secondary" id="fcDrillCancelBtn">Cancel</button>
       <button class="fc-btn-primary" id="fcDrillSaveBtn" style="font-weight:700;">💾 Save & Apply</button>
@@ -9629,6 +9711,16 @@
 
     // Render Marked Card Banners and Button States
     const isMarked = (typeof isCardMarked === 'function') && isCardMarked(h);
+    const cardKey = (typeof getCardKey === 'function') ? getCardKey(h) : '';
+    let sessionCard = (typeof getSessionCard === 'function' && cardKey) ? getSessionCard(cardKey) : null;
+    if (sessionCard && !h._sessionViewCounted) {
+      h._sessionViewCounted = true;
+      sessionCard.displayCount = (sessionCard.displayCount || 0) + 1;
+      if (typeof updateSessionToolbarStats === 'function') updateSessionToolbarStats();
+    }
+    const dispCount = sessionCard ? (sessionCard.displayCount || 0) : 0;
+    const isGraduated = sessionCard && sessionCard.graduated;
+
     const fcMarkBanner = document.getElementById('fcMarkBanner');
     const fcMarkBackBanner = document.getElementById('fcMarkBackBanner');
     const fcFrontMarkBtn = document.getElementById('fcFrontMarkBtn');
@@ -9636,7 +9728,7 @@
 
     if (fcFrontMarkBtn) {
       if (isMarked) {
-        fcFrontMarkBtn.textContent = '⭐ Marked';
+        fcFrontMarkBtn.textContent = isGraduated ? '🎓 Graduated' : `⭐ Marked (${dispCount}/${fcMarkDisplayLimit})`;
         fcFrontMarkBtn.style.background = 'rgba(224, 175, 104, 0.32)';
         fcFrontMarkBtn.style.borderColor = '#e0af68';
         fcFrontMarkBtn.style.fontWeight = '700';
@@ -9652,7 +9744,7 @@
 
     if (fcMarkBtn) {
       if (isMarked) {
-        fcMarkBtn.innerHTML = `⭐ Marked <span style="font-size:11px;opacity:0.9;font-weight:normal;">(every ${fcMarkRepeatInterval})</span>`;
+        fcMarkBtn.innerHTML = `⭐ Marked <span style="font-size:11px;opacity:0.9;font-weight:normal;">(${dispCount}/${fcMarkDisplayLimit})</span>`;
         fcMarkBtn.style.background = 'rgba(224, 175, 104, 0.32)';
         fcMarkBtn.style.borderColor = '#e0af68';
         fcMarkBtn.style.fontWeight = '700';
@@ -9668,7 +9760,7 @@
 
     const markBannerHtml = isMarked ? `
       <span class="fc-mark-tag">⭐ Marked Card</span>
-      <span class="fc-mark-desc">Repeating every ${fcMarkRepeatInterval} cards until unmarked</span>
+      <span class="fc-mark-desc">Repeating every ${fcMarkRepeatInterval} cards • Display ${dispCount} of ${fcMarkDisplayLimit}</span>
       <button type="button" style="margin-left:auto;font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="window.toggleMarkCurrentCard(event)" title="Unmark card and stop repetitions">✕ Unmark</button>
     ` : '';
 
@@ -9690,7 +9782,7 @@
     }
 
     const statDetails = [];
-    if (isMarked) statDetails.push('⭐ Marked');
+    if (isMarked) statDetails.push(`⭐ Marked (${dispCount}/${fcMarkDisplayLimit})`);
     if (h && h._isRepeatCard) statDetails.push(`🔁 Drill ${h._drillStep}/${h._drillTotalSteps}`);
 
     if (statDetails.length > 0) {
@@ -9907,29 +9999,43 @@
       }
     }
 
-    // Process marked card repetition loop (keep repeating until unmarked)
+    // Process marked card repetition loop (keep repeating until unmarked or display limit reached)
     if (leavingCard && typeof isCardMarked === 'function' && isCardMarked(leavingCard)) {
       const leavingKey = getCardKey(leavingCard);
       if (leavingKey && fcMarkedCards.has(leavingKey)) {
         if (leavingCard._isMarkedRepeat) {
           leavingCard._markProcessed = true;
         }
-        // Check if an unprocessed repeat instance is already scheduled ahead
-        const hasFutureScheduled = flashcardList.some(c => c._isMarkedRepeat && c._markCardKey === leavingKey && !c._markProcessed);
-        if (!hasFutureScheduled) {
-          let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
-          if (targetIdx >= flashcardList.length) {
-            targetIdx = targetIdx % Math.max(1, flashcardList.length);
+
+        const sessionCard = (typeof getSessionCard === 'function') ? getSessionCard(leavingKey) : null;
+        const currentCount = sessionCard ? (sessionCard.displayCount || 0) : 0;
+
+        if (currentCount >= fcMarkDisplayLimit) {
+          // Card reached graduation limit after N displays!
+          flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === leavingKey));
+          fcMarkedCards.delete(leavingKey);
+          if (sessionCard) sessionCard.graduated = true;
+          updateMarkedUI();
+          showToast(`🎓 "${leavingCard.text || 'Card'}" graduated after ${currentCount} reviews! (Saved in session)`, 3500);
+        } else {
+          // Check if an unprocessed repeat instance is already scheduled ahead
+          const hasFutureScheduled = flashcardList.some(c => c._isMarkedRepeat && c._markCardKey === leavingKey && !c._markProcessed);
+          if (!hasFutureScheduled) {
+            let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
+            if (targetIdx >= flashcardList.length) {
+              targetIdx = targetIdx % Math.max(1, flashcardList.length);
+            }
+            const nextRepeatItem = {
+              ...leavingCard,
+              _isRepeatCard: false,
+              _isMarkedRepeat: true,
+              _markCardKey: leavingKey,
+              _markRepeatInterval: fcMarkRepeatInterval,
+              _markProcessed: false,
+              _sessionViewCounted: false
+            };
+            flashcardList.splice(targetIdx, 0, nextRepeatItem);
           }
-          const nextRepeatItem = {
-            ...leavingCard,
-            _isRepeatCard: false,
-            _isMarkedRepeat: true,
-            _markCardKey: leavingKey,
-            _markRepeatInterval: fcMarkRepeatInterval,
-            _markProcessed: false
-          };
-          flashcardList.splice(targetIdx, 0, nextRepeatItem);
         }
       }
     }
@@ -15495,7 +15601,7 @@
   };
 
   // =========================================================================
-  // Marked Cards Repetition Loop Controller
+  // Study Sessions & Marked Cards Controller (with Display Limit & Export)
   // =========================================================================
   let fcMarkRepeatInterval = 5;
   try {
@@ -15505,6 +15611,60 @@
       if (!isNaN(val) && val >= 1) fcMarkRepeatInterval = val;
     }
   } catch(e) {}
+
+  let fcMarkDisplayLimit = 10; // Default: 10 displays before graduation
+  try {
+    const savedLimit = localStorage.getItem('mdv_mark_display_limit');
+    if (savedLimit) {
+      const val = parseInt(savedLimit, 10);
+      if (!isNaN(val) && val >= 1) fcMarkDisplayLimit = val;
+    }
+  } catch(e) {}
+
+  // Active Live Session (Unsaved scratch session by default)
+  let currentStudySession = {
+    id: 'session_' + Date.now(),
+    name: 'Live Session',
+    createdAt: Date.now(),
+    isSaved: false,
+    markedCards: new Map() // key -> cardInfo
+  };
+
+  // Restore live session from localStorage if saved
+  try {
+    const savedLive = localStorage.getItem('mdv_current_live_session');
+    if (savedLive) {
+      const parsed = JSON.parse(savedLive);
+      if (parsed && Array.isArray(parsed.cards)) {
+        currentStudySession.id = parsed.id || currentStudySession.id;
+        currentStudySession.name = parsed.name || 'Live Session';
+        currentStudySession.createdAt = parsed.createdAt || currentStudySession.createdAt;
+        currentStudySession.isSaved = !!parsed.isSaved;
+        parsed.cards.forEach(c => {
+          if (c && c.key) currentStudySession.markedCards.set(c.key, c);
+        });
+      }
+    }
+  } catch(e) {}
+
+  function persistLiveSessionState() {
+    try {
+      const cardsArr = Array.from(currentStudySession.markedCards.values());
+      localStorage.setItem('mdv_current_live_session', JSON.stringify({
+        id: currentStudySession.id,
+        name: currentStudySession.name,
+        createdAt: currentStudySession.createdAt,
+        isSaved: currentStudySession.isSaved,
+        cards: cardsArr
+      }));
+    } catch(e) {}
+  }
+
+  function getSessionCard(key) {
+    if (!key) return null;
+    return currentStudySession.markedCards.get(key) || null;
+  }
+  window.getSessionCard = getSessionCard;
 
   const fcMarkedCards = new Map(); // cardKey -> { key, title, filePath, level, markedAt }
 
@@ -15524,10 +15684,45 @@
   }
   window.isCardMarked = isCardMarked;
 
-  function formatMarkExplanation(interval) {
+  function formatMarkExplanation(interval, limit) {
     const n = Math.max(1, parseInt(interval, 10) || 5);
-    return `Marked cards will repeat every <b>${n} card${n > 1 ? 's' : ''}</b> indefinitely until you unmark them.`;
+    const l = Math.max(1, parseInt(limit, 10) || 10);
+    return `Marked cards will repeat every <b>${n} card${n > 1 ? 's' : ''}</b> and graduate after <b>${l} display${l > 1 ? 's' : ''}</b> (preserved in study session history).`;
   }
+
+  function getSavedSessions() {
+    try {
+      const raw = localStorage.getItem('mdv_saved_sessions');
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+      return [];
+    }
+  }
+  window.getSavedSessions = getSavedSessions;
+
+  function saveSessionsToStorage(sessions) {
+    try {
+      localStorage.setItem('mdv_saved_sessions', JSON.stringify(sessions));
+    } catch(e) {}
+  }
+
+  function updateSessionToolbarStats() {
+    const statusEl = document.getElementById('fcSessionToolbarStatus');
+    const countEl = document.getElementById('fcSessionToolbarCount');
+    const modalBadge = document.getElementById('fcModalSessionsBadge');
+    const totalWords = currentStudySession.markedCards.size;
+    const isSaved = currentStudySession.isSaved;
+
+    if (statusEl) statusEl.textContent = isSaved ? 'Saved' : 'Live';
+    if (countEl) countEl.textContent = String(totalWords);
+    if (modalBadge) {
+      const savedCount = getSavedSessions().length;
+      modalBadge.textContent = String(savedCount + (totalWords > 0 ? 1 : 0));
+      modalBadge.style.display = (savedCount > 0 || totalWords > 0) ? 'inline-block' : 'none';
+    }
+    persistLiveSessionState();
+  }
+  window.updateSessionToolbarStats = updateSessionToolbarStats;
 
   function updateMarkedUI() {
     const toolbarCount = document.getElementById('fcMarkedToolbarCount');
@@ -15537,6 +15732,7 @@
     const activeCountEl = document.getElementById('fcMarkedActiveCount');
     const activeListEl = document.getElementById('fcMarkedActiveList');
     const intervalInput = document.getElementById('fcMarkIntervalInput');
+    const limitInput = document.getElementById('fcMarkDisplayLimitInput');
     const explEl = document.getElementById('fcMarkExplanation');
 
     const count = fcMarkedCards.size;
@@ -15565,8 +15761,11 @@
     if (intervalInput && document.activeElement !== intervalInput) {
       intervalInput.value = fcMarkRepeatInterval;
     }
+    if (limitInput && document.activeElement !== limitInput) {
+      limitInput.value = fcMarkDisplayLimit;
+    }
     if (explEl) {
-      explEl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval);
+      explEl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval, fcMarkDisplayLimit);
     }
 
     if (activeListEl) {
@@ -15576,10 +15775,12 @@
         let html = '';
         fcMarkedCards.forEach((info, key) => {
           const title = escapeHtml(info.title || 'Card');
+          const sessionItem = currentStudySession.markedCards.get(key);
+          const disp = sessionItem ? (sessionItem.displayCount || 0) : 0;
           html += `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:4px;gap:6px;">
               <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;" title="${title}">⭐ <b>${title}</b></span>
-              <span style="color:#e0af68;font-size:10px;margin-left:auto;white-space:nowrap;">every ${fcMarkRepeatInterval} cards</span>
+              <span style="color:#e0af68;font-size:10px;margin-left:auto;white-space:nowrap;">display ${disp}/${fcMarkDisplayLimit} • every ${fcMarkRepeatInterval}</span>
               <button type="button" class="fc-btn-secondary" style="font-size:10.5px;padding:1px 6px;color:#f7768e;border-color:rgba(247,118,142,0.3);cursor:pointer;" onclick="window.unmarkCardByKey('${escapeHtml(key)}')" title="Unmark this card">✕ Unmark</button>
             </div>
           `;
@@ -15587,19 +15788,141 @@
         activeListEl.innerHTML = html;
       }
     }
+
+    renderSessionsUI();
+    updateSessionToolbarStats();
   }
   window.updateMarkedUI = updateMarkedUI;
+
+  function renderSessionsUI() {
+    // 1. Current Live Session
+    const curNameBadge = document.getElementById('fcCurrentSessionNameBadge');
+    const curSavedBadge = document.getElementById('fcCurrentSessionSavedBadge');
+    const curSubEl = document.getElementById('fcCurrentSessionSubtitle');
+    const curWordCountEl = document.getElementById('fcCurrentSessionWordCount');
+    const curWordsListEl = document.getElementById('fcCurrentSessionWordsList');
+
+    const curCards = Array.from(currentStudySession.markedCards.values());
+    if (curNameBadge) curNameBadge.textContent = currentStudySession.name || 'Live Session';
+    if (curSavedBadge) {
+      if (currentStudySession.isSaved) {
+        curSavedBadge.textContent = 'Saved';
+        curSavedBadge.style.background = 'rgba(158,206,106,0.18)';
+        curSavedBadge.style.color = '#9ece6a';
+        curSavedBadge.style.borderColor = 'rgba(158,206,106,0.4)';
+      } else {
+        curSavedBadge.textContent = 'Unsaved';
+        curSavedBadge.style.background = 'rgba(224,175,104,0.18)';
+        curSavedBadge.style.color = '#e0af68';
+        curSavedBadge.style.borderColor = 'rgba(224,175,104,0.35)';
+      }
+    }
+    if (curSubEl) {
+      curSubEl.textContent = `${curCards.length} marked word${curCards.length === 1 ? '' : 's'} recorded in this session. Default is unsaved.`;
+    }
+    if (curWordCountEl) {
+      curWordCountEl.textContent = `${curCards.length} word${curCards.length === 1 ? '' : 's'}`;
+    }
+    if (curWordsListEl) {
+      if (curCards.length === 0) {
+        curWordsListEl.innerHTML = '<span style="color:var(--muted);font-style:italic;">No words marked in this session yet. Press <b>M</b> or click <b>⭐ Mark</b> on any card while studying.</span>';
+      } else {
+        curWordsListEl.innerHTML = curCards.map(c => {
+          const title = escapeHtml(c.title || c.text || 'Card');
+          const fp = c.filePath ? escapeHtml(c.filePath) : '';
+          const disp = c.displayCount || 0;
+          const isGrad = !!c.graduated || (disp >= fcMarkDisplayLimit);
+          const statusBadge = isGrad
+            ? `<span style="font-size:10px;padding:1px 5px;border-radius:6px;background:rgba(158,206,106,0.2);color:#9ece6a;font-weight:700;">🎓 Graduated (${disp})</span>`
+            : `<span style="font-size:10px;padding:1px 5px;border-radius:6px;background:rgba(224,175,104,0.15);color:#e0af68;font-weight:600;">${disp}/${fcMarkDisplayLimit} views</span>`;
+          return `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:4px;gap:6px;">
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;" title="${title}">
+                ⭐ <b>${title}</b>
+                ${fp ? `<span style="font-size:9.5px;color:var(--muted);margin-left:4px;">(${fp})</span>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-left:auto;white-space:nowrap;">
+                ${statusBadge}
+                <button type="button" class="fc-btn-secondary" style="font-size:10px;padding:1px 5px;color:#f7768e;border-color:rgba(247,118,142,0.3);cursor:pointer;" onclick="window.removeCardFromSession('${escapeHtml(c.key)}')" title="Remove word from this session">✕</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 2. Saved Sessions
+    const savedSessions = getSavedSessions();
+    const savedCountEl = document.getElementById('fcSavedSessionsCount');
+    const savedListEl = document.getElementById('fcSavedSessionsList');
+
+    if (savedCountEl) savedCountEl.textContent = String(savedSessions.length);
+    if (savedListEl) {
+      if (savedSessions.length === 0) {
+        savedListEl.innerHTML = '<span style="color:var(--muted);font-style:italic;font-size:11.5px;padding:8px 0;">No saved sessions yet. Mark cards during review, then click <b>💾 Save Session</b> above.</span>';
+      } else {
+        savedListEl.innerHTML = savedSessions.map(s => {
+          const sName = escapeHtml(s.name || 'Untitled Session');
+          const dateStr = s.savedAt ? new Date(s.savedAt).toLocaleDateString() + ' ' + new Date(s.savedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+          const cardCnt = (s.cards || []).length;
+          return `
+            <div class="fc-saved-session-card" style="background:#10121a;border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-weight:700;font-size:12.5px;color:#c0caf5;">${sName}</span>
+                    <button type="button" class="fc-btn-secondary" style="font-size:10px;padding:1px 5px;cursor:pointer;" onclick="window.renameSavedSession('${s.id}')" title="Rename session">✏️</button>
+                  </div>
+                  <div style="font-size:10.5px;color:var(--muted);margin-top:2px;">
+                    ${cardCnt} word${cardCnt === 1 ? '' : 's'}${dateStr ? ' • Saved ' + dateStr : ''}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                  <button type="button" class="fc-btn-secondary" style="font-size:11px;padding:3px 8px;color:#7aa2f7;border-color:rgba(122,162,247,0.35);cursor:pointer;" onclick="window.studySession('${s.id}')" title="Study this session's marked cards">▶ Study</button>
+                  <button type="button" class="fc-btn-secondary" style="font-size:11px;padding:3px 8px;color:#9ece6a;border-color:rgba(158,206,106,0.35);cursor:pointer;" onclick="window.exportSession('${s.id}')" title="Export as Markdown (.md) or ZIP with media">⬇ Export</button>
+                  <button type="button" class="fc-btn-secondary" style="font-size:11px;padding:3px 8px;cursor:pointer;" onclick="window.toggleSessionWords('${s.id}')" title="See words marked in this session">👁 Words</button>
+                  <button type="button" class="fc-btn-secondary" style="font-size:11px;padding:3px 8px;color:#f7768e;border-color:rgba(247,118,142,0.3);cursor:pointer;" onclick="window.deleteSavedSession('${s.id}')" title="Delete session">🗑️</button>
+                </div>
+              </div>
+              <div id="fcSessionWords_${s.id}" style="display:none;background:#141620;border:1px solid rgba(255,255,255,0.06);border-radius:4px;padding:6px 8px;margin-top:4px;flex-direction:column;gap:4px;">
+                ${(s.cards || []).map(c => `
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;border-radius:3px;background:rgba(255,255,255,0.02);font-size:11px;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;" title="${escapeHtml(c.title || c.text || 'Card')}">⭐ <b>${escapeHtml(c.title || c.text || 'Card')}</b></span>
+                    <span style="font-size:10px;color:var(--muted);">${c.displayCount ? c.displayCount + ' views' : ''}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+  window.renderSessionsUI = renderSessionsUI;
 
   function markCard(h, key) {
     const rawTitle = (h.text || 'Card').replace(/!?\[([^\]]*)\]\((?:[^()]|\([^()]*\))+\)/g, '$1').replace(/\[sound:[^\]]+\]/g, '').trim();
     const title = rawTitle || `Card ${currentCardIndex + 1}`;
-    fcMarkedCards.set(key, {
+    const cardContent = (typeof getCardBackRawText === 'function') ? getCardBackRawText(h) : (h.card_content || '');
+    const cardInfo = {
       key: key,
       title: title,
+      text: h.text || title,
       filePath: h.file_path || (typeof currentFilePath !== 'undefined' ? currentFilePath : '') || '',
       level: h.level || 2,
-      markedAt: Date.now()
-    });
+      slug: (typeof getCardSlug === 'function') ? getCardSlug(h) : (h.slug || ''),
+      card_content: cardContent,
+      markedAt: Date.now(),
+      displayCount: 0,
+      graduated: false
+    };
+
+    fcMarkedCards.set(key, cardInfo);
+
+    // Save in active study session (preserves all cards marked during session)
+    if (!currentStudySession.markedCards.has(key)) {
+      currentStudySession.markedCards.set(key, { ...cardInfo });
+    }
 
     let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
     if (targetIdx >= flashcardList.length) {
@@ -15607,18 +15930,20 @@
     }
     const repeatItem = {
       ...h,
+      card_content: cardContent,
       _isRepeatCard: false,
       _isMarkedRepeat: true,
       _markCardKey: key,
       _markRepeatInterval: fcMarkRepeatInterval,
-      _markProcessed: false
+      _markProcessed: false,
+      _sessionViewCounted: false
     };
     flashcardList.splice(targetIdx, 0, repeatItem);
 
     updateMarkedUI();
     renderCurrentCard();
     renderCardOverview();
-    showToast(`⭐ Card marked! Repeating every ${fcMarkRepeatInterval} cards until unmarked.`, 3000);
+    showToast(`⭐ Card marked! Repeating every ${fcMarkRepeatInterval} cards (graduates after ${fcMarkDisplayLimit} displays).`, 3000);
   }
   window.markCard = markCard;
 
@@ -15674,23 +15999,297 @@
   }
   window.toggleMarkCurrentCard = toggleMarkCurrentCard;
 
+  function saveCurrentSession(customName) {
+    const cards = Array.from(currentStudySession.markedCards.values());
+    if (cards.length === 0) {
+      showToast('No marked cards in current session to save.', 3000);
+      return;
+    }
+    const defaultName = currentStudySession.name && currentStudySession.name !== 'Live Session'
+      ? currentStudySession.name
+      : `Session ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} (${cards.length} words)`;
+    
+    let name = customName;
+    if (!name) {
+      name = prompt('Enter a name for this study session:', defaultName);
+      if (!name) return; // cancelled
+    }
+    name = name.trim() || defaultName;
+
+    const savedSessions = getSavedSessions();
+    const existingIdx = savedSessions.findIndex(s => s.id === currentStudySession.id);
+    const sessionObj = {
+      id: currentStudySession.id,
+      name: name,
+      savedAt: Date.now(),
+      createdAt: currentStudySession.createdAt,
+      cards: cards
+    };
+
+    if (existingIdx >= 0) {
+      savedSessions[existingIdx] = sessionObj;
+    } else {
+      savedSessions.unshift(sessionObj);
+    }
+    saveSessionsToStorage(savedSessions);
+
+    currentStudySession.name = name;
+    currentStudySession.isSaved = true;
+    updateMarkedUI();
+    showToast(`✓ Session "${name}" saved (${cards.length} cards)!`, 3500);
+  }
+  window.saveCurrentSession = saveCurrentSession;
+
+  function startNewSession() {
+    const cards = Array.from(currentStudySession.markedCards.values());
+    if (!currentStudySession.isSaved && cards.length > 0) {
+      const ok = confirm(`Current session has ${cards.length} marked word${cards.length === 1 ? '' : 's'} that are unsaved. Start a new session anyway?`);
+      if (!ok) return;
+    }
+
+    currentStudySession = {
+      id: 'session_' + Date.now(),
+      name: 'Live Session',
+      createdAt: Date.now(),
+      isSaved: false,
+      markedCards: new Map()
+    };
+    persistLiveSessionState();
+    updateMarkedUI();
+    showToast('✨ Started new study session. Marked cards will be recorded here.', 3000);
+  }
+  window.startNewSession = startNewSession;
+
+  function removeCardFromSession(key) {
+    if (!key) return;
+    currentStudySession.markedCards.delete(key);
+    if (fcMarkedCards.has(key)) {
+      unmarkCardByKey(key);
+    } else {
+      updateMarkedUI();
+    }
+  }
+  window.removeCardFromSession = removeCardFromSession;
+
+  function deleteSavedSession(sessionId) {
+    const saved = getSavedSessions();
+    const found = saved.find(s => s.id === sessionId);
+    if (!found) return;
+    const ok = confirm(`Delete saved session "${found.name}"?`);
+    if (!ok) return;
+
+    const updated = saved.filter(s => s.id !== sessionId);
+    saveSessionsToStorage(updated);
+    if (currentStudySession.id === sessionId) {
+      currentStudySession.isSaved = false;
+    }
+    updateMarkedUI();
+    showToast(`🗑️ Session "${found.name}" deleted.`, 2500);
+  }
+  window.deleteSavedSession = deleteSavedSession;
+
+  function renameSavedSession(sessionId) {
+    const saved = getSavedSessions();
+    const found = saved.find(s => s.id === sessionId);
+    if (!found) return;
+    const newName = prompt('Rename session:', found.name);
+    if (!newName || !newName.trim()) return;
+
+    found.name = newName.trim();
+    saveSessionsToStorage(saved);
+    if (currentStudySession.id === sessionId) {
+      currentStudySession.name = found.name;
+    }
+    updateMarkedUI();
+    showToast(`✓ Renamed to "${found.name}"`, 2500);
+  }
+  window.renameSavedSession = renameSavedSession;
+
+  function toggleSessionWords(sessionId) {
+    const el = document.getElementById(`fcSessionWords_${sessionId}`);
+    if (el) {
+      el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    }
+  }
+  window.toggleSessionWords = toggleSessionWords;
+
+  let isSessionStudyActive = false;
+  let sessionStudyBackup = null;
+
+  function studySession(sessionId) {
+    let sessionName = 'Study Session';
+    let cards = [];
+
+    if (sessionId === 'current' || !sessionId) {
+      sessionName = currentStudySession.name || 'Live Session';
+      cards = Array.from(currentStudySession.markedCards.values());
+    } else {
+      const saved = getSavedSessions();
+      const found = saved.find(s => s.id === sessionId);
+      if (!found) {
+        showToast('Session not found', 3000);
+        return;
+      }
+      sessionName = found.name;
+      cards = found.cards || [];
+    }
+
+    if (cards.length === 0) {
+      showToast('No cards in this session to study.', 3000);
+      return;
+    }
+
+    if (!isSessionStudyActive) {
+      sessionStudyBackup = {
+        flashcardList: flashcardList.slice(),
+        currentCardIndex: currentCardIndex,
+        isFolderDeck: isFolderDeck,
+        currentFilePath: currentFilePath
+      };
+    }
+
+    isSessionStudyActive = true;
+    closeDrillModal();
+
+    flashcardList = cards.map(c => ({
+      text: c.text || c.title || 'Card',
+      title: c.title,
+      level: c.level || 2,
+      file_path: c.filePath || '',
+      card_content: c.card_content || '',
+      slug: c.slug || `H${c.level||2}::${c.text||c.title}`,
+      _sessionOrigin: sessionName
+    }));
+    currentCardIndex = 0;
+
+    const banner = document.getElementById('fcSessionReviewBanner');
+    const titleEl = document.getElementById('fcSessionReviewTitle');
+    const countEl = document.getElementById('fcSessionReviewCount');
+    if (banner) banner.style.display = 'flex';
+    if (titleEl) titleEl.textContent = sessionName;
+    if (countEl) countEl.textContent = `(${cards.length} cards)`;
+
+    if (!isFlashcardMode) {
+      toggleFlashcardMode();
+    } else {
+      renderCurrentCard();
+      renderCardOverview();
+    }
+    showToast(`📚 Studying session "${sessionName}" (${cards.length} cards)`, 3500);
+  }
+  window.studySession = studySession;
+
+  function exitSessionStudy() {
+    if (!isSessionStudyActive) return;
+    isSessionStudyActive = false;
+    const banner = document.getElementById('fcSessionReviewBanner');
+    if (banner) banner.style.display = 'none';
+
+    if (sessionStudyBackup) {
+      flashcardList = sessionStudyBackup.flashcardList;
+      currentCardIndex = Math.min(sessionStudyBackup.currentCardIndex, Math.max(0, flashcardList.length - 1));
+      sessionStudyBackup = null;
+    } else {
+      flashcardList = collectFlashcards(flashcardFilter);
+      currentCardIndex = 0;
+    }
+    renderCurrentCard();
+    renderCardOverview();
+    showToast('✓ Exited session study. Returned to normal deck.', 2500);
+  }
+  window.exitSessionStudy = exitSessionStudy;
+
+  async function exportSession(sessionId) {
+    try {
+      let sessionName = 'Study Session';
+      let cards = [];
+
+      if (sessionId === 'current' || !sessionId) {
+        sessionName = currentStudySession.name || 'Live Session';
+        cards = Array.from(currentStudySession.markedCards.values());
+      } else {
+        const saved = getSavedSessions();
+        const found = saved.find(s => s.id === sessionId);
+        if (!found) {
+          showToast('Session not found', 3000);
+          return;
+        }
+        sessionName = found.name;
+        cards = found.cards || [];
+      }
+
+      if (cards.length === 0) {
+        showToast('No cards in this session to export.', 3000);
+        return;
+      }
+
+      showToast(`⏳ Exporting session "${sessionName}"...`, 2500);
+
+      const resp = await fetch('/api/session/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionName: sessionName,
+          cards: cards.map(c => ({
+            text: c.text || c.title || 'Card',
+            level: c.level || 2,
+            card_content: c.card_content || '',
+            file_path: c.filePath || ''
+          }))
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${resp.status}`);
+      }
+
+      const blob = await resp.blob();
+      const disposition = resp.headers.get('Content-Disposition') || '';
+      let filename = sessionName.replace(/[^\w\s\-\.]/g, '_').trim() + '.md';
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+      if (match && match[1]) filename = match[1];
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const isZip = filename.endsWith('.zip');
+      showToast(`✓ Exported ${cards.length} cards as ${isZip ? 'ZIP bundle (with media)' : 'Markdown file'}!`, 4500);
+    } catch(err) {
+      console.error('Session export error:', err);
+      showToast(`✕ Export failed: ${err.message}`, 4000);
+    }
+  }
+  window.exportSession = exportSession;
+
   function switchDrillModalTab(tabName) {
     const tabMarked = document.getElementById('fcTabBtnMarked');
     const tabDrill = document.getElementById('fcTabBtnDrill');
+    const tabSessions = document.getElementById('fcTabBtnSessions');
     const paneMarked = document.getElementById('fcTabPaneMarked');
     const paneDrill = document.getElementById('fcTabPaneDrill');
+    const paneSessions = document.getElementById('fcTabPaneSessions');
+
+    [tabMarked, tabDrill, tabSessions].forEach(t => t && t.classList.remove('active'));
+    [paneMarked, paneDrill, paneSessions].forEach(p => p && (p.style.display = 'none'));
 
     if (tabName === 'drill') {
-      if (tabMarked) tabMarked.classList.remove('active');
       if (tabDrill) tabDrill.classList.add('active');
-      if (paneMarked) paneMarked.style.display = 'none';
       if (paneDrill) paneDrill.style.display = 'flex';
       const input = document.getElementById('fcDrillIntervalsInput');
       if (input) { input.focus(); input.select(); }
+    } else if (tabName === 'sessions') {
+      if (tabSessions) tabSessions.classList.add('active');
+      if (paneSessions) paneSessions.style.display = 'flex';
+      renderSessionsUI();
     } else {
-      if (tabDrill) tabDrill.classList.remove('active');
       if (tabMarked) tabMarked.classList.add('active');
-      if (paneDrill) paneDrill.style.display = 'none';
       if (paneMarked) paneMarked.style.display = 'flex';
       const input = document.getElementById('fcMarkIntervalInput');
       if (input) { input.focus(); input.select(); }
@@ -15704,6 +16303,7 @@
     const expl = document.getElementById('fcDrillExplanation');
     const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
     const markInput = document.getElementById('fcMarkIntervalInput');
+    const limitInput = document.getElementById('fcMarkDisplayLimitInput');
     const markExpl = document.getElementById('fcMarkExplanation');
     if (!modal) return;
 
@@ -15711,7 +16311,8 @@
     if (expl) expl.innerHTML = formatDrillExplanation(fcDrillIntervals);
     if (autoCheck) autoCheck.checked = fcDrillAutoAdvance;
     if (markInput) markInput.value = fcMarkRepeatInterval;
-    if (markExpl) markExpl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval);
+    if (limitInput) limitInput.value = fcMarkDisplayLimit;
+    if (markExpl) markExpl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval, fcMarkDisplayLimit);
 
     updateDrillUI();
     updateMarkedUI();
@@ -15735,6 +16336,8 @@
     const input = document.getElementById('fcDrillIntervalsInput');
     const autoCheck = document.getElementById('fcDrillAutoAdvanceCheck');
     const markInput = document.getElementById('fcMarkIntervalInput');
+    const limitInput = document.getElementById('fcMarkDisplayLimitInput');
+
     if (input) {
       fcDrillIntervals = parseDrillIntervals(input.value);
       try {
@@ -15756,10 +16359,19 @@
         } catch(e) {}
       }
     }
+    if (limitInput) {
+      const val = parseInt(limitInput.value, 10);
+      if (!isNaN(val) && val >= 1) {
+        fcMarkDisplayLimit = val;
+        try {
+          localStorage.setItem('mdv_mark_display_limit', String(fcMarkDisplayLimit));
+        } catch(e) {}
+      }
+    }
     updateDrillUI();
     updateMarkedUI();
     closeDrillModal();
-    showToast(`✓ Repetition settings updated! Marked loop: ${fcMarkRepeatInterval} cards • Drill: [${fcDrillIntervals.join(', ')}]`, 3500);
+    showToast(`✓ Repetition settings updated! Marked loop: ${fcMarkRepeatInterval} cards (limit: ${fcMarkDisplayLimit}) • Drill: [${fcDrillIntervals.join(', ')}]`, 3500);
   }
   window.executeSaveDrillSettings = executeSaveDrillSettings;
 
@@ -16072,7 +16684,51 @@
     });
   });
 
-  // Initial sync of Marked & Drill UI
+  const fcTabBtnSessions = document.getElementById('fcTabBtnSessions');
+  const fcSessionToolbarBtn = document.getElementById('fcSessionToolbarBtn');
+  const fcSessionReviewExitBtn = document.getElementById('fcSessionReviewExitBtn');
+  const fcSessionSaveCurrentBtn = document.getElementById('fcSessionSaveCurrentBtn');
+  const fcSessionNewBtn = document.getElementById('fcSessionNewBtn');
+  const fcSessionStudyLiveBtn = document.getElementById('fcSessionStudyLiveBtn');
+  const fcSessionExportLiveBtn = document.getElementById('fcSessionExportLiveBtn');
+  const fcMarkDisplayLimitInput = document.getElementById('fcMarkDisplayLimitInput');
+
+  if (fcTabBtnSessions) fcTabBtnSessions.addEventListener('click', () => switchDrillModalTab('sessions'));
+  if (fcSessionToolbarBtn) fcSessionToolbarBtn.addEventListener('click', () => openDrillModal('sessions'));
+  if (fcSessionReviewExitBtn) fcSessionReviewExitBtn.addEventListener('click', exitSessionStudy);
+  if (fcSessionSaveCurrentBtn) fcSessionSaveCurrentBtn.addEventListener('click', () => saveCurrentSession());
+  if (fcSessionNewBtn) fcSessionNewBtn.addEventListener('click', () => startNewSession());
+  if (fcSessionStudyLiveBtn) fcSessionStudyLiveBtn.addEventListener('click', () => studySession('current'));
+  if (fcSessionExportLiveBtn) fcSessionExportLiveBtn.addEventListener('click', () => exportSession('current'));
+
+  if (fcMarkDisplayLimitInput) {
+    fcMarkDisplayLimitInput.addEventListener('input', () => {
+      const expl = document.getElementById('fcMarkExplanation');
+      if (expl) expl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval, fcMarkDisplayLimitInput.value);
+    });
+    fcMarkDisplayLimitInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeSaveDrillSettings();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDrillModal();
+      }
+    });
+  }
+
+  document.querySelectorAll('.fc-limit-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.limit;
+      if (fcMarkDisplayLimitInput && val) {
+        fcMarkDisplayLimitInput.value = val;
+        const expl = document.getElementById('fcMarkExplanation');
+        if (expl) expl.innerHTML = formatMarkExplanation(fcMarkRepeatInterval, val);
+      }
+    });
+  });
+
+  // Initial sync of Marked, Sessions & Drill UI
   updateMarkedUI();
   updateDrillUI();
 
