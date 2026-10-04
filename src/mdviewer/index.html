@@ -4450,7 +4450,8 @@
       <div class="sep"></div>
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
       <button id="fcJumpToolbarBtn" title="Jump directly to any card (J / G)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.12);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🎯 Jump</button>
-      <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(247,118,142,0.12);color:#f7768e;border:1px solid rgba(247,118,142,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">2, 2</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
+      <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">Off</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
+      <button id="fcStopDrillToolbarBtn" title="Stop drill repetitions and turn drill OFF" style="display:none;font-size:11px;padding:3px 8px;background:rgba(247,118,142,0.18);color:#f7768e;border:1px solid rgba(247,118,142,0.45);border-radius:4px;font-weight:700;cursor:pointer;align-items:center;gap:3px;">⏹ Stop Drill</button>
       <button id="fcMarkedToolbarBtn" title="Marked Cards repeating until unmarked (M)" style="font-size:11.5px;padding:3px 9px;background:rgba(224,175,104,0.12);color:#e0af68;border:1px solid rgba(224,175,104,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">⭐ Marked: <span id="fcMarkedToolbarCount">0</span></button>
       <button id="fcAiToggleBtn" title="Toggle Additional Flashcard Information (I)">✨ AI Info</button>
       <button id="fcHeaderGenMissingBtn" class="fc-btn-primary" style="background:#bb9af7;color:#1a1b26;font-weight:700;padding:2px 9px;font-size:11.5px;border-radius:4px;display:none;align-items:center;gap:4px;" title="Generate AI supplements for missing cards in current outline">🚀 Gen Missing (<span id="fcHeaderMissingCount">0</span>)</button>
@@ -4561,8 +4562,12 @@
       <div id="fcNavControls">
         <button id="fcPrevBtn" title="Previous card (← Left Arrow)">◀ Prev</button>
         <button id="fcFlipBtn" title="Flip card (Space / W / Enter)">Flip Card</button>
-        <button id="fcRepeatBtn" title="Repeat this card via temporary algorithm (D / A)" style="background:rgba(247, 118, 142, 0.16);color:#f7768e;border:1px solid rgba(247, 118, 142, 0.45);font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">🔁 Repeat <span id="fcRepeatNavIntervals" style="font-size:11px;opacity:0.9;font-weight:normal;">(+2, +2)</span></button>
+        <button id="fcRepeatBtn" title="Repeat this card via temporary algorithm (D / A)" style="background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border);font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">🔁 Drill: Off</button>
+        <button id="fcStopDrillNavBtn" title="Stop all drill repetitions and turn OFF" style="display:none;background:rgba(247,118,142,0.18);color:#f7768e;border:1px solid rgba(247,118,142,0.45);font-weight:700;padding:6px 10px;border-radius:6px;cursor:pointer;align-items:center;gap:4px;">⏹ Stop Drill</button>
         <button id="fcMarkBtn" title="Mark card to repeat every N cards until unmarked (M)" style="background:rgba(224,175,104,0.16);color:#e0af68;border:1px solid rgba(224,175,104,0.45);font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">⭐ Mark</button>
+        <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
+        <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
+      </div>
         <button id="fcJumpNavBtn" title="Jump directly to card number (J / G)" style="background:rgba(122,162,247,0.14);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);font-weight:600;cursor:pointer;">🎯 Jump</button>
         <button id="fcNextBtn" title="Next card (→ Right Arrow)">Next ▶</button>
       </div>
@@ -5373,8 +5378,21 @@
 
     <!-- Tab Pane 2: Temporary Drill Algorithm -->
     <div id="fcTabPaneDrill" class="ai-modal-body" style="padding:18px 20px;display:none;flex-direction:column;gap:14px;">
+      
+      <!-- Drill Master Status & Toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#10121a;border:1px solid var(--border);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <span>Drill Algorithm Status:</span>
+            <span id="fcDrillStatusBadge" style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;background:rgba(255,255,255,0.08);color:var(--muted);">OFF</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Default is OFF. Turn ON to enable card repetitions via <b>Repeat / D</b>.</div>
+        </div>
+        <button type="button" id="fcDrillToggleMasterBtn" class="fc-btn-secondary" style="font-weight:700;font-size:12px;padding:6px 14px;cursor:pointer;">▶ Turn ON</button>
+      </div>
+
       <div style="font-size:12.5px;color:var(--muted);line-height:1.45;">
-        Configure a custom card repetition schedule for this study session. When you click <b>Repeat</b> or press <b>D</b>, the card will reappear at these card intervals.
+        Configure a custom card repetition schedule for this study session. When turned ON, clicking <b>Repeat</b> or pressing <b>D</b> will cause the card to reappear at these card intervals.
       </div>
       
       <div class="ai-modal-field">
@@ -9585,6 +9603,7 @@
       <span class="fc-drill-tag">🔁 Temporary Drill (Step ${h._drillStep} of ${h._drillTotalSteps})</span>
       <span class="fc-drill-desc">Displayed again after ${h._drillOffset} card${h._drillOffset > 1 ? 's' : ''}</span>
       <button type="button" style="margin-left:auto;font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="window.dismissCurrentDrill(event)" title="Mark as mastered and skip further repetitions">✓ Mastered</button>
+      <button type="button" style="margin-left:6px;font-size:10.5px;padding:2px 8px;cursor:pointer;color:#f7768e;border-color:rgba(247,118,142,0.4);" onclick="window.stopDrill(event)" title="Stop all drill repetitions and turn drill OFF">⏹ Stop Drill</button>
     ` : '';
     const fcDrillBanner = document.getElementById('fcDrillBanner');
     const fcDrillBackBanner = document.getElementById('fcDrillBackBanner');
@@ -10516,7 +10535,7 @@
 
     if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'd' || e.key === 'D')){
       e.preventDefault();
-      if(typeof openDrillModal === 'function') openDrillModal();
+      if(typeof openDrillModal === 'function') openDrillModal('drill');
       return;
     }
 
@@ -15095,6 +15114,12 @@
   // =========================================================================
   // Temporary Flashcard Algorithm (Drill / Spaced Repetition) Controller
   // =========================================================================
+  let fcDrillEnabled = false; // default is OFF, only turn on when user turns it on
+  try {
+    const savedEn = localStorage.getItem('mdv_drill_enabled');
+    if (savedEn !== null) fcDrillEnabled = savedEn === 'true';
+  } catch(e) {}
+
   let fcDrillIntervals = [2, 2];
   try {
     const saved = localStorage.getItem('mdv_drill_intervals');
@@ -15137,13 +15162,96 @@
     return `Card will reappear ` + parts.join(', ') + '.';
   }
 
+  function stopDrill(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    fcDrillEnabled = false;
+    try {
+      localStorage.setItem('mdv_drill_enabled', 'false');
+    } catch(e) {}
+
+    const drillCount = fcActiveDrills.size;
+    fcActiveDrills.clear();
+
+    const prevLen = flashcardList.length;
+    // Remove drill repeat cards, but keep marked repeat cards untouched
+    flashcardList = flashcardList.filter(card => !(card._isRepeatCard && !card._isMarkedRepeat));
+    const removedCount = prevLen - flashcardList.length;
+
+    if (currentCardIndex >= flashcardList.length) {
+      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    }
+
+    const banner = document.getElementById('fcDrillBanner');
+    if (banner) banner.style.display = 'none';
+    const backBanner = document.getElementById('fcDrillBackBanner');
+    if (backBanner) backBanner.style.display = 'none';
+
+    updateDrillUI();
+    renderCurrentCard();
+    renderCardOverview();
+
+    showToast(`⏹ Drill stopped and turned OFF (${removedCount} queued repetitions cleared).`, 3000);
+  }
+  window.stopDrill = stopDrill;
+
+  function toggleDrillEnabled(enable = null) {
+    if (enable !== null) {
+      fcDrillEnabled = !!enable;
+    } else {
+      fcDrillEnabled = !fcDrillEnabled;
+    }
+    try {
+      localStorage.setItem('mdv_drill_enabled', String(fcDrillEnabled));
+    } catch(e) {}
+
+    if (!fcDrillEnabled) {
+      stopDrill();
+    } else {
+      updateDrillUI();
+      showToast(`⚡ Drill algorithm turned ON: [${fcDrillIntervals.join(', ')}]`, 3000);
+    }
+  }
+  window.toggleDrillEnabled = toggleDrillEnabled;
+
   function updateDrillUI() {
+    const toolbarBtn = document.getElementById('fcDrillToolbarBtn');
     const toolbarIntervals = document.getElementById('fcDrillToolbarIntervals');
     const toolbarActiveBadge = document.getElementById('fcDrillActiveToolbarBadge');
-    if (toolbarIntervals) {
-      toolbarIntervals.textContent = fcDrillIntervals.join(', ');
-    }
+    const stopToolbarBtn = document.getElementById('fcStopDrillToolbarBtn');
+    const navBtn = document.getElementById('fcRepeatBtn');
+    const stopNavBtn = document.getElementById('fcStopDrillNavBtn');
+
+    const statusBadge = document.getElementById('fcDrillStatusBadge');
+    const toggleMasterBtn = document.getElementById('fcDrillToggleMasterBtn');
+    const modalTabBadge = document.getElementById('fcModalDrillBadge');
+    const modalActiveCount = document.getElementById('fcDrillActiveCount');
+    const modalActiveList = document.getElementById('fcDrillActiveList');
+
     const activeCount = fcActiveDrills.size;
+
+    // Toolbar Drill Button
+    if (toolbarIntervals) {
+      if (fcDrillEnabled) {
+        toolbarIntervals.textContent = `On (${fcDrillIntervals.join(', ')})`;
+      } else {
+        toolbarIntervals.textContent = 'Off';
+      }
+    }
+    if (toolbarBtn) {
+      if (fcDrillEnabled) {
+        toolbarBtn.style.background = 'rgba(247,118,142,0.18)';
+        toolbarBtn.style.color = '#f7768e';
+        toolbarBtn.style.borderColor = 'rgba(247,118,142,0.45)';
+        toolbarBtn.style.fontWeight = '700';
+        toolbarBtn.title = 'Drill algorithm is ON (Shift+D to configure)';
+      } else {
+        toolbarBtn.style.background = 'rgba(255,255,255,0.06)';
+        toolbarBtn.style.color = 'var(--muted)';
+        toolbarBtn.style.borderColor = 'var(--border)';
+        toolbarBtn.style.fontWeight = '500';
+        toolbarBtn.title = 'Drill algorithm is OFF. Click to turn ON (Shift+D)';
+      }
+    }
     if (toolbarActiveBadge) {
       if (activeCount > 0) {
         toolbarActiveBadge.textContent = String(activeCount);
@@ -15152,14 +15260,75 @@
         toolbarActiveBadge.style.display = 'none';
       }
     }
-
-    const navIntervals = document.getElementById('fcRepeatNavIntervals');
-    if (navIntervals) {
-      navIntervals.textContent = `(+${fcDrillIntervals.join(', +')})`;
+    if (stopToolbarBtn) {
+      if (fcDrillEnabled || activeCount > 0) {
+        stopToolbarBtn.style.display = 'inline-flex';
+      } else {
+        stopToolbarBtn.style.display = 'none';
+      }
     }
 
-    const modalActiveCount = document.getElementById('fcDrillActiveCount');
-    const modalActiveList = document.getElementById('fcDrillActiveList');
+    // Bottom Navigation Repeat Button
+    if (navBtn) {
+      if (fcDrillEnabled) {
+        navBtn.innerHTML = `🔁 Repeat <span id="fcRepeatNavIntervals" style="font-size:11px;opacity:0.9;font-weight:normal;">(+${fcDrillIntervals.join(', +')})</span>`;
+        navBtn.style.background = 'rgba(247, 118, 142, 0.18)';
+        navBtn.style.color = '#f7768e';
+        navBtn.style.borderColor = 'rgba(247, 118, 142, 0.45)';
+        navBtn.style.fontWeight = '700';
+        navBtn.title = `Repeat card via drill (+${fcDrillIntervals.join(', +')}) (D / A)`;
+      } else {
+        navBtn.innerHTML = `🔁 Drill: Off`;
+        navBtn.style.background = 'rgba(255,255,255,0.05)';
+        navBtn.style.color = 'var(--muted)';
+        navBtn.style.borderColor = 'var(--border)';
+        navBtn.style.fontWeight = '500';
+        navBtn.title = `Drill algorithm is currently OFF. Click to turn ON (Shift+D)`;
+      }
+    }
+    if (stopNavBtn) {
+      if (fcDrillEnabled || activeCount > 0) {
+        stopNavBtn.style.display = 'inline-flex';
+      } else {
+        stopNavBtn.style.display = 'none';
+      }
+    }
+
+    // Modal Status Badge & Master Button
+    if (statusBadge) {
+      if (fcDrillEnabled) {
+        statusBadge.textContent = 'ON';
+        statusBadge.style.background = 'rgba(247,118,142,0.22)';
+        statusBadge.style.color = '#f7768e';
+      } else {
+        statusBadge.textContent = 'OFF';
+        statusBadge.style.background = 'rgba(255,255,255,0.08)';
+        statusBadge.style.color = 'var(--muted)';
+      }
+    }
+    if (toggleMasterBtn) {
+      if (fcDrillEnabled) {
+        toggleMasterBtn.textContent = '⏹ Stop Drill & Turn OFF';
+        toggleMasterBtn.style.background = 'rgba(247,118,142,0.2)';
+        toggleMasterBtn.style.color = '#f7768e';
+        toggleMasterBtn.style.borderColor = '#f7768e';
+      } else {
+        toggleMasterBtn.textContent = '▶ Turn ON Drill';
+        toggleMasterBtn.style.background = 'rgba(158,206,106,0.18)';
+        toggleMasterBtn.style.color = '#9ece6a';
+        toggleMasterBtn.style.borderColor = 'rgba(158,206,106,0.4)';
+      }
+    }
+    if (modalTabBadge) {
+      if (fcDrillEnabled) {
+        modalTabBadge.textContent = activeCount > 0 ? String(activeCount) : 'ON';
+        modalTabBadge.style.display = 'inline-block';
+        modalTabBadge.style.background = '#f7768e';
+      } else {
+        modalTabBadge.style.display = 'none';
+      }
+    }
+
     if (modalActiveCount) {
       modalActiveCount.textContent = `${activeCount} card${activeCount === 1 ? '' : 's'}`;
     }
@@ -15188,6 +15357,12 @@
       showToast('⚠️ No active flashcards to repeat.');
       return;
     }
+    if (!fcDrillEnabled) {
+      showToast('⚠️ Drill is currently OFF. Click "Turn ON" in Drill settings (Shift+D) to enable.', 3000);
+      if (typeof openDrillModal === 'function') openDrillModal('drill');
+      return;
+    }
+
     const currentH = flashcardList[currentCardIndex];
     if (!currentH) return;
 
@@ -15268,7 +15443,7 @@
   window.clearAllDrills = function() {
     fcActiveDrills.clear();
     const prevLen = flashcardList.length;
-    flashcardList = flashcardList.filter(card => !card._isRepeatCard);
+    flashcardList = flashcardList.filter(card => !(card._isRepeatCard && !card._isMarkedRepeat));
     const removedCount = prevLen - flashcardList.length;
     if (currentCardIndex >= flashcardList.length) {
       currentCardIndex = Math.max(0, flashcardList.length - 1);
@@ -15744,6 +15919,9 @@
   // Temporary Flashcard Algorithm & Marked Cards Event Listeners
   const fcDrillToolbarBtn = document.getElementById('fcDrillToolbarBtn');
   const fcMarkedToolbarBtn = document.getElementById('fcMarkedToolbarBtn');
+  const fcStopDrillToolbarBtn = document.getElementById('fcStopDrillToolbarBtn');
+  const fcStopDrillNavBtn = document.getElementById('fcStopDrillNavBtn');
+  const fcDrillToggleMasterBtn = document.getElementById('fcDrillToggleMasterBtn');
   const fcDrillCloseBtn = document.getElementById('fcDrillCloseBtn');
   const fcDrillCancelBtn = document.getElementById('fcDrillCancelBtn');
   const fcDrillSaveBtn = document.getElementById('fcDrillSaveBtn');
@@ -15759,6 +15937,9 @@
 
   if (fcDrillToolbarBtn) fcDrillToolbarBtn.addEventListener('click', () => openDrillModal('drill'));
   if (fcMarkedToolbarBtn) fcMarkedToolbarBtn.addEventListener('click', () => openDrillModal('marked'));
+  if (fcStopDrillToolbarBtn) fcStopDrillToolbarBtn.addEventListener('click', stopDrill);
+  if (fcStopDrillNavBtn) fcStopDrillNavBtn.addEventListener('click', stopDrill);
+  if (fcDrillToggleMasterBtn) fcDrillToggleMasterBtn.addEventListener('click', () => toggleDrillEnabled());
   if (fcDrillCloseBtn) fcDrillCloseBtn.addEventListener('click', closeDrillModal);
   if (fcDrillCancelBtn) fcDrillCancelBtn.addEventListener('click', closeDrillModal);
   if (fcDrillSaveBtn) fcDrillSaveBtn.addEventListener('click', executeSaveDrillSettings);
@@ -15851,8 +16032,9 @@
     });
   });
 
-  // Initial sync of Marked UI
+  // Initial sync of Marked & Drill UI
   updateMarkedUI();
+  updateDrillUI();
 
 
 
@@ -19161,6 +19343,9 @@
     window.getCurrentCardIndex = () => currentCardIndex;
     window.setCurrentCardIndex = (i) => { currentCardIndex = i; renderCurrentCard(); };
     window.repeatCurrentCard = repeatCurrentCard;
+    window.stopDrill = stopDrill;
+    window.toggleDrillEnabled = toggleDrillEnabled;
+    window.isDrillEnabled = () => fcDrillEnabled;
     window.openDrillModal = openDrillModal;
     window.closeDrillModal = closeDrillModal;
     window.setDrillIntervals = (arr) => { fcDrillIntervals = arr; updateDrillUI(); };
