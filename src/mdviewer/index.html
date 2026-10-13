@@ -631,25 +631,28 @@
   #fcFullOverviewView {
     display: none;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
     background: var(--bg);
-    z-index: 25;
+    z-index: 2000;
+    overflow: hidden;
   }
   .fc-fo-header {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 8px 16px;
+    gap: 12px;
+    padding: 10px 20px;
     background: #16161e;
     border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    z-index: 10;
   }
   .fc-fo-header-left {
     display: flex;
@@ -829,15 +832,19 @@
   }
   .fc-fo-content-list {
     flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 20px 24px 60px 24px;
+    padding: 24px 32px 80px 32px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     scroll-behavior: smooth;
   }
   .fc-fo-card-card {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
     background: #1a1b26;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -937,26 +944,30 @@
     display: flex;
     flex-direction: row;
     width: 100%;
-    min-height: 90px;
+    min-height: 100px;
+    box-sizing: border-box;
   }
   .fc-fo-side {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    box-sizing: border-box;
   }
   .fc-fo-side.fc-fo-front {
     flex: 0 0 45%;
     width: 45%;
     max-width: 45%;
-    padding: 16px 20px;
+    padding: 18px 22px;
     border-right: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.012);
+    box-sizing: border-box;
   }
   .fc-fo-side.fc-fo-back {
     flex: 1 1 55%;
     width: 55%;
-    padding: 16px 22px;
+    padding: 18px 24px;
     background: rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
   }
   @media (max-width: 768px) {
     .fc-fo-card-body {
@@ -4969,60 +4980,6 @@
       <button type="button" id="fcSessionReviewExitBtn" class="fc-btn-secondary" style="font-size:11px;padding:3px 10px;color:#f7768e;border-color:rgba(247,118,142,0.4);cursor:pointer;" title="Exit session study and return to original deck">✕ Exit Session Study</button>
     </div>
 
-    <!-- Full-Page Dual-Side Flashcard Overview -->
-    <div id="fcFullOverviewView">
-      <div class="fc-fo-header">
-        <div class="fc-fo-header-left">
-          <span class="fc-fo-title">📑 Full Cards Overview</span>
-          <span id="fcFoCountBadge" class="fc-fo-badge">0 cards</span>
-        </div>
-        <div class="fc-fo-header-center">
-          <div class="fc-fo-search-wrap">
-            <span class="fc-fo-search-icon">🔍</span>
-            <input type="text" id="fcFoSearchInput" placeholder="Filter cards by text, tags..." spellcheck="false" autocomplete="off" />
-            <button id="fcFoSearchClearBtn" class="fc-fo-clear-btn" title="Clear search">✕</button>
-          </div>
-          <select id="fcFoLevelFilter" class="fc-fo-select" title="Filter by heading level or marked status">
-            <option value="all">All Levels</option>
-            <option value="marked">⭐ Marked Only</option>
-            <option value="1">H1 Only</option>
-            <option value="2">H2 Only</option>
-            <option value="3">H3 Only</option>
-            <option value="4">H4 Only</option>
-          </select>
-          <div class="fc-fo-control-group" title="Limit how many lines the back card displays (0 = All)">
-            <span class="fc-fo-control-label">Lines:</span>
-            <select id="fcFoBackLineSelect" class="fc-fo-select" title="Number of lines to show on back card">
-              <option value="0">All</option>
-              <option value="1">1 Line</option>
-              <option value="2">2 Lines</option>
-              <option value="3">3 Lines</option>
-              <option value="4">4 Lines</option>
-              <option value="5">5 Lines</option>
-              <option value="8">8 Lines</option>
-              <option value="10">10 Lines</option>
-              <option value="custom">Custom...</option>
-            </select>
-            <input type="number" id="fcFoBackLineInput" class="fc-fo-input-number" min="1" max="100" placeholder="#" style="display:none;width:42px;" title="Custom line limit" />
-          </div>
-          <div class="fc-fo-control-group" title="Filter back card to lines starting with a specific prefix or field (e.g. Answer:, Extra:)">
-            <span class="fc-fo-control-label">Start with:</span>
-            <div class="fc-fo-prefix-wrap">
-              <input type="text" id="fcFoBackPrefixInput" list="fcFoBackFieldDatalist" class="fc-fo-input-prefix" placeholder="Field / Prefix..." spellcheck="false" autocomplete="off" title="Pick an imported Anki field or type line prefix (e.g. **Answer:**, Answer, Extra)" />
-              <datalist id="fcFoBackFieldDatalist"></datalist>
-              <button type="button" id="fcFoBackPrefixClearBtn" class="fc-fo-clear-btn" style="display:none;" title="Clear prefix filter">✕</button>
-            </div>
-          </div>
-        </div>
-        <div class="fc-fo-header-right">
-          <button type="button" id="fcFoScrollActiveBtn" class="fc-fo-btn" title="Scroll to currently active review card">🎯 Active Card</button>
-          <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
-        </div>
-      </div>
-      <div id="fcFoContentList" class="fc-fo-content-list">
-        <!-- Cards dynamically rendered here -->
-      </div>
-    </div>
 
     <div id="flashcardMainArea">
       <div id="flashcardStage">
@@ -5370,6 +5327,61 @@
     </div>
   </div>
   <div id="panelBody"></div>
+</div>
+
+<!-- Full-Page Dual-Side Flashcard Overview (Dedicated Full Viewport Screen) -->
+<div id="fcFullOverviewView">
+  <div class="fc-fo-header">
+    <div class="fc-fo-header-left">
+      <span class="fc-fo-title">📑 Full Cards Overview</span>
+      <span id="fcFoCountBadge" class="fc-fo-badge">0 cards</span>
+    </div>
+    <div class="fc-fo-header-center">
+      <div class="fc-fo-search-wrap">
+        <span class="fc-fo-search-icon">🔍</span>
+        <input type="text" id="fcFoSearchInput" placeholder="Filter cards by text, tags..." spellcheck="false" autocomplete="off" />
+        <button id="fcFoSearchClearBtn" class="fc-fo-clear-btn" title="Clear search">✕</button>
+      </div>
+      <select id="fcFoLevelFilter" class="fc-fo-select" title="Filter by heading level or marked status">
+        <option value="all">All Levels</option>
+        <option value="marked">⭐ Marked Only</option>
+        <option value="1">H1 Only</option>
+        <option value="2">H2 Only</option>
+        <option value="3">H3 Only</option>
+        <option value="4">H4 Only</option>
+      </select>
+      <div class="fc-fo-control-group" title="Limit how many lines the back card displays (0 = All)">
+        <span class="fc-fo-control-label">Lines:</span>
+        <select id="fcFoBackLineSelect" class="fc-fo-select" title="Number of lines to show on back card">
+          <option value="0">All</option>
+          <option value="1">1 Line</option>
+          <option value="2">2 Lines</option>
+          <option value="3">3 Lines</option>
+          <option value="4">4 Lines</option>
+          <option value="5">5 Lines</option>
+          <option value="8">8 Lines</option>
+          <option value="10">10 Lines</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input type="number" id="fcFoBackLineInput" class="fc-fo-input-number" min="1" max="100" placeholder="#" style="display:none;width:42px;" title="Custom line limit" />
+      </div>
+      <div class="fc-fo-control-group" title="Filter back card to lines starting with a specific prefix or field (e.g. Answer:, Extra:)">
+        <span class="fc-fo-control-label">Start with:</span>
+        <div class="fc-fo-prefix-wrap">
+          <input type="text" id="fcFoBackPrefixInput" list="fcFoBackFieldDatalist" class="fc-fo-input-prefix" placeholder="Field / Prefix..." spellcheck="false" autocomplete="off" title="Pick an imported Anki field or type line prefix (e.g. **Answer:**, Answer, Extra)" />
+          <datalist id="fcFoBackFieldDatalist"></datalist>
+          <button type="button" id="fcFoBackPrefixClearBtn" class="fc-fo-clear-btn" style="display:none;" title="Clear prefix filter">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="fc-fo-header-right">
+      <button type="button" id="fcFoScrollActiveBtn" class="fc-fo-btn" title="Scroll to currently active review card">🎯 Active Card</button>
+      <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
+    </div>
+  </div>
+  <div id="fcFoContentList" class="fc-fo-content-list">
+    <!-- Cards dynamically rendered here -->
+  </div>
 </div>
 
 <!-- Tree Context Menu -->
@@ -9743,7 +9755,14 @@
     }
 
     if (!flashcardList || flashcardList.length === 0) {
-      flashcardList = collectFlashcards(flashcardFilter || 'outline');
+      if (isFolderDeck && typeof folderDeckAllCards !== 'undefined' && folderDeckAllCards && folderDeckAllCards.length > 0) {
+        flashcardList = folderDeckAllCards.slice();
+      } else if (typeof collectFlashcards === 'function') {
+        flashcardList = collectFlashcards(flashcardFilter || 'outline') || [];
+        if (flashcardList.length === 0) {
+          flashcardList = collectFlashcards('all') || [];
+        }
+      }
     }
     if (!flashcardList || flashcardList.length === 0) {
       if (headings && headings.length > 0) {
@@ -9751,17 +9770,18 @@
       }
     }
     if (!flashcardList || flashcardList.length === 0) {
-      showAppToast('No cards found in current outline or file');
+      if (typeof showAppToast === 'function') {
+        showAppToast('No flashcards found to display in overview', true);
+      }
       return;
     }
 
     isFullOverviewOpen = true;
     if (fcFullOverviewView) fcFullOverviewView.style.display = 'flex';
-    if (flashcardMainArea) flashcardMainArea.style.display = 'none';
     if (fcFullOverviewBtn) fcFullOverviewBtn.classList.add('active');
 
     // Collapse right sidebar if open
-    if (fcRightSidebar && !fcRightSidebar.classList.contains('collapsed')) {
+    if (typeof fcRightSidebar !== 'undefined' && fcRightSidebar && !fcRightSidebar.classList.contains('collapsed')) {
       toggleFcRightSidebar(false);
     }
 
@@ -9771,17 +9791,18 @@
     // Scroll to active card in the full overview
     setTimeout(() => {
       scrollToActiveCardInFullOverview();
-    }, 100);
+    }, 80);
   }
   window.openFullOverview = openFullOverview;
 
   function closeFullOverview() {
     isFullOverviewOpen = false;
     if (fcFullOverviewView) fcFullOverviewView.style.display = 'none';
-    if (flashcardMainArea) flashcardMainArea.style.display = 'flex';
     if (fcFullOverviewBtn) fcFullOverviewBtn.classList.remove('active');
 
-    renderCurrentCard();
+    if (typeof renderCurrentCard === 'function') {
+      renderCurrentCard();
+    }
   }
   window.closeFullOverview = closeFullOverview;
 
@@ -9979,9 +10000,11 @@
     const isExpanded = fcFoExpandedCardSet.has(cardIdx);
     const rawBack = getCardBackRawText(h) || '';
     const cardSlug = getCardSlug(h);
-    const cachedAi = currentFileAiCards.get(cardSlug)
+    const cachedAi = (typeof currentFileAiCards !== 'undefined' && currentFileAiCards) ? (
+      currentFileAiCards.get(cardSlug)
       || currentFileAiCards.get(`H${h.level}::${(h.text || '').trim()}`)
-      || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`);
+      || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`)
+    ) : null;
     const effectiveBack = (rawBack && rawBack.trim()) ? rawBack : (cachedAi ? cachedAi.content : '');
 
     const { renderedBackHtml, lineStatusText, hasMore, truncatedCount } = renderCardBackForOverview(effectiveBack, h.file_path, fcFoBackLineLimit, fcFoBackFieldPrefix, isExpanded);
@@ -10006,7 +10029,17 @@
   window.toggleExpandCardBack = toggleExpandCardBack;
 
   function scrollToActiveCardInFullOverview() {
-    if (!fcFoContentList) return;
+    if (!fcFoContentList || !flashcardList) return;
+    const activeCard = flashcardList[currentCardIndex];
+    if (!activeCard) return;
+
+    const filteredIdx = fcFoFilteredList.indexOf(activeCard);
+    if (filteredIdx >= 0 && filteredIdx >= fcFoCurrentRenderedCount) {
+      while (fcFoCurrentRenderedCount <= filteredIdx && fcFoCurrentRenderedCount < fcFoFilteredList.length) {
+        renderNextFullOverviewBatch();
+      }
+    }
+
     const activeElem = document.getElementById(`fc-fo-card-${currentCardIndex}`);
     if (activeElem) {
       const containerRect = fcFoContentList.getBoundingClientRect();
@@ -10097,9 +10130,11 @@
       // Extract raw back content
       const rawBack = getCardBackRawText(h);
       const cardSlug = getCardSlug(h);
-      const cachedAi = currentFileAiCards.get(cardSlug)
+      const cachedAi = (typeof currentFileAiCards !== 'undefined' && currentFileAiCards) ? (
+        currentFileAiCards.get(cardSlug)
         || currentFileAiCards.get(`H${h.level}::${(h.text || '').trim()}`)
-        || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`);
+        || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`)
+      ) : null;
 
       const effectiveBack = (rawBack && rawBack.trim()) ? rawBack : (cachedAi ? cachedAi.content : '');
 
@@ -11822,6 +11857,14 @@
     if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'o' || e.key === 'O')){
       e.preventDefault();
       if(typeof toggleFullOverview === 'function') toggleFullOverview();
+      return;
+    }
+
+    if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen){
+      if(e.key === 'Escape'){
+        e.preventDefault();
+        closeFullOverview();
+      }
       return;
     }
 
@@ -21312,6 +21355,7 @@
     window.setDrillIntervals = (arr) => { fcDrillIntervals = arr; updateDrillUI(); };
     window.getDrillIntervals = () => fcDrillIntervals;
     window.getActiveDrills = () => fcActiveDrills;
+    window.isFullOverviewOpen = () => isFullOverviewOpen;
 
     await loadAiPrompts();
     await loadAiSettings();
