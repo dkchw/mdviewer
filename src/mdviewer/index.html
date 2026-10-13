@@ -45,7 +45,7 @@
     background: var(--bg2);
     border-bottom: 1px solid var(--border);
     flex-wrap: nowrap;
-    overflow: hidden;
+    overflow: visible;
     flex-shrink: 0;
     box-sizing: border-box;
     z-index: 40;
@@ -60,8 +60,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1 1 300px;
-    max-width: 360px;
+    flex: 1 1 320px;
+    max-width: 480px;
     margin: 0 4px;
     min-width: 160px;
   }
@@ -295,7 +295,7 @@
     gap: 4px;
     position: relative;
     width: 100%;
-    max-width: 440px;
+    max-width: 480px;
   }
   .scope-group {
     display: inline-flex;
@@ -309,10 +309,11 @@
     color: var(--muted);
     border: none;
     border-radius: 0;
-    padding: 3px 7px;
+    padding: 3px 6px;
     font-size: 11px;
     cursor: pointer;
     line-height: 1.2;
+    white-space: nowrap;
     transition: all 0.15s;
   }
   #toolbar .scope-group button.active {
@@ -377,9 +378,9 @@
     top: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    width: 480px;
+    width: 520px;
     max-width: 90vw;
-    max-height: 420px;
+    max-height: 440px;
     background: #1f2335;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -4706,6 +4707,7 @@
         </div>
         <div class="scope-group" id="searchScopeGroup">
           <button id="scopeFileBtn" class="active" title="Search in current file (Ctrl+F)">File</button>
+          <button id="scopeLevelBtn" title="Search all markdown files in same level / folder (Ctrl+Alt+F)">Level</button>
           <button id="scopeAllBtn" title="Search workspace (Ctrl+Shift+F)">All</button>
         </div>
         <div id="searchResults"></div>
@@ -7337,7 +7339,7 @@
     return wrapper;
   }
 
-  // --- Search functionality (In-File and Workspace) ---
+  // --- Search functionality (In-File, Same Level, and Workspace) ---
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
   const searchCount = document.getElementById('searchCount');
@@ -7345,8 +7347,12 @@
   const searchNextBtn = document.getElementById('searchNextBtn');
   const searchClearBtn = document.getElementById('searchClearBtn');
   const scopeFileBtn = document.getElementById('scopeFileBtn');
+  const scopeLevelBtn = document.getElementById('scopeLevelBtn');
   const scopeAllBtn = document.getElementById('scopeAllBtn');
 
+  let levelResults = [];
+  let levelSearching = false;
+  let levelAbort = null;
   let searchDebounce = null;
   let searchAbort = null;
 
@@ -7354,13 +7360,22 @@
     if(searchScope === scope) return;
     searchScope = scope;
     if(scopeFileBtn) scopeFileBtn.classList.toggle('active', scope === 'file');
+    if(scopeLevelBtn) scopeLevelBtn.classList.toggle('active', scope === 'level');
     if(scopeAllBtn) scopeAllBtn.classList.toggle('active', scope === 'all');
-    searchInput.placeholder = (scope === 'file') ? 'Find in file (Ctrl+F)...' : 'Search workspace (Ctrl+Shift+F)...';
+    if(scope === 'file'){
+      searchInput.placeholder = 'Find in file (Ctrl+F)...';
+    } else if(scope === 'level'){
+      searchInput.placeholder = 'Search same level markdown (Ctrl+Alt+F)...';
+    } else {
+      searchInput.placeholder = 'Search workspace (Ctrl+Shift+F)...';
+    }
     
     const q = searchInput.value.trim();
     if(q){
       if(scope === 'file'){
         runFileSearch(q, true);
+      } else if(scope === 'level'){
+        performLevelSearch(q);
       } else {
         performWorkspaceSearch(q);
       }
@@ -7370,6 +7385,7 @@
   }
 
   if(scopeFileBtn) scopeFileBtn.addEventListener('click', () => setSearchScope('file'));
+  if(scopeLevelBtn) scopeLevelBtn.addEventListener('click', () => setSearchScope('level'));
   if(scopeAllBtn) scopeAllBtn.addEventListener('click', () => setSearchScope('all'));
 
   function runFileSearch(q, navigate = true){
@@ -7424,6 +7440,37 @@
     }
   }
 
+  async function performLevelSearch(q){
+    if(!q){
+      levelResults = [];
+      levelSearching = false;
+      updateSearchUI();
+      return;
+    }
+    levelSearching = true;
+    updateSearchUI();
+    
+    if(levelAbort) levelAbort.abort();
+    levelAbort = new AbortController();
+    
+    try {
+      let targetParam = currentFilePath || '';
+      if(isFolderDeck && folderDeckInfo && folderDeckInfo.folderPath){
+        targetParam = folderDeckInfo.folderPath;
+      }
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&scope=same_level&file=${encodeURIComponent(targetParam)}&strip_images=1`, { signal: levelAbort.signal });
+      if(!res.ok) throw new Error('Level search failed');
+      levelResults = await res.json();
+    } catch(e){
+      if(e.name !== 'AbortError'){
+        levelResults = [];
+      }
+    } finally {
+      levelSearching = false;
+      updateSearchUI();
+    }
+  }
+
   async function performWorkspaceSearch(q){
     if(!q){
       wsResults = [];
@@ -7461,6 +7508,14 @@
       }
       if(searchPrevBtn) searchPrevBtn.style.display = (q && fileMatches.length > 0) ? 'inline-block' : 'none';
       if(searchNextBtn) searchNextBtn.style.display = (q && fileMatches.length > 0) ? 'inline-block' : 'none';
+    } else if(searchScope === 'level'){
+      if(searchPrevBtn) searchPrevBtn.style.display = 'none';
+      if(searchNextBtn) searchNextBtn.style.display = 'none';
+      if(searchCount){
+        if(levelSearching) searchCount.textContent = '...';
+        else if(q) searchCount.textContent = `${levelResults.length}`;
+        else searchCount.textContent = '';
+      }
     } else {
       if(searchPrevBtn) searchPrevBtn.style.display = 'none';
       if(searchNextBtn) searchNextBtn.style.display = 'none';
@@ -7479,6 +7534,7 @@
     searchResults.style.display = 'block';
     let html = `<div class="search-tabs">
       <button class="search-tab ${searchScope==='file'?'active':''}" data-tab="file">This File (${fileMatches.length})</button>
+      <button class="search-tab ${searchScope==='level'?'active':''}" data-tab="level">Same Level (${levelResults.length}${levelSearching?'...':''})</button>
       <button class="search-tab ${searchScope==='all'?'active':''}" data-tab="all">Workspace (${wsResults.length}${wsSearching?'...':''})</button>
     </div>`;
     
@@ -7497,6 +7553,20 @@
           </div>`;
         }
       }
+    } else if(searchScope === 'level'){
+      if(levelSearching){
+        html += '<div class="search-loading">Searching same-level markdown files...</div>';
+      } else if(levelResults.length === 0){
+        html += '<div class="search-empty">No markdown matches found in this folder level.</div>';
+      } else {
+        for(const r of levelResults){
+          const headingPart = r.heading ? `<span class="s-heading" style="color:var(--accent);margin-left:6px;font-size:11px;opacity:0.85;">§ ${escapeHtml(r.heading)}</span>` : '';
+          html += `<div class="search-result level" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
+            <div class="s-file">📄 ${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${headingPart}</div>
+            <div class="s-text">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
+          </div>`;
+        }
+      }
     } else {
       if(wsSearching){
         html += '<div class="search-loading">Searching workspace in background...</div>';
@@ -7504,8 +7574,9 @@
         html += '<div class="search-empty">No matches found in workspace.</div>';
       } else {
         for(const r of wsResults){
+          const headingPart = r.heading ? `<span class="s-heading" style="color:var(--accent);margin-left:6px;font-size:11px;opacity:0.85;">§ ${escapeHtml(r.heading)}</span>` : '';
           html += `<div class="search-result ws" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
-            <div class="s-file">${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span></div>
+            <div class="s-file">${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${headingPart}</div>
             <div class="s-text">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
           </div>`;
         }
@@ -7521,6 +7592,8 @@
     fileMatches = [];
     fileMatchIdx = -1;
     activeTargetLine = -1;
+    levelResults = [];
+    levelSearching = false;
     wsResults = [];
     wsSearching = false;
     searchResults.style.display = 'none';
@@ -7538,13 +7611,22 @@
     if(searchScope === 'file'){
       runFileSearch(q, true);
     }
-    // Background debounce workspace search
+    // Background debounce search
     clearTimeout(searchDebounce);
     if(q){
       searchDebounce = setTimeout(() => {
-        performWorkspaceSearch(q);
-      }, 400);
+        if(searchScope === 'level'){
+          performLevelSearch(q);
+        } else if(searchScope === 'all'){
+          performWorkspaceSearch(q);
+        } else {
+          performLevelSearch(q);
+          performWorkspaceSearch(q);
+        }
+      }, 350);
     } else {
+      levelResults = [];
+      levelSearching = false;
       wsResults = [];
       wsSearching = false;
       updateSearchUI();
@@ -7562,6 +7644,7 @@
       e.preventDefault();
       if(e.shiftKey) prevMatch();
       else if(searchScope === 'file') nextMatch();
+      else if(searchScope === 'level') performLevelSearch(searchInput.value.trim());
       else performWorkspaceSearch(searchInput.value.trim());
     } else if(e.key === 'Escape'){
       e.preventDefault();
@@ -7596,6 +7679,16 @@
       return;
     }
 
+    const levelRes = e.target.closest('.search-result.level');
+    if(levelRes){
+      const file = levelRes.dataset.file;
+      const line = parseInt(levelRes.dataset.line, 10);
+      searchResults.style.display = 'none';
+      await openFile(file, { pushHistory: true, line: line, interactive: true });
+      setSearchScope('file');
+      return;
+    }
+
     const wsRes = e.target.closest('.search-result.ws');
     if(wsRes){
       const file = wsRes.dataset.file;
@@ -7606,16 +7699,18 @@
     }
   });
 
-  // Global search shortcuts (Ctrl+F for in-file, Ctrl+Shift+F for workspace)
+  // Global search shortcuts (Ctrl+F for in-file, Ctrl+Alt+F for same level, Ctrl+Shift+F for workspace)
   document.addEventListener('keydown', (e) => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f'){
       e.preventDefault();
-      if(isFlashcardMode){
+      if(isFlashcardMode && !e.altKey && !e.shiftKey){
         openFcRightSidebarAndFocusSearch();
         return;
       }
       if(e.shiftKey){
         setSearchScope('all');
+      } else if(e.altKey){
+        setSearchScope('level');
       } else {
         setSearchScope('file');
       }
@@ -9484,6 +9579,22 @@
     return list;
   }
 
+  function stripMediaContent(str) {
+    if (!str) return '';
+    return str
+      .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '')
+      .replace(/<div\b[^>]*\bclass=["'][^"']*(?:anki-image-occlusion|anki-io-)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<audio\b[^>]*>[\s\S]*?<\/audio>|<audio\b[^>]*\/?>/gi, '')
+      .replace(/<video\b[^>]*>[\s\S]*?<\/video>|<video\b[^>]*\/?>/gi, '')
+      .replace(/<(?:img|source)\b[^>]*\/?>/gi, '')
+      .replace(/!\[.*?\]\([^\)]*\)/g, '')
+      .replace(/!\[\[[^\]]*\]\]/g, '')
+      .replace(/\[sound:[^\]]*\]/gi, '')
+      .replace(/data:(?:image|audio|video)\/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=]+/gi, '')
+      .replace(/\[.*?\]\([^\)]*\.(?:png|jpe?g|gif|webp|svg|bmp|ico|mp3|wav|ogg|m4a|opus|flac|aac|mp4|webm|avi|mkv)(?:\?[^\)]*)?\)/gi, '')
+      .replace(/\[\[[^\]]*\.(?:png|jpe?g|gif|webp|svg|bmp|ico|mp3|wav|ogg|m4a|opus|flac|aac|mp4|webm|avi|mkv)(?:\|[^\]]*)?\]\]/gi, '');
+  }
+
   function getCardBackRawText(h){
     if (h && h.card_content !== undefined) return h.card_content;
     if(!lines || h.line + 1 > h.end) return '';
@@ -9627,7 +9738,7 @@
       if(query){
         breadcrumb = getBreadcrumb(h);
         const frontText = h.text + (breadcrumb ? ' ' + breadcrumb : '');
-        const backText = getCardBackRawText(h);
+        const backText = stripMediaContent(getCardBackRawText(h));
         const frontMatch = frontText.toLowerCase().includes(lowerQ);
         const backMatch = backText.toLowerCase().includes(lowerQ);
         if(fcSearchScope === 'front'){
@@ -10068,7 +10179,7 @@
 
       const title = (h.text || '').toLowerCase();
       const crumb = (h.breadcrumb || '').toLowerCase();
-      const backRaw = getCardBackRawText(h).toLowerCase();
+      const backRaw = stripMediaContent(getCardBackRawText(h)).toLowerCase();
       const tags = (h.tags || '').toLowerCase();
 
       return title.includes(q) || crumb.includes(q) || backRaw.includes(q) || tags.includes(q);

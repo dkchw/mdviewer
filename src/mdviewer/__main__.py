@@ -203,6 +203,43 @@ def safe_rel_path(directory, rel_path):
             return None
     return target
 
+RE_SVG_BLOCK = re.compile(r'<svg\b[^>]*>[\s\S]*?<\/svg>', re.IGNORECASE)
+RE_IO_DIV = re.compile(r'<div\b[^>]*\bclass=[\"\'][^\"\']*(?:anki-image-occlusion|anki-io-)[^\"\']*[\"\'][^>]*>[\s\S]*?<\/div>', re.IGNORECASE)
+RE_AUDIO_TAG = re.compile(r'<audio\b[^>]*>[\s\S]*?<\/audio>|<audio\b[^>]*\/?>', re.IGNORECASE)
+RE_VIDEO_TAG = re.compile(r'<video\b[^>]*>[\s\S]*?<\/video>|<video\b[^>]*\/?>', re.IGNORECASE)
+RE_HTML_MEDIA_TAG = re.compile(r'<(?:img|source)\b[^>]*\/?>', re.IGNORECASE)
+RE_MD_IMG = re.compile(r'!\[.*?\]\([^\)]*\)')
+RE_WIKI_IMG = re.compile(r'!\[\[[^\]]*\]\]')
+RE_SOUND = re.compile(r'\[sound:[^\]]*\]', re.IGNORECASE)
+RE_DATA_URI = re.compile(r'data:(?:image|audio|video)\/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=]+', re.IGNORECASE)
+RE_MEDIA_EXTS = r'(?:png|jpe?g|gif|webp|svg|bmp|ico|mp3|wav|ogg|m4a|opus|flac|aac|mp4|webm|avi|mkv)'
+RE_MD_MEDIA_LINK = re.compile(rf'\[.*?\]\([^\)]*\.{RE_MEDIA_EXTS}(?:\?[^\)]*)?\)', re.IGNORECASE)
+RE_WIKI_MEDIA = re.compile(rf'\[\[[^\]]*\.{RE_MEDIA_EXTS}(?:\|[^\]]*)?\]\]', re.IGNORECASE)
+
+def strip_media_content(text: str) -> str:
+    """
+    Strips image syntax, embeds, SVGs, audio tags, data URIs, and media links from markdown text
+    while preserving original line counts (substitutes multiline blocks with equivalent newlines).
+    """
+    if not text:
+        return ""
+    c = RE_SVG_BLOCK.sub(lambda m: '\n' * m.group(0).count('\n'), text)
+    c = RE_IO_DIV.sub(lambda m: '\n' * m.group(0).count('\n'), c)
+    c = RE_AUDIO_TAG.sub(lambda m: '\n' * m.group(0).count('\n'), c)
+    c = RE_VIDEO_TAG.sub(lambda m: '\n' * m.group(0).count('\n'), c)
+    c = RE_HTML_MEDIA_TAG.sub('', c)
+    c = RE_MD_IMG.sub('', c)
+    c = RE_WIKI_IMG.sub('', c)
+    c = RE_SOUND.sub('', c)
+    c = RE_DATA_URI.sub('', c)
+    c = RE_MD_MEDIA_LINK.sub('', c)
+    c = RE_WIKI_MEDIA.sub('', c)
+    return c
+
+def natural_sort_key(s: str):
+    """Natural alphanumeric sort key for file paths and chapter names."""
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+
 def export_study_session(directory: str, session_name: str, cards: List[Dict[str, Any]], ws_state=None) -> Tuple[bool, bytes, str, str]:
     """
     Exports a study session as Markdown (.md) or a ZIP bundle with media assets (.zip).
@@ -3356,41 +3393,120 @@ def main():
                     
             elif parsed.path == '/api/search':
                 query_args = urllib.parse.parse_qs(parsed.query)
-                q = query_args.get('q', [''])[0].lower()
+                q_raw = query_args.get('q', [''])[0].strip()
+                q = q_raw.lower()
+                scope = query_args.get('scope', ['workspace'])[0].strip().lower()
+                file_param = query_args.get('file', [''])[0].strip()
+
                 if not q:
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(b'[]')
                     return
-                    
+
                 results = []
-                # Walk the directory
-                for root, dirs, files in os.walk(directory):
-                    # Skip hidden dirs and node_modules
-                    dirs[:] = [d for d in dirs if not d.startswith('.') and d.lower() not in ('node_modules', '.obsidian', '.vscode', '.idea')]
-                    for file in files:
-                        if file.lower().endswith(('.md', '.markdown', '.txt')) and not file.startswith('.'):
-                            filepath = os.path.join(root, file)
-                            rel_path = os.path.relpath(filepath, directory)
-                            try:
-                                with open(filepath, 'r', encoding='utf-8') as f:
-                                    lines = f.readlines()
-                                    for i, line in enumerate(lines):
-                                        if q in line.lower():
+                max_results = 150
+
+                if scope in ('same_level', 'level', 'same-level'):
+                    target_folder = directory
+                    if file_param:
+                        resolved_param = safe_rel_path(directory, file_param)
+                        if resolved_param:
+                            if os.path.isdir(resolved_param):
+                                target_folder = resolved_param
+                            else:
+                                target_folder = os.path.dirname(resolved_param)
+                        else:
+                            parent_cand = os.path.dirname(file_param)
+                            resolved_parent = safe_rel_path(directory, parent_cand)
+                            if resolved_parent and os.path.isdir(resolved_parent):
+                                target_folder = resolved_parent
+
+                    if not os.path.isdir(target_folder):
+                        target_folder = directory
+
+                    target_files = []
+                    try:
+                        with os.scandir(target_folder) as it:
+                            for entry in it:
+                                if entry.is_file() and not entry.name.startswith('.'):
+                                    if entry.name.lower().endswith(('.md', '.markdown')):
+                                        target_files.append(entry.path)
+                    except Exception:
+                        pass
+
+                    target_files.sort(key=natural_sort_key)
+
+                    for filepath in target_files:
+                        rel_path = os.path.relpath(filepath, directory)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                                raw_text = f.read()
+
+                            clean_text = strip_media_content(raw_text)
+                            orig_lines = raw_text.splitlines()
+                            clean_lines = clean_text.splitlines()
+
+                            current_heading = ""
+                            for i, cline in enumerate(clean_lines):
+                                s_clean = cline.strip()
+                                if s_clean.startswith('#'):
+                                    current_heading = s_clean.lstrip('#').strip()
+
+                                if q in cline.lower():
+                                    snippet = s_clean if s_clean else (orig_lines[i].strip() if i < len(orig_lines) else "")
+                                    results.append({
+                                        "file": rel_path,
+                                        "line": i,
+                                        "text": snippet[:200],
+                                        "heading": current_heading
+                                    })
+                                    if len(results) >= max_results:
+                                        break
+                        except Exception:
+                            pass
+                        if len(results) >= max_results:
+                            break
+
+                else:
+                    for root, dirs, files in os.walk(directory):
+                        dirs[:] = [d for d in dirs if not d.startswith('.') and d.lower() not in ('node_modules', '.obsidian', '.vscode', '.idea')]
+                        files.sort(key=natural_sort_key)
+                        for file in files:
+                            if file.lower().endswith(('.md', '.markdown', '.txt')) and not file.startswith('.'):
+                                filepath = os.path.join(root, file)
+                                rel_path = os.path.relpath(filepath, directory)
+                                try:
+                                    with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                                        raw_text = f.read()
+
+                                    clean_text = strip_media_content(raw_text)
+                                    orig_lines = raw_text.splitlines()
+                                    clean_lines = clean_text.splitlines()
+
+                                    current_heading = ""
+                                    for i, cline in enumerate(clean_lines):
+                                        s_clean = cline.strip()
+                                        if s_clean.startswith('#'):
+                                            current_heading = s_clean.lstrip('#').strip()
+
+                                        if q in cline.lower():
+                                            snippet = s_clean if s_clean else (orig_lines[i].strip() if i < len(orig_lines) else "")
                                             results.append({
                                                 "file": rel_path,
                                                 "line": i,
-                                                "text": line.strip()[:200]  # snippet
+                                                "text": snippet[:200],
+                                                "heading": current_heading
                                             })
-                                            if len(results) > 100:  # cap results for performance
+                                            if len(results) >= max_results:
                                                 break
-                            except Exception:
-                                pass
-                            if len(results) > 100:
-                                break
-                    if len(results) > 100:
-                        break
+                                except Exception:
+                                    pass
+                                if len(results) >= max_results:
+                                    break
+                        if len(results) >= max_results:
+                            break
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
