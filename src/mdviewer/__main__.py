@@ -240,6 +240,88 @@ def natural_sort_key(s: str):
     """Natural alphanumeric sort key for file paths and chapter names."""
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
+def parse_search_query(q_str: str, default_heading: str = 'all'):
+    """
+    Parses a search query string and default heading filter into:
+    (heading_mode, search_term, section_filter)
+    - heading_mode: 'all', 'any', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+    - search_term: string to search for (can be empty if browsing headings)
+    - section_filter: optional string filter for enclosing section heading
+    """
+    q = (q_str or '').strip()
+    heading_mode = (default_heading or 'all').strip().lower()
+    sec_filter = None
+
+    # Check sec: / section: prefix (e.g. sec:"Chapter 1" or sec:Vocab)
+    m_sec = re.match(r'^(?:sec|section):(?:"([^"]+)"|(\S+))\s*(.*)$', q, re.IGNORECASE)
+    if m_sec:
+        sec_filter = (m_sec.group(1) or m_sec.group(2)).strip().lower()
+        q = (m_sec.group(3) or '').strip()
+
+    # 1. Heading number prefix: h1:term ... h6:term, heading1:term ... heading6:term
+    m_h_num = re.match(r'^(?:h|heading)([1-6]):\s*(.*)$', q, re.IGNORECASE)
+    if m_h_num:
+        heading_mode = f'h{m_h_num.group(1)}'
+        term = m_h_num.group(2).strip()
+        return heading_mode, term, sec_filter
+
+    # 2. General heading prefix: h:term, heading:term
+    m_h_any = re.match(r'^(?:h|heading):\s*(.*)$', q, re.IGNORECASE)
+    if m_h_any:
+        heading_mode = 'any'
+        term = m_h_any.group(1).strip()
+        return heading_mode, term, sec_filter
+
+    # 3. Markdown hashes: ## term (level 2-6), or # term (level 1 with space/end)
+    if re.match(r'^#{2,6}', q):
+        m_hashes = re.match(r'^(#{2,6})(?:\s*(.*))?$', q)
+        if m_hashes:
+            heading_mode = f'h{len(m_hashes.group(1))}'
+            term = (m_hashes.group(2) or '').strip()
+            return heading_mode, term, sec_filter
+    elif re.match(r'^#\s+', q) or q == '#':
+        m_h1 = re.match(r'^#(?:(\s+.*)|$)', q)
+        if m_h1:
+            heading_mode = 'h1'
+            term = (m_h1.group(1) or '').strip()
+            return heading_mode, term, sec_filter
+
+    return heading_mode, q, sec_filter
+
+def check_search_line_match(s_clean: str, orig_line: str, cline: str, heading_mode: str, term: str, sec_filter: Optional[str], current_heading: str) -> Tuple[bool, bool, int, str]:
+    """
+    Evaluates whether a markdown line matches the search query and heading mode.
+    Returns (matched, is_heading, heading_level, heading_title).
+    """
+    is_heading = False
+    heading_level = 0
+    heading_title = ""
+    m_head = re.match(r'^(#{1,6})\s+(.*)$', s_clean)
+    if m_head:
+        is_heading = True
+        heading_level = len(m_head.group(1))
+        heading_title = m_head.group(2).strip()
+
+    if sec_filter and (not current_heading or sec_filter not in current_heading.lower()):
+        return False, is_heading, heading_level, heading_title
+
+    term_lower = term.lower()
+    if heading_mode == 'any':
+        if is_heading:
+            if not term_lower or term_lower in s_clean.lower() or term_lower in heading_title.lower():
+                return True, is_heading, heading_level, heading_title
+        return False, is_heading, heading_level, heading_title
+    elif heading_mode in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+        target_lvl = int(heading_mode[1])
+        if is_heading and heading_level == target_lvl:
+            if not term_lower or term_lower in s_clean.lower() or term_lower in heading_title.lower():
+                return True, is_heading, heading_level, heading_title
+        return False, is_heading, heading_level, heading_title
+    else: # 'all'
+        if term_lower and term_lower in cline.lower():
+            return True, is_heading, heading_level, heading_title
+        return False, is_heading, heading_level, heading_title
+
 def export_study_session(directory: str, session_name: str, cards: List[Dict[str, Any]], ws_state=None) -> Tuple[bool, bytes, str, str]:
     """
     Exports a study session as Markdown (.md) or a ZIP bundle with media assets (.zip).
@@ -3394,11 +3476,13 @@ def main():
             elif parsed.path == '/api/search':
                 query_args = urllib.parse.parse_qs(parsed.query)
                 q_raw = query_args.get('q', [''])[0].strip()
-                q = q_raw.lower()
                 scope = query_args.get('scope', ['workspace'])[0].strip().lower()
                 file_param = query_args.get('file', [''])[0].strip()
+                heading_param = query_args.get('heading', ['all'])[0].strip().lower()
 
-                if not q:
+                heading_mode, search_term, sec_filter = parse_search_query(q_raw, heading_param)
+
+                if heading_mode == 'all' and not search_term and not sec_filter:
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -3451,16 +3535,22 @@ def main():
                             current_heading = ""
                             for i, cline in enumerate(clean_lines):
                                 s_clean = cline.strip()
-                                if s_clean.startswith('#'):
-                                    current_heading = s_clean.lstrip('#').strip()
+                                orig_l = orig_lines[i] if i < len(orig_lines) else ""
+                                matched, is_heading, heading_level, heading_title = check_search_line_match(
+                                    s_clean, orig_l, cline, heading_mode, search_term, sec_filter, current_heading
+                                )
+                                if is_heading:
+                                    current_heading = heading_title
 
-                                if q in cline.lower():
-                                    snippet = s_clean if s_clean else (orig_lines[i].strip() if i < len(orig_lines) else "")
+                                if matched:
+                                    snippet = s_clean if s_clean else (orig_l.strip() if orig_l else "")
                                     results.append({
                                         "file": rel_path,
                                         "line": i,
                                         "text": snippet[:200],
-                                        "heading": current_heading
+                                        "heading": current_heading,
+                                        "is_heading": is_heading,
+                                        "heading_level": heading_level
                                     })
                                     if len(results) >= max_results:
                                         break
@@ -3488,16 +3578,22 @@ def main():
                                     current_heading = ""
                                     for i, cline in enumerate(clean_lines):
                                         s_clean = cline.strip()
-                                        if s_clean.startswith('#'):
-                                            current_heading = s_clean.lstrip('#').strip()
+                                        orig_l = orig_lines[i] if i < len(orig_lines) else ""
+                                        matched, is_heading, heading_level, heading_title = check_search_line_match(
+                                            s_clean, orig_l, cline, heading_mode, search_term, sec_filter, current_heading
+                                        )
+                                        if is_heading:
+                                            current_heading = heading_title
 
-                                        if q in cline.lower():
-                                            snippet = s_clean if s_clean else (orig_lines[i].strip() if i < len(orig_lines) else "")
+                                        if matched:
+                                            snippet = s_clean if s_clean else (orig_l.strip() if orig_l else "")
                                             results.append({
                                                 "file": rel_path,
                                                 "line": i,
                                                 "text": snippet[:200],
-                                                "heading": current_heading
+                                                "heading": current_heading,
+                                                "is_heading": is_heading,
+                                                "heading_level": heading_level
                                             })
                                             if len(results) >= max_results:
                                                 break

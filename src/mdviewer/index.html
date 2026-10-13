@@ -605,6 +605,93 @@
     border-right: 1px solid var(--border);
   }
 
+  .sb-search-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .sb-heading-group {
+    display: inline-flex;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .sb-heading-group button {
+    background: #191b29;
+    color: var(--muted);
+    border: none;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: all 0.15s;
+  }
+  .sb-heading-group button:hover {
+    color: var(--fg);
+    background: #202436;
+  }
+  .sb-heading-group button.active {
+    background: #24283b;
+    color: #bb9af7;
+    font-weight: 600;
+  }
+  .sb-heading-group button:not(:last-child) {
+    border-right: 1px solid var(--border);
+  }
+
+  .sb-card-h-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    line-height: 14px;
+    text-transform: uppercase;
+  }
+  .sb-card-h-badge.h1 { background: rgba(122, 162, 247, 0.2); color: #7aa2f7; border: 1px solid rgba(122, 162, 247, 0.4); }
+  .sb-card-h-badge.h2 { background: rgba(187, 154, 247, 0.2); color: #bb9af7; border: 1px solid rgba(187, 154, 247, 0.4); }
+  .sb-card-h-badge.h3 { background: rgba(125, 207, 255, 0.2); color: #7dcfff; border: 1px solid rgba(125, 207, 255, 0.4); }
+  .sb-card-h-badge.h4, .sb-card-h-badge.h5, .sb-card-h-badge.h6 { background: rgba(115, 218, 202, 0.2); color: #73daca; border: 1px solid rgba(115, 218, 202, 0.4); }
+
+  .search-h-pills {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    padding-right: 6px;
+  }
+  .search-hp {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .search-hp:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .search-hp.active {
+    background: rgba(187, 154, 247, 0.2);
+    color: #bb9af7;
+    border-color: rgba(187, 154, 247, 0.4);
+  }
+
+  #scopeHeadingBtn {
+    color: #bb9af7;
+    font-size: 10.5px;
+  }
+  #scopeHeadingBtn.active {
+    background: rgba(187, 154, 247, 0.2);
+    color: #c0caf5;
+    border-color: #bb9af7;
+  }
+
   /* Stats / Progress Bar */
   .sb-search-stats-bar {
     display: flex;
@@ -4982,6 +5069,17 @@
             <button id="sbScopeAllBtn" title="Search workspace">All</button>
           </div>
         </div>
+        <!-- Heading / Line Filter buttons -->
+        <div class="sb-search-heading-row">
+          <span class="sb-scope-lbl">Target:</span>
+          <div class="scope-group sb-heading-group" id="sbHeadingGroup">
+            <button class="sb-hf-btn active" data-h="all" title="Search all lines">All</button>
+            <button class="sb-hf-btn" data-h="any" title="Heading lines only (or type h: / heading:)">Any H</button>
+            <button class="sb-hf-btn" data-h="h1" title="Heading 1 lines only (#)">H1</button>
+            <button class="sb-hf-btn" data-h="h2" title="Heading 2 lines only (##)">H2</button>
+            <button class="sb-hf-btn" data-h="h3" title="Heading 3 lines only (###)">H3</button>
+          </div>
+        </div>
       </div>
 
       <!-- Review Progress & Stats Bar -->
@@ -5079,6 +5177,7 @@
           <button id="scopeFileBtn" class="active" title="Search in current file (Ctrl+F)">File</button>
           <button id="scopeLevelBtn" title="Search all markdown files in same level / folder (Ctrl+Alt+F)">Level</button>
           <button id="scopeAllBtn" title="Search workspace (Ctrl+Shift+F)">All</button>
+          <button id="scopeHeadingBtn" title="Heading filter: click to cycle (All / Any H / H1 / H2 / H3)">Line: All</button>
         </div>
         <div id="searchResults"></div>
       </div>
@@ -6810,13 +6909,63 @@
 
   const HRE = /^(#{1,6})\s+(.*)$/;
 
-  let searchScope = 'file'; // 'file' | 'all'
+  let searchScope = 'file'; // 'file' | 'level' | 'all'
+  let topHeadingFilter = 'all'; // 'all' | 'any' | 'h1' | 'h2' | 'h3'
   let activeSearchQuery = '';
   let fileMatches = [];
   let fileMatchIdx = -1;
   let activeTargetLine = -1;
   let wsResults = [];
   let wsSearching = false;
+
+  function parseSearchQuery(qStr, defaultHeading = 'all'){
+    const q = (qStr || '').trim();
+    let headingMode = (defaultHeading || 'all').toLowerCase();
+    let secFilter = null;
+    let term = q;
+
+    // Check sec: / section: prefix
+    const mSec = /^(?:sec|section):(?:"([^"]+)"|(\S+))\s*(.*)$/i.exec(q);
+    if(mSec){
+      secFilter = (mSec[1] || mSec[2]).trim().toLowerCase();
+      term = (mSec[3] || '').trim();
+    }
+
+    // 1. Heading number prefix: h1:term ... h6:term, heading1:term ... heading6:term
+    const mHNum = /^(?:h|heading)([1-6]):\s*(.*)$/i.exec(term);
+    if(mHNum){
+      headingMode = 'h' + mHNum[1];
+      term = mHNum[2].trim();
+      return { headingMode, term, secFilter, rawQ: q };
+    }
+
+    // 2. General heading prefix: h:term, heading:term
+    const mHAny = /^(?:h|heading):\s*(.*)$/i.exec(term);
+    if(mHAny){
+      headingMode = 'any';
+      term = mHAny[1].trim();
+      return { headingMode, term, secFilter, rawQ: q };
+    }
+
+    // 3. Markdown hashes: ## term (level 2-6), or # term (level 1 with space/end)
+    if(/^#{2,6}/.test(term)){
+      const mHashes = /^(#{2,6})(?:\s*(.*))?$/.exec(term);
+      if(mHashes){
+        headingMode = 'h' + mHashes[1].length;
+        term = (mHashes[2] || '').trim();
+        return { headingMode, term, secFilter, rawQ: q };
+      }
+    } else if(/^#\s+/.test(term) || term === '#'){
+      const mH1 = /^#(?:(\s+.*)|$)/.exec(term);
+      if(mH1){
+        headingMode = 'h1';
+        term = (mH1[1] || '').trim();
+        return { headingMode, term, secFilter, rawQ: q };
+      }
+    }
+
+    return { headingMode, term, secFilter, rawQ: q };
+  }
 
   let currentFilePath = '';
   let currentCard = null;
@@ -7131,7 +7280,8 @@
       const arrowClass = hasChildContent ? '' : 'none';
       let txtHtml = escapeHtml('#'.repeat(h.level)+' '+h.text);
       if(activeSearchQuery && searchScope === 'file'){
-        txtHtml = highlightInHtml(txtHtml, activeSearchQuery, isTarget);
+        const pTerm = parseSearchQuery(activeSearchQuery, topHeadingFilter).term;
+        if(pTerm) txtHtml = highlightInHtml(txtHtml, pTerm, isTarget);
       }
       let aiBadge = '';
       if(typeof currentFileAiCards !== 'undefined' && currentFileAiCards){
@@ -7147,7 +7297,8 @@
     }
     let txtHtml = renderPlainLine(text);
     if(activeSearchQuery && searchScope === 'file'){
-      txtHtml = highlightInHtml(txtHtml, activeSearchQuery, isTarget);
+      const pTerm = parseSearchQuery(activeSearchQuery, topHeadingFilter).term;
+      if(pTerm) txtHtml = highlightInHtml(txtHtml, pTerm, isTarget);
     }
     return `<div class="row plain${targetClass}" data-line="${lineNo}">`+
       `<span class="lnum">${lineNo+1}</span>`+
@@ -7758,22 +7909,96 @@
   if(scopeLevelBtn) scopeLevelBtn.addEventListener('click', () => setSearchScope('level'));
   if(scopeAllBtn) scopeAllBtn.addEventListener('click', () => setSearchScope('all'));
 
+  const scopeHeadingBtn = document.getElementById('scopeHeadingBtn');
+  if(scopeHeadingBtn){
+    scopeHeadingBtn.addEventListener('click', () => {
+      const cycle = ['all', 'any', 'h1', 'h2', 'h3'];
+      const curIdx = cycle.indexOf(topHeadingFilter);
+      const nextH = cycle[(curIdx + 1) % cycle.length];
+      setTopHeadingFilter(nextH);
+    });
+  }
+
+  function setTopHeadingFilter(h){
+    topHeadingFilter = h;
+    if(scopeHeadingBtn){
+      const labels = { all: 'Line: All', any: 'Line: Any H', h1: 'Line: H1', h2: 'Line: H2', h3: 'Line: H3' };
+      scopeHeadingBtn.textContent = labels[h] || 'Line: ' + h.toUpperCase();
+      scopeHeadingBtn.classList.toggle('active', h !== 'all');
+    }
+    const q = searchInput ? searchInput.value.trim() : '';
+    if(searchScope === 'file'){
+      runFileSearch(q, true);
+    } else if(searchScope === 'level'){
+      performLevelSearch(q);
+    } else {
+      performWorkspaceSearch(q);
+    }
+  }
+
   function runFileSearch(q, navigate = true){
     fileMatches = [];
     activeSearchQuery = q;
-    if(!q || lines.length === 0){
+    const parsed = parseSearchQuery(q, topHeadingFilter);
+    const { headingMode, term, secFilter } = parsed;
+
+    if((headingMode === 'all' && !term && !secFilter) || lines.length === 0){
       fileMatchIdx = -1;
       activeTargetLine = -1;
       updateSearchUI();
       render();
       return;
     }
-    const qLower = q.toLowerCase();
+
+    let curHeading = '';
+    const termLower = term.toLowerCase();
+
     for(let i=0; i<lines.length; i++){
-      if(lines[i].toLowerCase().includes(qLower)){
-        fileMatches.push({ line: i, text: lines[i] });
+      const rawLine = lines[i];
+      const sClean = rawLine.trim();
+      let isHeading = false;
+      let headingLevel = 0;
+      let headingTitle = '';
+
+      const mHead = /^(#{1,6})\s+(.*)$/.exec(sClean);
+      if(mHead){
+        isHeading = true;
+        headingLevel = mHead[1].length;
+        headingTitle = mHead[2].trim();
+        curHeading = headingTitle;
+      }
+
+      if(secFilter && (!curHeading || !curHeading.toLowerCase().includes(secFilter))){
+        continue;
+      }
+
+      let matched = false;
+      if(headingMode === 'any'){
+        if(isHeading && (!termLower || sClean.toLowerCase().includes(termLower) || headingTitle.toLowerCase().includes(termLower))){
+          matched = true;
+        }
+      } else if(headingMode.startsWith('h') && headingMode.length === 2){
+        const targetLvl = parseInt(headingMode[1], 10);
+        if(isHeading && headingLevel === targetLvl && (!termLower || sClean.toLowerCase().includes(termLower) || headingTitle.toLowerCase().includes(termLower))){
+          matched = true;
+        }
+      } else { // 'all'
+        if(termLower && rawLine.toLowerCase().includes(termLower)){
+          matched = true;
+        }
+      }
+
+      if(matched){
+        fileMatches.push({
+          line: i,
+          text: rawLine,
+          isHeading,
+          headingLevel,
+          heading: curHeading
+        });
       }
     }
+
     if(fileMatches.length > 0){
       if(fileMatchIdx < 0 || fileMatchIdx >= fileMatches.length){
         fileMatchIdx = 0;
@@ -7811,7 +8036,8 @@
   }
 
   async function performLevelSearch(q){
-    if(!q){
+    const parsed = parseSearchQuery(q, topHeadingFilter);
+    if(parsed.headingMode === 'all' && !parsed.term && !parsed.secFilter){
       levelResults = [];
       levelSearching = false;
       updateSearchUI();
@@ -7828,7 +8054,7 @@
       if(isFolderDeck && folderDeckInfo && folderDeckInfo.folderPath){
         targetParam = folderDeckInfo.folderPath;
       }
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&scope=same_level&file=${encodeURIComponent(targetParam)}&strip_images=1`, { signal: levelAbort.signal });
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&heading=${encodeURIComponent(topHeadingFilter)}&scope=same_level&file=${encodeURIComponent(targetParam)}&strip_images=1`, { signal: levelAbort.signal });
       if(!res.ok) throw new Error('Level search failed');
       levelResults = await res.json();
     } catch(e){
@@ -7842,7 +8068,8 @@
   }
 
   async function performWorkspaceSearch(q){
-    if(!q){
+    const parsed = parseSearchQuery(q, topHeadingFilter);
+    if(parsed.headingMode === 'all' && !parsed.term && !parsed.secFilter){
       wsResults = [];
       wsSearching = false;
       updateSearchUI();
@@ -7855,7 +8082,7 @@
     searchAbort = new AbortController();
     
     try {
-      const res = await fetch('/api/search?q=' + encodeURIComponent(q), { signal: searchAbort.signal });
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&heading=${encodeURIComponent(topHeadingFilter)}&strip_images=1`, { signal: searchAbort.signal });
       if(!res.ok) throw new Error('Search failed');
       wsResults = await res.json();
     } catch(e){
@@ -7896,16 +8123,26 @@
       }
     }
     
-    if(!q){
+    if(!q && topHeadingFilter === 'all'){
       searchResults.style.display = 'none';
       return;
     }
     
+    const parsed = parseSearchQuery(q, topHeadingFilter);
+    const hlWord = parsed.term || q;
+
     searchResults.style.display = 'block';
     let html = `<div class="search-tabs">
       <button class="search-tab ${searchScope==='file'?'active':''}" data-tab="file">This File (${fileMatches.length})</button>
       <button class="search-tab ${searchScope==='level'?'active':''}" data-tab="level">Same Level (${levelResults.length}${levelSearching?'...':''})</button>
       <button class="search-tab ${searchScope==='all'?'active':''}" data-tab="all">Workspace (${wsResults.length}${wsSearching?'...':''})</button>
+      <div class="search-h-pills" id="topSearchHeadingPills">
+        <button class="search-hp ${topHeadingFilter==='all'?'active':''}" data-h="all" title="Search all lines">All</button>
+        <button class="search-hp ${topHeadingFilter==='any'?'active':''}" data-h="any" title="Heading lines only">Any H</button>
+        <button class="search-hp ${topHeadingFilter==='h1'?'active':''}" data-h="h1" title="Heading 1 lines only (#)">H1</button>
+        <button class="search-hp ${topHeadingFilter==='h2'?'active':''}" data-h="h2" title="Heading 2 lines only (##)">H2</button>
+        <button class="search-hp ${topHeadingFilter==='h3'?'active':''}" data-h="h3" title="Heading 3 lines only (###)">H3</button>
+      </div>
       <button class="search-tab-dock-btn" id="dockSearchToSidebarBtn" title="Open and keep results open in Side Panel">⧉ Side Panel</button>
     </div>`;
     
@@ -7918,9 +8155,10 @@
         for(let i=0; i<fileMatches.length; i++){
           const m = fileMatches[i];
           const isAct = (i === fileMatchIdx);
+          const hBadge = (m.isHeading && m.headingLevel) ? `<span class="sb-card-h-badge h${m.headingLevel}" style="margin-left:4px;">H${m.headingLevel}</span>` : '';
           html += `<div class="search-result in-file ${isAct?'active':''}" data-file-idx="${i}">
-            <div class="s-file">Line ${m.line + 1}</div>
-            <div class="s-text">${highlightInHtml(escapeHtml(m.text.trim()), q, isAct)}</div>
+            <div class="s-file">Line ${m.line + 1}${hBadge}</div>
+            <div class="s-text">${highlightInHtml(escapeHtml(m.text.trim()), hlWord, isAct)}</div>
           </div>`;
         }
       }
@@ -7931,10 +8169,11 @@
         html += '<div class="search-empty">No markdown matches found in this folder level.</div>';
       } else {
         for(const r of levelResults){
+          const hBadge = (r.is_heading && r.heading_level) ? `<span class="sb-card-h-badge h${r.heading_level}" style="margin-left:4px;">H${r.heading_level}</span>` : '';
           const headingPart = r.heading ? `<span class="s-heading" style="color:var(--accent);margin-left:6px;font-size:11px;opacity:0.85;">§ ${escapeHtml(r.heading)}</span>` : '';
           html += `<div class="search-result level" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
-            <div class="s-file">📄 ${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${headingPart}</div>
-            <div class="s-text">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
+            <div class="s-file">📄 ${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${hBadge}${headingPart}</div>
+            <div class="s-text">${highlightInHtml(escapeHtml(r.text), hlWord, false)}</div>
           </div>`;
         }
       }
@@ -7945,10 +8184,11 @@
         html += '<div class="search-empty">No matches found in workspace.</div>';
       } else {
         for(const r of wsResults){
+          const hBadge = (r.is_heading && r.heading_level) ? `<span class="sb-card-h-badge h${r.heading_level}" style="margin-left:4px;">H${r.heading_level}</span>` : '';
           const headingPart = r.heading ? `<span class="s-heading" style="color:var(--accent);margin-left:6px;font-size:11px;opacity:0.85;">§ ${escapeHtml(r.heading)}</span>` : '';
           html += `<div class="search-result ws" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
-            <div class="s-file">${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${headingPart}</div>
-            <div class="s-text">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
+            <div class="s-file">${escapeHtml(r.file)} <span class="s-line">Line ${r.line + 1}</span>${hBadge}${headingPart}</div>
+            <div class="s-text">${highlightInHtml(escapeHtml(r.text), hlWord, false)}</div>
           </div>`;
         }
       }
@@ -8033,6 +8273,11 @@
   searchResults.addEventListener('click', async (e) => {
     if(e.target.closest('#dockSearchToSidebarBtn')){
       dockSearchToSidebar();
+      return;
+    }
+    const hpBtn = e.target.closest('.search-hp');
+    if(hpBtn){
+      setTopHeadingFilter(hpBtn.dataset.h);
       return;
     }
     const tabBtn = e.target.closest('.search-tab');
@@ -8302,12 +8547,31 @@
 
   let sbActiveTab = 'files'; // 'files' | 'search'
   let sbSearchScope = 'level'; // 'level' | 'file' | 'all'
+  let sbHeadingFilter = 'all'; // 'all' | 'any' | 'h1' | 'h2' | 'h3'
   let sbSearchResults = [];
   let sbSearching = false;
   let sbSearchAbort = null;
   let sbVisitedKeys = new Set();
   let sbActiveKey = null;
   let sbSearchDebounce = null;
+
+  function setSbHeadingFilter(h){
+    sbHeadingFilter = h;
+    const btns = document.querySelectorAll('.sb-hf-btn');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.h === h));
+    const q = sbSearchQueryInput ? sbSearchQueryInput.value.trim() : '';
+    performSidebarSearch(q);
+  }
+
+  const sbHeadingGroup = document.getElementById('sbHeadingGroup');
+  if(sbHeadingGroup){
+    sbHeadingGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.sb-hf-btn');
+      if(btn && btn.dataset.h){
+        setSbHeadingFilter(btn.dataset.h);
+      }
+    });
+  }
 
   function switchSidebarTab(tab, focusInput = true){
     sbActiveTab = tab;
@@ -8361,7 +8625,16 @@
 
   async function performSidebarSearch(q){
     if(sbSearchDebounce) clearTimeout(sbSearchDebounce);
-    if(!q){
+    const parsed = parseSearchQuery(q, sbHeadingFilter);
+    const { headingMode, term, secFilter } = parsed;
+
+    // Sync UI pill if query contains explicit heading prefix
+    if(parsed.headingMode !== sbHeadingFilter && ['all','any','h1','h2','h3'].includes(parsed.headingMode)){
+      const btns = document.querySelectorAll('.sb-hf-btn');
+      btns.forEach(b => b.classList.toggle('active', b.dataset.h === parsed.headingMode));
+    }
+
+    if(headingMode === 'all' && !term && !secFilter){
       sbSearchResults = [];
       sbSearching = false;
       sbActiveKey = null;
@@ -8379,23 +8652,55 @@
 
     try {
       if(sbSearchScope === 'file'){
-        const lowerQ = q.toLowerCase();
         const hits = [];
         let curHeading = '';
+        const termLower = term.toLowerCase();
+
         if(typeof lines !== 'undefined' && Array.isArray(lines)){
           for(let i = 0; i < lines.length; i++){
             const rawLine = lines[i];
-            const strippedLine = rawLine.trim();
-            if(strippedLine.startsWith('#')){
-              curHeading = strippedLine.replace(/^#+\s*/, '');
-            }
             const cleanLine = stripMediaContent(rawLine);
-            if(cleanLine.toLowerCase().includes(lowerQ)){
+            const sClean = cleanLine.trim();
+            let isHeading = false;
+            let headingLevel = 0;
+            let headingTitle = '';
+
+            const mHead = /^(#{1,6})\s+(.*)$/.exec(sClean);
+            if(mHead){
+              isHeading = true;
+              headingLevel = mHead[1].length;
+              headingTitle = mHead[2].trim();
+              curHeading = headingTitle;
+            }
+
+            if(secFilter && (!curHeading || !curHeading.toLowerCase().includes(secFilter))){
+              continue;
+            }
+
+            let matched = false;
+            if(headingMode === 'any'){
+              if(isHeading && (!termLower || sClean.toLowerCase().includes(termLower) || headingTitle.toLowerCase().includes(termLower))){
+                matched = true;
+              }
+            } else if(headingMode.startsWith('h') && headingMode.length === 2){
+              const targetLvl = parseInt(headingMode[1], 10);
+              if(isHeading && headingLevel === targetLvl && (!termLower || sClean.toLowerCase().includes(termLower) || headingTitle.toLowerCase().includes(termLower))){
+                matched = true;
+              }
+            } else { // 'all'
+              if(termLower && cleanLine.toLowerCase().includes(termLower)){
+                matched = true;
+              }
+            }
+
+            if(matched){
               hits.push({
                 file: currentFilePath || 'Current Note',
                 line: i,
-                text: cleanLine.trim() || strippedLine,
-                heading: curHeading
+                text: cleanLine.trim() || rawLine.trim(),
+                heading: curHeading,
+                is_heading: isHeading,
+                heading_level: headingLevel
               });
               if(hits.length >= 150) break;
             }
@@ -8408,7 +8713,7 @@
           targetParam = folderDeckInfo.folderPath;
         }
         const scopeParam = (sbSearchScope === 'level') ? 'same_level' : 'workspace';
-        const url = `/api/search?q=${encodeURIComponent(q)}&scope=${scopeParam}&file=${encodeURIComponent(targetParam)}&strip_images=1`;
+        const url = `/api/search?q=${encodeURIComponent(q)}&heading=${encodeURIComponent(sbHeadingFilter)}&scope=${scopeParam}&file=${encodeURIComponent(targetParam)}&strip_images=1`;
         const res = await fetch(url, { signal: sbSearchAbort.signal });
         if(!res.ok) throw new Error('Search failed');
         sbSearchResults = await res.json();
@@ -8429,7 +8734,7 @@
       sbSearchQueryClearBtn.style.display = q ? 'inline-block' : 'none';
     }
 
-    if(!q){
+    if(!q && sbHeadingFilter === 'all'){
       if(sbSearchStatsBar) sbSearchStatsBar.style.display = 'none';
       if(sbSearchBadge) sbSearchBadge.style.display = 'none';
       if(sbSearchResultsList){
@@ -8478,6 +8783,9 @@
     }
 
     let html = '';
+    const parsed = parseSearchQuery(q, sbHeadingFilter);
+    const hlWord = parsed.term || q;
+
     for(let i = 0; i < total; i++){
       const r = sbSearchResults[i];
       const key = `${r.file}:${r.line}`;
@@ -8485,6 +8793,7 @@
       const isActive = (sbActiveKey === key);
       const fileName = r.file.split(/[/\\]/).pop() || r.file;
       const headingHtml = r.heading ? `<div class="sb-card-heading" title="${escapeHtml(r.heading)}">§ ${escapeHtml(r.heading)}</div>` : '';
+      const hBadge = (r.is_heading && r.heading_level) ? `<span class="sb-card-h-badge h${r.heading_level}">H${r.heading_level}</span>` : '';
       const badgeText = isVisited ? '✓ Viewed' : 'New';
 
       html += `
@@ -8492,10 +8801,11 @@
           <div class="sb-card-top">
             <span class="sb-card-file" title="${escapeHtml(r.file)}">📄 ${escapeHtml(fileName)}</span>
             <span class="sb-card-line">L${r.line + 1}</span>
+            ${hBadge}
             <span class="sb-card-status-badge">${badgeText}</span>
           </div>
           ${headingHtml}
-          <div class="sb-card-snippet">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
+          <div class="sb-card-snippet">${highlightInHtml(escapeHtml(r.text), hlWord, false)}</div>
         </div>`;
     }
 
@@ -8606,6 +8916,7 @@
     switchSidebarTab('search', false);
     if(sbSearchQueryInput) sbSearchQueryInput.value = q;
     setSbSearchScope(searchScope === 'all' ? 'all' : (searchScope === 'level' ? 'level' : 'file'));
+    setSbHeadingFilter(topHeadingFilter);
     performSidebarSearch(q);
   }
   window.dockSearchToSidebar = dockSearchToSidebar;
