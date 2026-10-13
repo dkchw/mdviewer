@@ -4177,7 +4177,14 @@ def main():
                     if not resolved or not os.path.isfile(resolved):
                         self.send_json(404, {"status": "error", "message": f"File not found: {target_path}"})
                         return
-                    meta = inspect_apkg(resolved)
+                    try:
+                        import importlib
+                        from . import anki as anki_module
+                        importlib.reload(anki_module)
+                        inspect_fn = anki_module.inspect_apkg
+                    except Exception:
+                        inspect_fn = inspect_apkg
+                    meta = inspect_fn(resolved)
                     self.send_json(200, meta)
                 except Exception as e:
                     self.send_json(500, {"status": "error", "message": str(e)})
@@ -4200,7 +4207,14 @@ def main():
                         remaining -= len(chunk)
                     temp_f.close()
 
-                    meta = inspect_apkg(temp_f.name)
+                    try:
+                        import importlib
+                        from . import anki as anki_module
+                        importlib.reload(anki_module)
+                        inspect_fn = anki_module.inspect_apkg
+                    except Exception:
+                        inspect_fn = inspect_apkg
+                    meta = inspect_fn(temp_f.name)
                     meta["temp_path"] = temp_f.name
                     meta["uploaded_name"] = client_fname
                     self.send_json(200, meta)
@@ -4240,7 +4254,14 @@ def main():
                         resolved_out = os.path.abspath(directory)
 
                     opts = payload.get('options', {})
-                    res = import_apkg(resolved_apkg, resolved_out, options=opts)
+                    try:
+                        import importlib
+                        from . import anki as anki_module
+                        importlib.reload(anki_module)
+                        import_fn = anki_module.import_apkg
+                    except Exception:
+                        import_fn = import_apkg
+                    res = import_fn(resolved_apkg, resolved_out, options=opts)
                     rel_files = []
                     for f in res.get("imported_files", []):
                         full_f = os.path.join(resolved_out, f)

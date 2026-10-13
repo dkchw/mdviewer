@@ -106,6 +106,29 @@ def clean_html(raw: str, assets_prefix: str = "assets/") -> str:
     return '\n'.join(cleaned).strip()
 
 
+def cloze_for_ordinal(text: str, target_cloze: int, is_front: bool) -> str:
+    """
+    Format Anki cloze deletions {{cN::answer::hint}} for a specific card ordinal/cloze number.
+    Only the target cloze is hidden/highlighted; other clozes remain unhidden as surrounding context.
+    """
+    if not text:
+        return ""
+
+    def repl(m):
+        c_num = int(m.group(1))
+        ans = m.group(2)
+        hint = m.group(3) if len(m.groups()) >= 3 and m.group(3) else None
+        if c_num == target_cloze:
+            if is_front:
+                return f"[{hint}]" if hint else "[...]"
+            else:
+                return f"=={ans}=="
+        else:
+            return ans
+
+    return re.sub(r'\{\{c(\d+)::([^:}]+)(?:::([^}]+))?\}\}', repl, text)
+
+
 def cloze_to_front(text: str) -> str:
     """Convert Anki cloze deletions {{c1::answer::hint}} to [hint] or [...] for card front."""
     if not text:
@@ -120,11 +143,80 @@ def cloze_to_back(text: str) -> str:
     return re.sub(r'\{\{c\d+::([^:}]+)(?:::([^}]+))?\}\}', r'==\1==', text)
 
 
-def clean_heading_title(raw: str, max_len: int = 120, assets_prefix: str = "assets/") -> str:
+def build_rect_io_block(base_img_src: str, rect_text: str, target_cloze: int, title: str = "") -> str:
+    """Build responsive interactive SVG occlusion overlay for image-occlusion:rect clozes."""
+    pattern = r'\{\{c(\d+)::image-occlusion:([a-z]+):([^}]+)\}\}'
+    matches = re.findall(pattern, rect_text)
+    if not matches:
+        return f"![image]({base_img_src})" if base_img_src else ""
+
+    shapes_svg = []
+    for c_str, shape_type, attrs_str in matches:
+        c_num = int(c_str)
+        is_active = (c_num == target_cloze)
+        cls_name = "anki-io-shape anki-io-active" if is_active else "anki-io-shape anki-io-other"
+
+        attr_dict = {}
+        for pair in attrs_str.split(':'):
+            if '=' in pair:
+                k, v = pair.split('=', 1)
+                attr_dict[k] = v
+
+        if shape_type == 'rect':
+            left = float(attr_dict.get('left', 0)) * 100
+            top = float(attr_dict.get('top', 0)) * 100
+            width = float(attr_dict.get('width', 0)) * 100
+            height = float(attr_dict.get('height', 0)) * 100
+            shapes_svg.append(
+                f'<rect x="{left:.2f}%" y="{top:.2f}%" width="{width:.2f}%" height="{height:.2f}%" '
+                f'class="{cls_name}" data-cloze="{c_num}" onclick="this.classList.toggle(\'is-revealed\')" />'
+            )
+        elif shape_type in ('circle', 'ellipse'):
+            cx = float(attr_dict.get('cx', 0)) * 100
+            cy = float(attr_dict.get('cy', 0)) * 100
+            rx = float(attr_dict.get('rx', attr_dict.get('r', 0))) * 100
+            ry = float(attr_dict.get('ry', rx)) * 100
+            shapes_svg.append(
+                f'<ellipse cx="{cx:.2f}%" cy="{cy:.2f}%" rx="{rx:.2f}%" ry="{ry:.2f}%" '
+                f'class="{cls_name}" data-cloze="{c_num}" onclick="this.classList.toggle(\'is-revealed\')" />'
+            )
+
+    svg_content = "\n      ".join(shapes_svg)
+    esc_title = html.escape(title or "Image Occlusion")
+    return (
+        f'<div class="anki-image-occlusion" data-active-cloze="{target_cloze}">\n'
+        f'  <div class="anki-io-stage">\n'
+        f'    <img class="anki-io-base" src="{base_img_src}" alt="{esc_title}">\n'
+        f'    <svg class="anki-io-svg" viewBox="0 0 100 100" preserveAspectRatio="none">\n'
+        f'      {svg_content}\n'
+        f'    </svg>\n'
+        f'  </div>\n'
+        f'</div>'
+    )
+
+
+def build_mask_io_block(base_img_src: str, mask_src: str, title: str = "") -> str:
+    """Build overlay for Image Occlusion Enhanced image masks."""
+    esc_title = html.escape(title or "Image Occlusion")
+    return (
+        f'<div class="anki-image-occlusion anki-io-mask-mode">\n'
+        f'  <div class="anki-io-stage">\n'
+        f'    <img class="anki-io-base" src="{base_img_src}" alt="{esc_title}">\n'
+        f'    <img class="anki-io-overlay-img" src="{mask_src}" alt="Occlusion Mask" onclick="this.classList.toggle(\'is-hidden\')">\n'
+        f'  </div>\n'
+        f'</div>'
+    )
+
+
+def clean_heading_title(raw: str, max_len: int = 120, assets_prefix: str = "assets/", target_cloze: Optional[int] = None) -> str:
     """Sanitize text for use as a single-line markdown heading."""
     if not raw:
         return "Card"
-    cleaned = clean_html(cloze_to_front(raw), assets_prefix=assets_prefix)
+    if target_cloze is not None:
+        raw_text = cloze_for_ordinal(raw, target_cloze, is_front=True)
+    else:
+        raw_text = cloze_to_front(raw)
+    cleaned = clean_html(raw_text, assets_prefix=assets_prefix)
     cleaned = re.sub(r'[\r\n]+', ' - ', cleaned).strip()
     cleaned = re.sub(r'^#+\s*', '', cleaned)  # Remove leading markdown hashes
     if len(cleaned) > max_len:
@@ -325,7 +417,7 @@ def pick_front_field(field_pairs: List[Tuple[str, str]]) -> Tuple[Optional[str],
     # Priority 1: Direct matches
     for name, val in field_pairs:
         cname = name.lower()
-        if any(k in cname for k in ["front", "mặt trước", "word", "sentence", "question", "term", "expression", "prompt", "text", "vocable", "titel", "title", "heading", "topic", "concept", "diagnose"]):
+        if any(k in cname for k in ["front", "mặt trước", "word", "sentence", "question", "term", "expression", "prompt", "text", "vocable", "titel", "title", "heading", "topic", "concept", "diagnose", "header"]):
             if val.strip():
                 return name, val
 
@@ -339,7 +431,7 @@ def pick_front_field(field_pairs: List[Tuple[str, str]]) -> Tuple[Optional[str],
     # Priority 3: First non-metadata field
     for name, val in field_pairs:
         cname = name.lower()
-        if not any(k in cname for k in ["id", "sort", "rank", "guid", "audio", "sound", "picture", "image", "pos", "type", "verdeckung", "occlusion", "date", "stamp", "source", "note id"]):
+        if not any(k in cname for k in ["id", "sort", "rank", "guid", "audio", "sound", "picture", "image", "pos", "type", "verdeckung", "occlusion", "date", "stamp", "source", "note id", "amboss-link", "scrollbares ct"]):
             if val.strip():
                 return name, val
 
@@ -461,9 +553,9 @@ def import_apkg(
         rows = cur.fetchall()
         conn.close()
 
-        # Group notes by Deck ID
-        seen_notes_per_deck = set()
-        deck_notes: Dict[int, List[Dict[str, Any]]] = {}
+        # Group cards by Deck ID
+        seen_cards_per_deck = set()
+        deck_cards: Dict[int, List[Dict[str, Any]]] = {}
 
         for did, nid, mid, flds_raw, tags, cord in rows:
             # Check deck filter if specified
@@ -472,14 +564,13 @@ def import_apkg(
                 if did not in deck_filter and dname not in deck_filter:
                     continue
 
-            # In note-based mode, each note is imported once per deck
-            note_key = (did, nid)
-            if note_key in seen_notes_per_deck:
+            card_key = (did, nid, cord)
+            if card_key in seen_cards_per_deck:
                 continue
-            seen_notes_per_deck.add(note_key)
+            seen_cards_per_deck.add(card_key)
 
-            if did not in deck_notes:
-                deck_notes[did] = []
+            if did not in deck_cards:
+                deck_cards[did] = []
 
             fld_names = models_map.get(mid, [])
             fld_vals = flds_raw.split('\x1f')
@@ -489,20 +580,23 @@ def import_apkg(
                 name = fld_names[i] if i < len(fld_names) else f"Field {i+1}"
                 pairs.append((name, val))
 
-            deck_notes[did].append({
+            deck_cards[did].append({
                 "nid": nid,
+                "mid": mid,
+                "cord": cord,
                 "pairs": pairs,
                 "tags": tags or ""
             })
 
         # Generate Markdown files
         imported_files = []
-        total_notes_count = 0
+        total_cards_count = 0
+        total_distinct_notes = set()
         hashes = '#' * max(1, min(6, heading_level))
 
         # If there's only 1 deck with notes, use deck name or fallback
-        for did, notes in deck_notes.items():
-            if not notes:
+        for did, cards in deck_cards.items():
+            if not cards:
                 continue
 
             deck_raw_name = decks_map.get(did, f"Deck_{did}")
@@ -529,15 +623,196 @@ def import_apkg(
             lines = [
                 f"# {deck_raw_name}",
                 "",
-                f"> Imported from Anki deck **{deck_raw_name}** ({len(notes)} cards).",
+                f"> Imported from Anki deck **{deck_raw_name}** ({len(cards)} cards).",
                 ""
             ]
 
             card_idx = 1
-            for note in notes:
-                pairs = note["pairs"]
-                tags = note["tags"]
+            for card in cards:
+                pairs = card["pairs"]
+                tags = card["tags"]
+                cord = card["cord"]
+                total_distinct_notes.add(card["nid"])
 
+                # Check for Image Occlusion (Anki 23.10+, glutanimate IOE, or cloze image occlusion)
+                io_rect_field = None
+                io_rect_val = None
+                io_img_src = None
+                io_title_val = None
+                q_mask_val = None
+                a_mask_val = None
+
+                for name, val in pairs:
+                    if "image-occlusion:" in val:
+                        io_rect_field = name
+                        io_rect_val = val
+                        break
+
+                for name, val in pairs:
+                    cname = name.lower()
+                    if "question mask" in cname or "original mask" in cname:
+                        q_mask_val = val
+                    elif "answer mask" in cname:
+                        a_mask_val = val
+
+                for name, val in pairs:
+                    m = re.search(r'src=["\']?([^"\'\s>]+)', val)
+                    if m and not any(k in m.group(1).lower() for k in ['_amboss-', 'icon', 'button']):
+                        fname = os.path.basename(urllib.parse.unquote(m.group(1).split('?')[0].split('#')[0]))
+                        if fname:
+                            io_img_src = f"{assets_prefix}{fname}"
+                            break
+
+                for name, val in pairs:
+                    cname = name.lower()
+                    if any(k in cname for k in ["titel", "title", "header", "topic", "concept", "front"]) and not "image-occlusion:" in val:
+                        if val.strip():
+                            io_title_val = val
+                            break
+
+                is_io_card = bool(io_rect_val or (q_mask_val and io_img_src))
+
+                # CASE 1: Image Occlusion Card
+                if is_io_card:
+                    if io_rect_val and io_img_src:
+                        pattern = r'\{\{c(\d+)::image-occlusion:([a-z]+):([^}]+)\}\}'
+                        cloze_nums = sorted(list(set(int(m[0]) for m in re.findall(pattern, io_rect_val))))
+                        active_cloze = cloze_nums[cord] if cord < len(cloze_nums) else (cord + 1)
+                        clean_title = clean_heading_title(io_title_val or "Image Occlusion", assets_prefix=assets_prefix)
+                        suffix = f" [Occlusion {active_cloze}]" if len(cloze_nums) > 1 else ""
+                        heading_line = f"{hashes} {card_idx}. {clean_title}{suffix}" if number_cards else f"{hashes} {clean_title}{suffix}"
+                        lines.append(heading_line)
+                        lines.append("")
+
+                        io_block = build_rect_io_block(io_img_src, io_rect_val, active_cloze, clean_title)
+                        lines.append(io_block)
+                        lines.append("")
+                    elif q_mask_val and io_img_src:
+                        m_mask = re.search(r'src=["\']?([^"\'\s>]+)', q_mask_val)
+                        mask_fn = os.path.basename(urllib.parse.unquote(m_mask.group(1).split('?')[0].split('#')[0])) if m_mask else ""
+                        mask_src = f"{assets_prefix}{mask_fn}" if mask_fn else ""
+                        clean_title = clean_heading_title(io_title_val or "Image Occlusion", assets_prefix=assets_prefix)
+                        heading_line = f"{hashes} {card_idx}. {clean_title} [Occlusion {cord + 1}]" if number_cards else f"{hashes} {clean_title} [Occlusion {cord + 1}]"
+                        lines.append(heading_line)
+                        lines.append("")
+
+                        io_block = build_mask_io_block(io_img_src, mask_src, clean_title)
+                        lines.append(io_block)
+                        lines.append("")
+
+                    # Add remaining informative fields
+                    for name, val in pairs:
+                        cname = name.lower()
+                        if name in (io_rect_field, "Image", "Verdeckung", "Occlusion", "Question Mask", "Answer Mask", "Original Mask", "Titel", "Title", "Header"):
+                            continue
+                        if any(k in cname for k in ["id", "note id", "date stamp", "source"]):
+                            continue
+                        if not val.strip():
+                            continue
+                        cleaned_val = clean_html(val, assets_prefix=assets_prefix)
+                        if not cleaned_val:
+                            continue
+                        if '\n' in cleaned_val:
+                            lines.append(f"**{name}:**\n{cleaned_val}")
+                        else:
+                            lines.append(f"**{name}:** {cleaned_val}")
+                        lines.append("")
+
+                    if include_tags and tags.strip():
+                        clean_tags = " ".join(t.strip() for t in tags.split() if t.strip())
+                        if clean_tags:
+                            lines.append(f"**Tags:** {clean_tags}")
+                            lines.append("")
+                    lines.append("---")
+                    lines.append("")
+                    card_idx += 1
+                    continue
+
+                # CASE 2: Cloze Deletion Card
+                has_cloze = any("{{c" in v for _, v in pairs)
+                if has_cloze:
+                    all_text = " ".join(v for _, v in pairs)
+                    cloze_nums = sorted(list(set(int(m) for m in re.findall(r'\{\{c(\d+)::', all_text))))
+                    active_cloze = cloze_nums[cord] if cord < len(cloze_nums) else (cord + 1)
+
+                    front_field, front_val = pick_front_field(pairs)
+                    clean_front = clean_heading_title(front_val, assets_prefix=assets_prefix, target_cloze=active_cloze)
+
+                    heading_line = f"{hashes} {card_idx}. {clean_front}" if number_cards else f"{hashes} {clean_front}"
+                    lines.append(heading_line)
+                    lines.append("")
+
+                    raw_front_clean = clean_html(cloze_for_ordinal(front_val, active_cloze, is_front=True), assets_prefix=assets_prefix)
+                    if '\n' in raw_front_clean or len(raw_front_clean) > len(clean_front) + 5 or '![image]' in raw_front_clean:
+                        lines.append(f"**{front_field or 'Question'}:** {raw_front_clean}")
+                        lines.append("")
+
+                    back_ans_clean = clean_html(cloze_for_ordinal(front_val, active_cloze, is_front=False), assets_prefix=assets_prefix)
+                    if back_ans_clean and back_ans_clean != raw_front_clean:
+                        lines.append(f"**Answer:** {back_ans_clean}")
+                        lines.append("")
+
+                    for name, val in pairs:
+                        if name == front_field:
+                            continue
+                        if not val.strip():
+                            continue
+                        cleaned_val = clean_html(cloze_for_ordinal(val, active_cloze, is_front=False), assets_prefix=assets_prefix)
+                        if not cleaned_val:
+                            continue
+                        if '\n' in cleaned_val:
+                            lines.append(f"**{name}:**\n{cleaned_val}")
+                        else:
+                            lines.append(f"**{name}:** {cleaned_val}")
+                        lines.append("")
+
+                    if include_tags and tags.strip():
+                        clean_tags = " ".join(t.strip() for t in tags.split() if t.strip())
+                        if clean_tags:
+                            lines.append(f"**Tags:** {clean_tags}")
+                            lines.append("")
+                    lines.append("---")
+                    lines.append("")
+                    card_idx += 1
+                    continue
+
+                # CASE 3: Reversed Card (cord == 1 with front/back pairs)
+                if cord == 1 and len(pairs) >= 2:
+                    front_field, front_val = pairs[1][0], pairs[1][1]
+                    back_field, back_val = pairs[0][0], pairs[0][1]
+                    clean_front = clean_heading_title(front_val, assets_prefix=assets_prefix)
+                    heading_line = f"{hashes} {card_idx}. {clean_front}" if number_cards else f"{hashes} {clean_front}"
+                    lines.append(heading_line)
+                    lines.append("")
+
+                    cleaned_back = clean_html(back_val, assets_prefix=assets_prefix)
+                    if cleaned_back:
+                        lines.append(f"**{back_field or 'Answer'}:** {cleaned_back}")
+                        lines.append("")
+
+                    for name, val in pairs[2:]:
+                        if not val.strip():
+                            continue
+                        cleaned_val = clean_html(val, assets_prefix=assets_prefix)
+                        if not cleaned_val:
+                            continue
+                        if '\n' in cleaned_val:
+                            lines.append(f"**{name}:**\n{cleaned_val}")
+                        else:
+                            lines.append(f"**{name}:** {cleaned_val}")
+                        lines.append("")
+
+                    if include_tags and tags.strip():
+                        clean_tags = " ".join(t.strip() for t in tags.split() if t.strip())
+                        if clean_tags:
+                            lines.append(f"**Tags:** {clean_tags}")
+                            lines.append("")
+                    lines.append("---")
+                    lines.append("")
+                    card_idx += 1
+                    continue
+
+                # CASE 4: Standard Note / Card
                 front_field, front_val = pick_front_field(pairs)
                 clean_front = clean_heading_title(front_val, assets_prefix=assets_prefix)
 
@@ -588,13 +863,13 @@ def import_apkg(
                 f.write('\n'.join(lines))
 
             imported_files.append(os.path.relpath(md_file_path, output_dir))
-            total_notes_count += len(notes)
+            total_cards_count += len(cards)
 
         return {
             "status": "ok",
             "imported_files": imported_files,
-            "total_notes": total_notes_count,
-            "total_cards": total_notes_count,
+            "total_notes": len(total_distinct_notes),
+            "total_cards": total_cards_count,
             "extracted_media_count": extracted_media_count,
             "output_dir": output_dir
         }

@@ -627,6 +627,438 @@
     padding:24px 12px;text-align:center;color:var(--muted);font-size:12px;font-style:italic;
   }
 
+  /* Full-Page Dual-Side Flashcard Overview */
+  #fcFullOverviewView {
+    display: none;
+    flex-direction: column;
+    flex: 1 1 auto;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    z-index: 25;
+  }
+  .fc-fo-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px;
+    background: #16161e;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .fc-fo-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .fc-fo-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .fc-fo-badge {
+    background: #242737;
+    color: var(--fg);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .fc-fo-header-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 360px;
+    max-width: 640px;
+  }
+  .fc-fo-search-wrap {
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex: 1 1 auto;
+  }
+  .fc-fo-search-icon {
+    position: absolute;
+    left: 8px;
+    font-size: 11px;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  #fcFoSearchInput {
+    width: 100%;
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 28px 6px 26px;
+    color: var(--fg);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  #fcFoSearchInput:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .fc-fo-clear-btn {
+    position: absolute;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  .fc-fo-clear-btn:hover { color: var(--fg); }
+  .fc-fo-select {
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: var(--fg);
+    font-size: 11.5px;
+    outline: none;
+    cursor: pointer;
+  }
+  .fc-fo-layout-toggle {
+    display: flex;
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .fc-fo-layout-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all .12s ease;
+  }
+  .fc-fo-layout-toggle button:hover {
+    color: var(--fg);
+  }
+  .fc-fo-layout-toggle button.active {
+    background: #242737;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .fc-fo-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fc-fo-btn {
+    background: #242737;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--fg);
+    padding: 5px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all .15s ease;
+  }
+  .fc-fo-btn:hover {
+    background: #2c3040;
+    border-color: var(--accent);
+  }
+  .fc-fo-close-btn {
+    background: rgba(247, 118, 142, 0.12);
+    border-color: rgba(247, 118, 142, 0.35);
+    color: #f7768e;
+  }
+  .fc-fo-close-btn:hover {
+    background: rgba(247, 118, 142, 0.25);
+    border-color: #f7768e;
+  }
+  .fc-fo-content-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 24px 60px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+  .fc-fo-card-card {
+    background: #1a1b26;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .fc-fo-card-card:hover {
+    border-color: rgba(122, 162, 247, 0.45);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  }
+  .fc-fo-card-card.active-card {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 6px 24px rgba(122, 162, 247, 0.25);
+  }
+  .fc-fo-card-header {
+    background: #16161e;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    user-select: none;
+  }
+  .fc-fo-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .fc-fo-card-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 28px;
+  }
+  .fc-fo-card-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid currentColor;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .fc-fo-card-crumb {
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fc-fo-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .fc-fo-action-btn {
+    background: #242737;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg);
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .12s ease;
+  }
+  .fc-fo-action-btn:hover {
+    background: #2c3040;
+    border-color: var(--accent);
+  }
+  .fc-fo-study-btn {
+    background: rgba(122, 162, 247, 0.16);
+    border-color: rgba(122, 162, 247, 0.4);
+    color: #7aa2f7;
+  }
+  .fc-fo-study-btn:hover {
+    background: rgba(122, 162, 247, 0.28);
+    border-color: #7aa2f7;
+  }
+  .fc-fo-mark-btn.is-marked {
+    background: rgba(224, 175, 104, 0.28);
+    border-color: #e0af68;
+    color: #e0af68;
+    font-weight: 700;
+  }
+  .fc-fo-card-body {
+    display: flex;
+    width: 100%;
+    min-height: 120px;
+  }
+  /* Dual-Column Side-by-Side Mode */
+  .fc-fo-content-list.layout-cols .fc-fo-card-body {
+    flex-direction: row;
+  }
+  .fc-fo-content-list.layout-cols .fc-fo-side {
+    flex: 1 1 50%;
+    width: 50%;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .fc-fo-content-list.layout-cols .fc-fo-side.fc-fo-front {
+    border-right: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.012);
+  }
+  .fc-fo-content-list.layout-cols .fc-fo-side.fc-fo-back {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  /* Stacked Mode */
+  .fc-fo-content-list.layout-stack .fc-fo-card-body {
+    flex-direction: column;
+  }
+  .fc-fo-content-list.layout-stack .fc-fo-side {
+    width: 100%;
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  .fc-fo-content-list.layout-stack .fc-fo-side.fc-fo-front {
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.012);
+  }
+  .fc-fo-side-tag {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fc-fo-front .fc-fo-side-tag { color: #7aa2f7; }
+  .fc-fo-back .fc-fo-side-tag { color: #9ece6a; }
+  .fc-fo-front-title {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--fg);
+    margin-bottom: 8px;
+    word-break: break-word;
+  }
+  .fc-fo-front-media {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .fc-fo-back-content {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #c0caf5;
+    word-break: break-word;
+  }
+
+  /* Anki Image Occlusion Core Styles */
+  .anki-image-occlusion {
+    display: block;
+    margin: 10px auto;
+    text-align: center;
+    user-select: none;
+    max-width: 100%;
+  }
+  .anki-io-stage {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    background: #1a1b26;
+  }
+  .anki-io-base {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    pointer-events: none;
+  }
+  .anki-io-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: all;
+    overflow: visible;
+  }
+  .anki-io-shape {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    rx: 4px;
+    ry: 4px;
+  }
+  /* Inactive masks */
+  .anki-io-shape.anki-io-other {
+    fill: #24283b;
+    stroke: #414868;
+    stroke-width: 1.5;
+    opacity: 0.92;
+  }
+  .anki-io-shape.anki-io-other:hover {
+    opacity: 0.65;
+  }
+  /* Active mask on Front face */
+  .fc-front .anki-io-shape.anki-io-active,
+  .anki-io-front .anki-io-shape.anki-io-active {
+    fill: #ff9e64 !important;
+    stroke: #f7768e !important;
+    stroke-width: 2.5 !important;
+    opacity: 0.96 !important;
+    filter: drop-shadow(0 0 6px rgba(255, 158, 100, 0.6));
+  }
+  /* Active mask on Back face */
+  .fc-back .anki-io-shape.anki-io-active,
+  .anki-io-back .anki-io-shape.anki-io-active,
+  .anki-io-shape.anki-io-revealed {
+    fill: rgba(158, 206, 106, 0.18) !important;
+    stroke: #9ece6a !important;
+    stroke-width: 2.5 !important;
+    stroke-dasharray: 4 2;
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 6px rgba(158, 206, 106, 0.5));
+  }
+  /* Click-to-peek toggle on any shape */
+  .anki-io-shape.is-revealed {
+    fill: rgba(158, 206, 106, 0.2) !important;
+    stroke: #9ece6a !important;
+    stroke-dasharray: 4 2;
+    opacity: 1 !important;
+  }
+  .anki-io-overlay-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+  .anki-io-overlay-img.is-hidden {
+    opacity: 0 !important;
+  }
+
   /* When Animation is Disabled: completely instant transitions */
   #flashcardView.fc-no-anim .flashcard,
   #flashcardView.fc-no-anim .flashcard *{
@@ -4449,6 +4881,7 @@
       <div class="sep"></div>
       <div class="sep"></div>
       <button id="fcOverviewBtn" title="Toggle Cards Overview & Search (O)">📋 Cards (<span id="fcCardCount">0</span>)</button>
+      <button id="fcFullOverviewBtn" title="Full-page Overview showing Front & Back of all cards (Shift+O)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.18);color:#7aa2f7;border:1px solid rgba(122,162,247,0.4);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">📑 Full Overview</button>
       <button id="fcJumpToolbarBtn" title="Jump directly to any card (J / G)" style="font-size:11.5px;padding:3px 9px;background:rgba(122,162,247,0.12);color:#7aa2f7;border:1px solid rgba(122,162,247,0.35);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🎯 Jump</button>
       <button id="fcDrillToolbarBtn" title="Temporary Flashcard Algorithm Settings (Shift+D)" style="font-size:11.5px;padding:3px 9px;background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border);border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">🔁 Drill: <span id="fcDrillToolbarIntervals">Off</span><span id="fcDrillActiveToolbarBadge" class="badge" style="display:none;background:#f7768e;color:#1a1b26;padding:1px 5px;border-radius:8px;font-size:10px;margin-left:2px;font-weight:700;">0</span></button>
       <button id="fcStopDrillToolbarBtn" title="Stop drill repetitions and turn drill OFF" style="display:none;font-size:11px;padding:3px 8px;background:rgba(247,118,142,0.18);color:#f7768e;border:1px solid rgba(247,118,142,0.45);border-radius:4px;font-weight:700;cursor:pointer;align-items:center;gap:3px;">⏹ Stop Drill</button>
@@ -4459,15 +4892,52 @@
       <button id="fcAiExplorerBtn" class="fc-btn-secondary" style="font-size:11.5px;padding:3px 8px;background:rgba(122,162,247,0.15);color:#7aa2f7;border-color:rgba(122,162,247,0.3);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Explore & review all AI supplements across outline levels (clean up mistakes)">📑 AI Explorer <span id="fcAiTopCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
       <div class="fc-stats" id="fcStats" title="Click to Jump to Card (or press J / G)" onclick="if(window.openJumpToCardModal) window.openJumpToCardModal();">0 / 0</div>
     </div>
-    <div id="flashcardMainArea">
-      <div id="fcSessionReviewBanner" style="display:none;align-items:center;justify-content:space-between;padding:6px 14px;background:rgba(187,154,247,0.18);border:1px solid rgba(187,154,247,0.4);border-radius:6px;margin:0 16px 8px 16px;font-size:12px;color:#c0caf5;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:700;color:#bb9af7;">📚 Studying Session:</span>
-          <span id="fcSessionReviewTitle" style="font-weight:600;">Session Name</span>
-          <span id="fcSessionReviewCount" style="color:var(--muted);font-size:11px;">(0 cards)</span>
-        </div>
-        <button type="button" id="fcSessionReviewExitBtn" class="fc-btn-secondary" style="font-size:11px;padding:2px 8px;color:#f7768e;border-color:rgba(247,118,142,0.4);cursor:pointer;" title="Exit session study and return to original deck">✕ Exit Session Study</button>
+    <div id="fcSessionReviewBanner" style="display:none;align-items:center;justify-content:space-between;padding:8px 18px;background:rgba(187,154,247,0.18);border-bottom:1px solid rgba(187,154,247,0.35);font-size:12.5px;color:#c0caf5;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-weight:700;color:#bb9af7;">📚 Studying Session:</span>
+        <span id="fcSessionReviewTitle" style="font-weight:600;">Session Name</span>
+        <span id="fcSessionReviewCount" style="color:var(--muted);font-size:11px;">(0 cards)</span>
       </div>
+      <button type="button" id="fcSessionReviewExitBtn" class="fc-btn-secondary" style="font-size:11px;padding:3px 10px;color:#f7768e;border-color:rgba(247,118,142,0.4);cursor:pointer;" title="Exit session study and return to original deck">✕ Exit Session Study</button>
+    </div>
+
+    <!-- Full-Page Dual-Side Flashcard Overview -->
+    <div id="fcFullOverviewView">
+      <div class="fc-fo-header">
+        <div class="fc-fo-header-left">
+          <span class="fc-fo-title">📑 Full Cards Overview</span>
+          <span id="fcFoCountBadge" class="fc-fo-badge">0 cards</span>
+        </div>
+        <div class="fc-fo-header-center">
+          <div class="fc-fo-search-wrap">
+            <span class="fc-fo-search-icon">🔍</span>
+            <input type="text" id="fcFoSearchInput" placeholder="Filter cards by title, front, back, or tags..." spellcheck="false" autocomplete="off" />
+            <button id="fcFoSearchClearBtn" class="fc-fo-clear-btn" title="Clear filter">✕</button>
+          </div>
+          <select id="fcFoLevelFilter" class="fc-fo-select" title="Filter by heading level or marked status">
+            <option value="all">All Levels</option>
+            <option value="marked">⭐ Marked Only</option>
+            <option value="1">H1 Only</option>
+            <option value="2">H2 Only</option>
+            <option value="3">H3 Only</option>
+            <option value="4">H4 Only</option>
+          </select>
+          <div class="fc-fo-layout-toggle" title="Switch layout mode">
+            <button type="button" id="fcFoLayoutCols" class="active" title="Side-by-Side Dual Column View">❚❚ Dual</button>
+            <button type="button" id="fcFoLayoutStack" title="Stacked Front-then-Back View">☰ Stacked</button>
+          </div>
+        </div>
+        <div class="fc-fo-header-right">
+          <button type="button" id="fcFoScrollActiveBtn" class="fc-fo-btn" title="Scroll to currently active review card">🎯 Active Card</button>
+          <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
+        </div>
+      </div>
+      <div id="fcFoContentList" class="fc-fo-content-list layout-cols">
+        <!-- Cards dynamically rendered here -->
+      </div>
+    </div>
+
+    <div id="flashcardMainArea">
       <div id="flashcardStage">
       <div id="flashcard" class="flashcard">
         <!-- Front Face -->
@@ -8685,6 +9155,9 @@
   function goToCard(idx) {
     if(!flashcardList || flashcardList.length === 0) return;
     if(idx >= 0 && idx < flashcardList.length){
+      if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen) {
+        closeFullOverview();
+      }
       currentCardIndex = idx;
       renderCurrentCard();
       updateOverviewActiveItem();
@@ -9134,8 +9607,349 @@
     const newActive = fcCardList.querySelector(`.fc-card-item[data-card-index="${currentCardIndex}"]`);
     if(newActive){
       newActive.classList.add('active');
-      newActive.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const listRect = fcCardList.getBoundingClientRect();
+      const itemRect = newActive.getBoundingClientRect();
+      if (itemRect.top < listRect.top || itemRect.bottom > listRect.bottom) {
+        const targetScrollTop = fcCardList.scrollTop + (itemRect.top - listRect.top) - (listRect.height / 2) + (itemRect.height / 2);
+        fcCardList.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+      }
     }
+  }
+
+  // Full-Page Dual-Side Flashcard Overview State & Controller
+  let isFullOverviewOpen = false;
+  let fcFoLayoutMode = 'cols'; // 'cols' (side-by-side) or 'stack'
+  let fcFoFilterLevel = 'all';  // 'all', 'marked', '1', '2', '3', '4'
+  let fcFoSearchQuery = '';
+  let fcFoRenderBatchSize = 35;
+  let fcFoCurrentRenderedCount = 0;
+  let fcFoFilteredList = [];
+  let fcFoScrollListenerAttached = false;
+
+  const fcFullOverviewBtn = document.getElementById('fcFullOverviewBtn');
+  const fcFullOverviewView = document.getElementById('fcFullOverviewView');
+  const fcFoSearchInput = document.getElementById('fcFoSearchInput');
+  const fcFoSearchClearBtn = document.getElementById('fcFoSearchClearBtn');
+  const fcFoLevelFilter = document.getElementById('fcFoLevelFilter');
+  const fcFoLayoutCols = document.getElementById('fcFoLayoutCols');
+  const fcFoLayoutStack = document.getElementById('fcFoLayoutStack');
+  const fcFoScrollActiveBtn = document.getElementById('fcFoScrollActiveBtn');
+  const fcFoCloseBtn = document.getElementById('fcFoCloseBtn');
+  const fcFoContentList = document.getElementById('fcFoContentList');
+  const fcFoCountBadge = document.getElementById('fcFoCountBadge');
+
+  function openFullOverview() {
+    if (!flashcardList || flashcardList.length === 0) {
+      showAppToast('No cards in current outline');
+      return;
+    }
+    isFullOverviewOpen = true;
+    if (fcFullOverviewView) fcFullOverviewView.style.display = 'flex';
+    if (flashcardMainArea) flashcardMainArea.style.display = 'none';
+    if (fcFullOverviewBtn) fcFullOverviewBtn.classList.add('active');
+
+    // Collapse right sidebar if open
+    if (fcRightSidebar && !fcRightSidebar.classList.contains('collapsed')) {
+      toggleFcRightSidebar(false);
+    }
+
+    renderFullOverview();
+
+    // Scroll to active card in the full overview
+    setTimeout(() => {
+      scrollToActiveCardInFullOverview();
+    }, 100);
+  }
+
+  function closeFullOverview() {
+    isFullOverviewOpen = false;
+    if (fcFullOverviewView) fcFullOverviewView.style.display = 'none';
+    if (flashcardMainArea) flashcardMainArea.style.display = 'flex';
+    if (fcFullOverviewBtn) fcFullOverviewBtn.classList.remove('active');
+
+    renderCurrentCard();
+  }
+
+  function toggleFullOverview() {
+    if (isFullOverviewOpen) {
+      closeFullOverview();
+    } else {
+      openFullOverview();
+    }
+  }
+
+  function scrollToActiveCardInFullOverview() {
+    if (!fcFoContentList) return;
+    const activeElem = document.getElementById(`fc-fo-card-${currentCardIndex}`);
+    if (activeElem) {
+      const containerRect = fcFoContentList.getBoundingClientRect();
+      const elemRect = activeElem.getBoundingClientRect();
+      const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 20;
+      fcFoContentList.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }
+  }
+
+  function filterCardsForFullOverview() {
+    if (!flashcardList) return [];
+    const q = (fcFoSearchQuery || '').trim().toLowerCase();
+    const lvl = fcFoFilterLevel;
+
+    return flashcardList.filter((h) => {
+      // Level filter
+      if (lvl === 'marked') {
+        if (!isCardMarked(h)) return false;
+      } else if (lvl !== 'all') {
+        const targetLvl = parseInt(lvl, 10);
+        if (h.level !== targetLvl) return false;
+      }
+
+      // Query filter
+      if (!q) return true;
+
+      const title = (h.text || '').toLowerCase();
+      const crumb = (h.breadcrumb || '').toLowerCase();
+      const backRaw = getCardBackRawText(h).toLowerCase();
+      const tags = (h.tags || '').toLowerCase();
+
+      return title.includes(q) || crumb.includes(q) || backRaw.includes(q) || tags.includes(q);
+    });
+  }
+
+  function renderFullOverview() {
+    if (!fcFoContentList) return;
+    fcFoFilteredList = filterCardsForFullOverview();
+    fcFoCurrentRenderedCount = 0;
+    fcFoContentList.innerHTML = '';
+
+    if (fcFoCountBadge) {
+      const total = flashcardList ? flashcardList.length : 0;
+      fcFoCountBadge.textContent = `${fcFoFilteredList.length} of ${total} cards`;
+    }
+
+    if (fcFoFilteredList.length === 0) {
+      fcFoContentList.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;">
+          <div style="font-size:32px;margin-bottom:10px;">🔍</div>
+          No flashcards match the current filter or search query.
+        </div>
+      `;
+      return;
+    }
+
+    renderNextFullOverviewBatch();
+
+    if (!fcFoScrollListenerAttached) {
+      fcFoScrollListenerAttached = true;
+      fcFoContentList.addEventListener('scroll', () => {
+        if (fcFoContentList.scrollTop + fcFoContentList.clientHeight >= fcFoContentList.scrollHeight - 300) {
+          if (fcFoCurrentRenderedCount < fcFoFilteredList.length) {
+            renderNextFullOverviewBatch();
+          }
+        }
+      });
+    }
+  }
+
+  function renderNextFullOverviewBatch() {
+    if (!fcFoContentList || fcFoCurrentRenderedCount >= fcFoFilteredList.length) return;
+
+    const startIdx = fcFoCurrentRenderedCount;
+    const endIdx = Math.min(fcFoFilteredList.length, startIdx + fcFoRenderBatchSize);
+    const batch = fcFoFilteredList.slice(startIdx, endIdx);
+
+    const fragment = document.createDocumentFragment();
+
+    batch.forEach((h) => {
+      const overallCardIdx = flashcardList.indexOf(h);
+      const isCurrentReviewCard = (overallCardIdx === currentCardIndex);
+      const isMarked = isCardMarked(h);
+      const cardKey = getCardKey(h);
+      const sessionCard = (typeof getSessionCard === 'function') ? getSessionCard(cardKey) : null;
+      const dispCount = sessionCard ? (sessionCard.displayCount || 0) : 0;
+
+      // Extract raw back content
+      const rawBack = getCardBackRawText(h);
+      const cardSlug = getCardSlug(h);
+      const cachedAi = currentFileAiCards.get(cardSlug)
+        || currentFileAiCards.get(`H${h.level}::${(h.text || '').trim()}`)
+        || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`);
+
+      const effectiveBack = (rawBack && rawBack.trim()) ? rawBack : (cachedAi ? cachedAi.content : '');
+
+      // Check for Image Occlusion in card content
+      let ioMarkup = '';
+      const ioMatch = (effectiveBack || '').match(/<div\b[^>]*\bclass="[^"]*(?:anki-image-occlusion|anki-io-)[^"]*"[\s\S]*?<\/div>\s*<\/div>/i);
+      if (ioMatch) {
+        ioMarkup = ioMatch[0].replace(/src=(["'])(.*?)\1/gi, (m, q, u) => {
+          return `src="${resolveMediaUrl(u, h.file_path)}"`;
+        });
+      }
+
+      // Front title & media
+      const frontImgs = [];
+      let cleanFrontTitle = (h.text || '').replace(/!?\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\)/g, (m, alt, url) => {
+        const u = url.trim();
+        if (!/\.(mp3|wav|ogg|m4a|opus|aac|flac)(\?.*)?$/i.test(u)) {
+          frontImgs.push({ alt: alt || 'Card Image', url: u });
+        }
+        return '';
+      }).replace(/\[sound:[^\]]+\]/g, '').trim();
+
+      if (!cleanFrontTitle || /^\d+\.?\s*$/.test(cleanFrontTitle)) {
+        cleanFrontTitle = (cleanFrontTitle ? cleanFrontTitle + ' ' : '') + `Card ${overallCardIdx + 1}`;
+      }
+
+      const cardCard = document.createElement('div');
+      cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''}`;
+      cardCard.dataset.cardIndex = overallCardIdx;
+      cardCard.id = `fc-fo-card-${overallCardIdx}`;
+
+      // Card Header
+      const crumbText = isFolderDeck ? ('📁 ' + (h.breadcrumb || (h.file_name ? `${h.file_name} > H${h.level}` : getBreadcrumb(h)))) : getBreadcrumb(h);
+
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'fc-fo-card-header';
+      headerDiv.innerHTML = `
+        <div class="fc-fo-card-meta">
+          <span class="fc-fo-card-num">#${overallCardIdx + 1}</span>
+          <span class="fc-fo-card-badge" style="color:var(--h${h.level});">H${h.level}</span>
+          <span class="fc-fo-card-crumb" title="${escapeHtml(crumbText)}">${escapeHtml(crumbText)}</span>
+        </div>
+        <div class="fc-fo-card-actions">
+          <button type="button" class="fc-fo-action-btn fc-fo-study-btn" onclick="event.stopPropagation(); goToCard(${overallCardIdx});" title="Study this card in single-card mode (Enter / Space)">
+            ▶ Review Card
+          </button>
+          <button type="button" class="fc-fo-action-btn fc-fo-mark-btn ${isMarked ? 'is-marked' : ''}" onclick="event.stopPropagation(); toggleMarkCardFromFullOverview(${overallCardIdx}, this);" title="Toggle marked repetition">
+            ${isMarked ? `⭐ Marked (${dispCount})` : '⭐ Mark'}
+          </button>
+        </div>
+      `;
+
+      // Card Body (Dual or Stacked)
+      const bodyDiv = document.createElement('div');
+      bodyDiv.className = 'fc-fo-card-body';
+
+      // Left: Front Face
+      const frontSide = document.createElement('div');
+      frontSide.className = 'fc-fo-side fc-fo-front';
+
+      let frontMediaHtml = '';
+      if (ioMarkup) {
+        frontMediaHtml = `<div class="anki-io-front" style="width:100%;margin-top:10px;">${ioMarkup}</div>`;
+      } else if (frontImgs.length > 0) {
+        frontMediaHtml = `<div class="fc-fo-front-media">${frontImgs.map(img => `<img class="fc-card-img" src="${resolveMediaUrl(img.url, h.file_path)}" alt="${escapeHtml(img.alt)}" loading="lazy" style="max-height:220px;width:auto;border-radius:6px;" onclick="event.stopPropagation(); if(typeof openImageModal==='function') openImageModal(this.src, '${escapeHtml(img.alt)}'); else window.open(this.src,'_blank');" />`).join('')}</div>`;
+      }
+
+      frontSide.innerHTML = `
+        <div class="fc-fo-side-tag">🔵 FRONT FACE</div>
+        <div class="fc-fo-front-title" style="color:var(--h${h.level});">${escapeHtml(cleanFrontTitle)}</div>
+        ${frontMediaHtml}
+      `;
+
+      // Right: Back Face
+      const backSide = document.createElement('div');
+      backSide.className = 'fc-fo-side fc-fo-back';
+
+      let renderedBackHtml = '';
+      if (effectiveBack) {
+        renderedBackHtml = `<div class="fc-enhanced-markdown anki-io-back">${renderEnhancedMarkdown(effectiveBack, h.file_path)}</div>`;
+      } else {
+        renderedBackHtml = `<div style="font-size:12.5px;color:var(--muted);font-style:italic;padding:12px 0;">(No back content)</div>`;
+      }
+
+      backSide.innerHTML = `
+        <div class="fc-fo-side-tag">🟢 BACK FACE</div>
+        <div class="fc-fo-back-content">${renderedBackHtml}</div>
+      `;
+
+      bodyDiv.appendChild(frontSide);
+      bodyDiv.appendChild(backSide);
+
+      cardCard.appendChild(headerDiv);
+      cardCard.appendChild(bodyDiv);
+
+      fragment.appendChild(cardCard);
+    });
+
+    fcFoContentList.appendChild(fragment);
+    initCardAudioElements(fcFoContentList);
+    fcFoCurrentRenderedCount = endIdx;
+  }
+
+  function toggleMarkCardFromFullOverview(cardIdx, btnElem) {
+    if (!flashcardList || !flashcardList[cardIdx]) return;
+    const targetCard = flashcardList[cardIdx];
+    const key = getCardKey(targetCard);
+    if (!key) return;
+
+    if (fcMarkedCards.has(key)) {
+      fcMarkedCards.delete(key);
+      flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === key));
+      if (btnElem) {
+        btnElem.className = 'fc-fo-action-btn fc-fo-mark-btn';
+        btnElem.textContent = '⭐ Mark';
+      }
+      showAppToast(`⭐ Unmarked "${targetCard.text || 'Card'}"`);
+    } else {
+      fcMarkedCards.add(key);
+      if (typeof recordSessionCardMark === 'function') recordSessionCardMark(targetCard);
+      if (btnElem) {
+        btnElem.className = 'fc-fo-action-btn fc-fo-mark-btn is-marked';
+        btnElem.textContent = '⭐ Marked (1)';
+      }
+      showAppToast(`⭐ Marked "${targetCard.text || 'Card'}" for continuous repetition`);
+    }
+    updateMarkedUI();
+  }
+
+  // Full Overview Event Listeners
+  if (fcFullOverviewBtn) {
+    fcFullOverviewBtn.addEventListener('click', () => toggleFullOverview());
+  }
+  if (fcFoCloseBtn) {
+    fcFoCloseBtn.addEventListener('click', () => closeFullOverview());
+  }
+  if (fcFoSearchInput) {
+    fcFoSearchInput.addEventListener('input', () => {
+      fcFoSearchQuery = fcFoSearchInput.value;
+      renderFullOverview();
+    });
+  }
+  if (fcFoSearchClearBtn) {
+    fcFoSearchClearBtn.addEventListener('click', () => {
+      if (fcFoSearchInput) fcFoSearchInput.value = '';
+      fcFoSearchQuery = '';
+      renderFullOverview();
+    });
+  }
+  if (fcFoLevelFilter) {
+    fcFoLevelFilter.addEventListener('change', () => {
+      fcFoFilterLevel = fcFoLevelFilter.value;
+      renderFullOverview();
+    });
+  }
+  if (fcFoLayoutCols && fcFoLayoutStack) {
+    fcFoLayoutCols.addEventListener('click', () => {
+      fcFoLayoutCols.classList.add('active');
+      fcFoLayoutStack.classList.remove('active');
+      if (fcFoContentList) {
+        fcFoContentList.classList.remove('layout-stack');
+        fcFoContentList.classList.add('layout-cols');
+      }
+    });
+    fcFoLayoutStack.addEventListener('click', () => {
+      fcFoLayoutStack.classList.add('active');
+      fcFoLayoutCols.classList.remove('active');
+      if (fcFoContentList) {
+        fcFoContentList.classList.remove('layout-cols');
+        fcFoContentList.classList.add('layout-stack');
+      }
+    });
+  }
+  if (fcFoScrollActiveBtn) {
+    fcFoScrollActiveBtn.addEventListener('click', () => {
+      scrollToActiveCardInFullOverview();
+    });
   }
 
   function showFcToast(msg, isError = false){
@@ -9517,13 +10331,18 @@
     if(currentCardIndex < 0) currentCardIndex = 0;
     if(currentCardIndex >= flashcardList.length) currentCardIndex = flashcardList.length - 1;
 
-    // Reset back body scroll before removing flipped class to ensure browser applies layout reset
+    // Reset all scroll positions before removing flipped class to ensure viewport is firmly anchored at top
     currentBackPageIndex = 0;
     if(fcBackBody){
       isProgrammaticScroll = true;
       fcBackBody.scrollLeft = 0;
       fcBackBody.scrollTop = 0;
     }
+    if(fcFrontFace) fcFrontFace.scrollTop = 0;
+    if(flashcardStage) flashcardStage.scrollTop = 0;
+    if(flashcardMainArea) flashcardMainArea.scrollTop = 0;
+    if(flashcardView) flashcardView.scrollTop = 0;
+    window.scrollTo(0, 0);
     if(fcBackSpacer) fcBackSpacer.style.display = 'none';
 
     const h = flashcardList[currentCardIndex];
@@ -9533,6 +10352,29 @@
     fcCard.style.transform = '';
     fcCard.style.transition = '';
     isFlippingAnim = false;
+
+    // Check if card has direct original markdown back vs AI back first so front can inspect content
+    let origBack = '';
+    if (h && h.card_content !== undefined) {
+      origBack = h.card_content;
+    } else if (h && typeof lines !== 'undefined' && lines) {
+      const sL = h.line + 1;
+      const nextH = (typeof headings !== 'undefined' && headings) ? headings.find(x => x.line > h.line) : null;
+      const directEnd = nextH ? nextH.line - 1 : h.end;
+      if (sL <= directEnd) {
+        origBack = lines.slice(sL, directEnd + 1).join('\n');
+      } else if (sL <= h.end && (!h.children || h.children.length === 0)) {
+        origBack = lines.slice(sL, h.end + 1).join('\n');
+      }
+    }
+
+    // Check for Image Occlusion in card content
+    let cardIoHtml = '';
+    const ioRegex = /<div\b[^>]*\bclass="[^"]*(?:anki-image-occlusion|anki-io-)[^"]*"[\s\S]*?<\/div>\s*<\/div>/i;
+    const mCardIo = (origBack || '').match(ioRegex);
+    if (mCardIo) {
+      cardIoHtml = mCardIo[0];
+    }
 
     // Front
     fcLevelBadge.textContent = `H${h.level}`;
@@ -9561,9 +10403,15 @@
     fcFrontTitle.textContent = displayTitle;
     fcFrontTitle.style.color = `var(--h${h.level})`;
 
-    // Front media container
+    // Front media container (supports Image Occlusion and standard images)
     if (fcFrontMedia) {
-      if (frontImgs.length > 0) {
+      if (cardIoHtml) {
+        fcFrontMedia.style.display = 'flex';
+        const resolvedIoHtml = cardIoHtml.replace(/src=(["'])(.*?)\1/gi, (m, q, u) => {
+          return `src="${resolveMediaUrl(u, h.file_path)}"`;
+        });
+        fcFrontMedia.innerHTML = `<div class="anki-io-front" style="width:100%;text-align:center;">${resolvedIoHtml}</div>`;
+      } else if (frontImgs.length > 0) {
         fcFrontMedia.style.display = 'flex';
         fcFrontMedia.innerHTML = frontImgs.map(img => {
           const resolved = resolveMediaUrl(img.url, h.file_path);
@@ -9595,20 +10443,6 @@
       currentCardAiSupplements = [];
     }
 
-    // Check if card has direct original markdown back vs AI back
-    let origBack = '';
-    if (h && h.card_content !== undefined) {
-      origBack = h.card_content;
-    } else if (h && typeof lines !== 'undefined' && lines) {
-      const sL = h.line + 1;
-      const nextH = (typeof headings !== 'undefined' && headings) ? headings.find(x => x.line > h.line) : null;
-      const directEnd = nextH ? nextH.line - 1 : h.end;
-      if (sL <= directEnd) {
-        origBack = lines.slice(sL, directEnd + 1).join('\n');
-      } else if (sL <= h.end && (!h.children || h.children.length === 0)) {
-        origBack = lines.slice(sL, h.end + 1).join('\n');
-      }
-    }
     const hasOrigBack = !!(origBack && origBack.trim());
     const hasAiBack = !!(cachedCard || (currentCardAiSupplements && currentCardAiSupplements.length > 0));
 
@@ -9953,6 +10787,9 @@
 
   function nextFlashcard(){
     if(!flashcardList || flashcardList.length === 0) return;
+    if(document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
     clearTimeout(flipSyncTimer);
     flipSyncTimer = null;
     clearTimeout(autoSnapTimer);
@@ -10041,12 +10878,21 @@
     }
 
     currentCardIndex = (currentCardIndex + 1) % flashcardList.length;
+    if(fcBackBody) { isProgrammaticScroll = true; fcBackBody.scrollTop = 0; fcBackBody.scrollLeft = 0; }
+    if(fcFrontFace) fcFrontFace.scrollTop = 0;
+    if(flashcardStage) flashcardStage.scrollTop = 0;
+    if(flashcardMainArea) flashcardMainArea.scrollTop = 0;
+    if(flashcardView) flashcardView.scrollTop = 0;
+    window.scrollTo(0, 0);
     renderCurrentCard();
     if(typeof syncUrlState === 'function') syncUrlState('replace');
   }
 
   function prevFlashcard(){
     if(!flashcardList || flashcardList.length === 0) return;
+    if(document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
     clearTimeout(flipSyncTimer);
     flipSyncTimer = null;
     clearTimeout(autoSnapTimer);
@@ -10058,6 +10904,12 @@
     isFlippingAnim = false;
     currentBackPageIndex = 0;
     currentCardIndex = (currentCardIndex - 1 + flashcardList.length) % flashcardList.length;
+    if(fcBackBody) { isProgrammaticScroll = true; fcBackBody.scrollTop = 0; fcBackBody.scrollLeft = 0; }
+    if(fcFrontFace) fcFrontFace.scrollTop = 0;
+    if(flashcardStage) flashcardStage.scrollTop = 0;
+    if(flashcardMainArea) flashcardMainArea.scrollTop = 0;
+    if(flashcardView) flashcardView.scrollTop = 0;
+    window.scrollTo(0, 0);
     renderCurrentCard();
     if(typeof syncUrlState === 'function') syncUrlState('replace');
   }
@@ -10212,10 +11064,10 @@
       exitFlashcardMode();
     }
   });
-  if(fcFlipBtn) fcFlipBtn.addEventListener('click', flipFlashcard);
-  if(fcNextBtn) fcNextBtn.addEventListener('click', nextFlashcard);
-  if(fcPrevBtn) fcPrevBtn.addEventListener('click', prevFlashcard);
-  if(fcShuffleBtn) fcShuffleBtn.addEventListener('click', shuffleFlashcards);
+  if(fcFlipBtn) fcFlipBtn.addEventListener('click', function(){ this.blur(); flipFlashcard(); });
+  if(fcNextBtn) fcNextBtn.addEventListener('click', function(){ this.blur(); nextFlashcard(); });
+  if(fcPrevBtn) fcPrevBtn.addEventListener('click', function(){ this.blur(); prevFlashcard(); });
+  if(fcShuffleBtn) fcShuffleBtn.addEventListener('click', function(){ this.blur(); shuffleFlashcards(); });
   if(fcColToggleBtn) fcColToggleBtn.addEventListener('click', toggleTwoColumn);
   if(fcFullscreenBtn) fcFullscreenBtn.addEventListener('click', toggleFullscreen);
   if(fcAnimToggleBtn) fcAnimToggleBtn.addEventListener('click', toggleFcAnimation);
@@ -10614,6 +11466,11 @@
       return;
     }
     if(e.key === 'Escape'){
+      if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen){
+        e.preventDefault();
+        closeFullOverview();
+        return;
+      }
       if(fcPromptModal && fcPromptModal.classList.contains('active')){
         e.preventDefault();
         closePromptEditor();
@@ -10653,6 +11510,12 @@
       }
     }
     if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'o' || e.key === 'O')){
+      e.preventDefault();
+      toggleFullOverview();
+      return;
+    }
 
     if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'd' || e.key === 'D')){
       e.preventDefault();
@@ -11550,9 +12413,20 @@
     const escape = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const curFp = cardFilePath || (typeof currentCard !== 'undefined' && currentCard && currentCard.file_path) || (typeof currentFilePath !== 'undefined' ? currentFilePath : '');
 
+    // 0. Extract Image Occlusion blocks first to preserve raw HTML/SVG
+    const ioBlocks = [];
+    let text = (src || '').replace(/<div\b[^>]*\bclass="[^"]*(?:anki-image-occlusion|anki-io-)[^"]*"[\s\S]*?<\/div>\s*<\/div>/gi, (m) => {
+      const idx = ioBlocks.length;
+      const resolvedIo = m.replace(/src=(["'])(.*?)\1/gi, (match, q, u) => {
+        return `src="${resolveMediaUrl(u, curFp)}"`;
+      });
+      ioBlocks.push(resolvedIo);
+      return `\n%%IO_BLOCK_${idx}%%\n`;
+    });
+
     // 1. Extract Fenced Code Blocks first
     const codeBlocks = [];
-    let text = src.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+    text = text.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (match, lang, code) => {
       const idx = codeBlocks.length;
       const cleanLang = (lang || 'code').trim().toLowerCase();
       codeBlocks.push({
@@ -11867,8 +12741,16 @@
         continue;
       }
 
+      if (line.trim().startsWith('%%IO_BLOCK_') && line.trim().endsWith('%%')) {
+        const id = parseInt(line.trim().replace('%%IO_BLOCK_', '').replace('%%', ''), 10);
+        if (ioBlocks[id]) {
+          out.push(ioBlocks[id]);
+          continue;
+        }
+      }
+
       const rendered = inline(line);
-      if (rendered.trim().startsWith('<div class="fc-audio-wrap"') || rendered.trim().startsWith('<div class="fc-img-wrap"')) {
+      if (rendered.trim().startsWith('<div class="fc-audio-wrap"') || rendered.trim().startsWith('<div class="fc-img-wrap"') || rendered.trim().startsWith('<div class="anki-image-occlusion"')) {
         out.push(rendered);
       } else {
         out.push(`<p class="fc-md-p">${rendered}</p>`);
@@ -11879,7 +12761,9 @@
       out.push(`</${listType}>`);
     }
 
-    return out.join('\n');
+    let result = out.join('\n');
+    result = result.replace(/%%IO_BLOCK_(\d+)%%/g, (m, id) => ioBlocks[parseInt(id, 10)] || '');
+    return result;
   }
 
   // Alias for backward compatibility
