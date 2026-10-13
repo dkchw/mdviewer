@@ -259,10 +259,17 @@
   /* Sidebar file explorer */
   #app{flex-direction:row;}
   #sidebar{
-    flex:0 0 260px;width:260px;background:var(--bg2);border-right:1px solid var(--border);
+    flex:0 0 var(--sb-width, 280px);width:var(--sb-width, 280px);background:var(--bg2);border-right:1px solid var(--border);
     display:flex;flex-direction:column;overflow:hidden;transition:width .15s ease, flex-basis .15s ease;
   }
-  #sidebar.collapsed{flex:0 0 0;width:0;border-right:none;}
+  #sidebar.resizing{transition:none !important;user-select:none !important;}
+  #sidebar.collapsed{flex:0 0 0 !important;width:0 !important;border-right:none;}
+  .sb-resizer{
+    width:5px;margin-left:-3px;z-index:45;cursor:col-resize;background:transparent;
+    transition:background .15s ease;flex:0 0 5px;
+  }
+  .sb-resizer:hover, .sb-resizer.resizing{background:var(--accent);}
+  #sidebar.collapsed + .sb-resizer{display:none;}
   #mainPane{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;height:100%;}
   #sidebarHeader{
     flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
@@ -439,6 +446,24 @@
   }
   .search-tab:hover{color:var(--fg);background:#242737;}
   .search-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .search-tab-dock-btn {
+    padding: 4px 8px;
+    background: rgba(122, 162, 247, 0.12);
+    border: 1px solid rgba(122, 162, 247, 0.25);
+    border-radius: 4px;
+    color: #7aa2f7;
+    font-size: 10.5px;
+    cursor: pointer;
+    margin: 4px 6px;
+    white-space: nowrap;
+    align-self: center;
+    transition: all 0.15s ease;
+  }
+  .search-tab-dock-btn:hover {
+    background: rgba(122, 162, 247, 0.25);
+    color: #fff;
+    border-color: #7aa2f7;
+  }
   .search-result{
     padding:7px 12px;border-bottom:1px solid var(--border);cursor:pointer;
   }
@@ -448,6 +473,292 @@
   .search-result .s-line{color:#a9b1d6;font-size:10px;margin-left:6px;}
   .search-result .s-text{font-size:11px;margin-top:3px;white-space:pre-wrap;word-break:break-word;color:var(--fg);}
   .search-loading, .search-empty{padding:14px;color:var(--muted);font-size:12px;text-align:center;}
+
+  /* Sidebar Mode Navigation Tabs (Files vs Search) */
+  .sb-mode-tabs {
+    display: flex;
+    background: #14151f;
+    border-bottom: 1px solid var(--border);
+    padding: 3px 6px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .sb-mode-tab {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sb-mode-tab:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .sb-mode-tab.active {
+    background: #24283b;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sb-mode-tab .badge {
+    background: rgba(122, 162, 247, 0.25);
+    color: #7aa2f7;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 10px;
+    margin-left: 2px;
+  }
+
+  /* Sidebar Search Panel */
+  #sidebarSearchView {
+    display: none;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+  .sb-search-box-wrap {
+    padding: 8px 10px 6px;
+    background: #161824;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .sb-search-input-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #14151f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    transition: all 0.15s ease;
+  }
+  .sb-search-input-container:focus-within {
+    border-color: var(--accent);
+    background: #191b29;
+    box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.2);
+  }
+  #sbSearchQueryInput {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--fg);
+    font-size: 12px;
+    width: 100%;
+  }
+  .sb-icon-clear {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .sb-icon-clear:hover { color: var(--fg); }
+
+  .sb-search-scope-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .sb-scope-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    user-select: none;
+  }
+  .sb-scope-group {
+    display: inline-flex;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .sb-scope-group button {
+    background: #191b29;
+    color: var(--muted);
+    border: none;
+    padding: 2px 7px;
+    font-size: 10.5px;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: all 0.15s;
+  }
+  .sb-scope-group button.active {
+    background: #24283b;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sb-scope-group button:not(:last-child) {
+    border-right: 1px solid var(--border);
+  }
+
+  /* Stats / Progress Bar */
+  .sb-search-stats-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background: #191b29;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .sb-stats-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+  }
+  .sb-stats-matches {
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .sb-stats-progress {
+    background: rgba(122, 162, 247, 0.15);
+    color: #7aa2f7;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .sb-stats-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sb-small-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .sb-small-btn:hover {
+    color: var(--fg);
+    border-color: var(--accent);
+    background: rgba(122, 162, 247, 0.1);
+  }
+
+  /* Results List */
+  .sb-search-results-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sb-search-placeholder {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--muted);
+  }
+
+  /* Result Card */
+  .sb-result-card {
+    background: #161824;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+  }
+  .sb-result-card:hover {
+    border-color: rgba(122, 162, 247, 0.5);
+    background: #1c1f30;
+  }
+  .sb-result-card.active {
+    border-color: #7aa2f7;
+    background: rgba(122, 162, 247, 0.12);
+    box-shadow: 0 0 0 1px #7aa2f7;
+  }
+  .sb-result-card.visited {
+    background: #131520;
+    opacity: 0.88;
+  }
+  .sb-result-card.visited.active {
+    opacity: 1;
+    background: rgba(122, 162, 247, 0.14);
+    border-color: #7aa2f7;
+  }
+  .sb-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .sb-card-file {
+    font-weight: 600;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .sb-card-line {
+    color: #a9b1d6;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .sb-card-status-badge {
+    font-size: 9.5px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .sb-result-card:not(.visited) .sb-card-status-badge {
+    background: rgba(122, 162, 247, 0.12);
+    color: #7aa2f7;
+  }
+  .sb-result-card.visited .sb-card-status-badge {
+    background: rgba(158, 206, 106, 0.18);
+    color: #9ece6a;
+    border: 1px solid rgba(158, 206, 106, 0.3);
+  }
+  .sb-card-heading {
+    font-size: 10.5px;
+    color: #e0af68;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.9;
+  }
+  .sb-card-snippet {
+    font-size: 11px;
+    color: #a9b1d6;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .sb-card-snippet mark {
+    background: rgba(224, 175, 104, 0.35);
+    color: #ffc777;
+    font-weight: 600;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
 
   /* In-document Match Highlighting */
   .row.highlight-target{
@@ -4631,15 +4942,74 @@
         <button id="ankiImportSidebarBtn" class="sb-action-pill" title="Import Anki .apkg deck" onclick="if(window.openAnkiImportModal) window.openAnkiImportModal();">📥 Anki Deck</button>
       </div>
     </div>
-    <!-- Sidebar Quick Search & Filter -->
-    <div id="sidebarSearchWrap" class="sb-search-wrap">
-      <span style="font-size:11px;color:var(--muted);user-select:none;">🔍</span>
-      <input type="text" id="sidebarSearchInput" placeholder="Filter files... (Ctrl+Shift+F)" spellcheck="false" autocomplete="off" />
-      <button id="sidebarSearchClearBtn" class="sb-search-clear" style="display:none;" title="Clear filter">✕</button>
+    <!-- Sidebar Mode Tabs: Files vs Search -->
+    <div class="sb-mode-tabs" id="sidebarModeTabs">
+      <button id="sbTabFilesBtn" class="sb-mode-tab active" title="File Explorer (Ctrl+Shift+E)">
+        <span>📁</span> Files
+      </button>
+      <button id="sbTabSearchBtn" class="sb-mode-tab" title="Search Markdown Content (Ctrl+Shift+F)">
+        <span>🔍</span> Search <span id="sbSearchBadge" class="badge" style="display:none;">0</span>
+      </button>
     </div>
-    <div id="sidebarNote"></div>
-    <div id="fileTree"></div>
+
+    <!-- View 1: Files Explorer View -->
+    <div id="sidebarFilesView" class="sb-view" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;">
+      <!-- Sidebar Quick Search & Filter -->
+      <div id="sidebarSearchWrap" class="sb-search-wrap">
+        <span style="font-size:11px;color:var(--muted);user-select:none;">🔍</span>
+        <input type="text" id="sidebarSearchInput" placeholder="Filter files... (Ctrl+P)" spellcheck="false" autocomplete="off" />
+        <button id="sidebarSearchClearBtn" class="sb-search-clear" style="display:none;" title="Clear filter">✕</button>
+      </div>
+      <div id="sidebarNote"></div>
+      <div id="fileTree"></div>
+    </div>
+
+    <!-- View 2: Dedicated Search Panel View -->
+    <div id="sidebarSearchView" class="sb-view" style="display:none;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;">
+      <!-- Search Query Bar -->
+      <div class="sb-search-box-wrap">
+        <div class="sb-search-input-container">
+          <span style="font-size:11px;opacity:0.7;user-select:none;">🔍</span>
+          <input type="text" id="sbSearchQueryInput" placeholder="Search markdown notes & decks..." spellcheck="false" autocomplete="off" />
+          <button id="sbSearchQueryClearBtn" class="sb-icon-clear" style="display:none;" title="Clear search">✕</button>
+        </div>
+        <!-- Scope selector buttons -->
+        <div class="sb-search-scope-row">
+          <span class="sb-scope-lbl">Scope:</span>
+          <div class="scope-group sb-scope-group" id="sbSearchScopeGroup">
+            <button id="sbScopeFileBtn" title="Search in current file">File</button>
+            <button id="sbScopeLevelBtn" class="active" title="Search all markdown in same folder / level (modular decks)">Level</button>
+            <button id="sbScopeAllBtn" title="Search workspace">All</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review Progress & Stats Bar -->
+      <div id="sbSearchStatsBar" class="sb-search-stats-bar" style="display:none;">
+        <div class="sb-stats-left">
+          <span id="sbStatsMatchCount" class="sb-stats-matches">0 matches</span>
+          <span id="sbStatsProgress" class="sb-stats-progress">0/0 viewed</span>
+        </div>
+        <div class="sb-stats-actions">
+          <button id="sbResetVisitedBtn" title="Reset visited / clicked status for all matches" class="sb-small-btn">↺ Reset</button>
+          <button id="sbSearchPrevMatchBtn" title="Previous match" class="sb-small-btn">▲</button>
+          <button id="sbSearchNextMatchBtn" title="Next match" class="sb-small-btn">▼</button>
+        </div>
+      </div>
+
+      <!-- Search Results List -->
+      <div id="sbSearchResultsList" class="sb-search-results-list">
+        <div class="sb-search-placeholder">
+          <div style="font-size:24px;margin-bottom:8px;opacity:0.6;">🔍</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--fg);">Search Content</div>
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.4;">
+            Search clean Markdown content across notes in the same folder level (modular decks) or entire workspace. Images and media files are excluded.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+  <div id="sidebarResizer" class="sb-resizer" title="Drag horizontally to resize sidebar"></div>
   <div id="mainPane">
   <div id="toolbar">
     <!-- Left Zone: Navigation & Mode Switchers -->
@@ -7536,6 +7906,7 @@
       <button class="search-tab ${searchScope==='file'?'active':''}" data-tab="file">This File (${fileMatches.length})</button>
       <button class="search-tab ${searchScope==='level'?'active':''}" data-tab="level">Same Level (${levelResults.length}${levelSearching?'...':''})</button>
       <button class="search-tab ${searchScope==='all'?'active':''}" data-tab="all">Workspace (${wsResults.length}${wsSearching?'...':''})</button>
+      <button class="search-tab-dock-btn" id="dockSearchToSidebarBtn" title="Open and keep results open in Side Panel">⧉ Side Panel</button>
     </div>`;
     
     if(searchScope === 'file'){
@@ -7660,6 +8031,10 @@
   });
 
   searchResults.addEventListener('click', async (e) => {
+    if(e.target.closest('#dockSearchToSidebarBtn')){
+      dockSearchToSidebar();
+      return;
+    }
     const tabBtn = e.target.closest('.search-tab');
     if(tabBtn){
       const tab = tabBtn.dataset.tab;
@@ -7699,17 +8074,24 @@
     }
   });
 
-  // Global search shortcuts (Ctrl+F for in-file, Ctrl+Alt+F for same level, Ctrl+Shift+F for workspace)
+  // Global search shortcuts (Ctrl+F for in-file, Ctrl+Alt+F for same level, Ctrl+Shift+F for sidebar search)
   document.addEventListener('keydown', (e) => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f'){
       e.preventDefault();
-      if(isFlashcardMode && !e.altKey && !e.shiftKey){
+      if(e.shiftKey){
+        if(typeof switchSidebarTab === 'function') switchSidebarTab('search');
+        const curQ = searchInput ? searchInput.value.trim() : '';
+        if(curQ && typeof sbSearchQueryInput !== 'undefined' && sbSearchQueryInput && !sbSearchQueryInput.value.trim()){
+          sbSearchQueryInput.value = curQ;
+          if(typeof performSidebarSearch === 'function') performSidebarSearch(curQ);
+        }
+        return;
+      }
+      if(isFlashcardMode && !e.altKey){
         openFcRightSidebarAndFocusSearch();
         return;
       }
-      if(e.shiftKey){
-        setSearchScope('all');
-      } else if(e.altKey){
+      if(e.altKey){
         setSearchScope('level');
       } else {
         setSearchScope('file');
@@ -7717,6 +8099,9 @@
       searchInput.focus();
       searchInput.select();
       if(searchInput.value.trim()) updateSearchUI();
+    } else if((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e'){
+      e.preventDefault();
+      if(typeof switchSidebarTab === 'function') switchSidebarTab('files');
     } else if(e.key === 'F3'){
       e.preventDefault();
       if(e.shiftKey) prevMatch();
@@ -7892,6 +8277,379 @@
         if (sidebarSearchClearBtn) sidebarSearchClearBtn.style.display = 'none';
         initSidebar();
       }
+    });
+  }
+
+  // --- Dedicated Sidebar Search Panel & Resizer ---
+  const sbTabFilesBtn = document.getElementById('sbTabFilesBtn');
+  const sbTabSearchBtn = document.getElementById('sbTabSearchBtn');
+  const sbSearchBadge = document.getElementById('sbSearchBadge');
+  const sidebarFilesView = document.getElementById('sidebarFilesView');
+  const sidebarSearchView = document.getElementById('sidebarSearchView');
+  const sbSearchQueryInput = document.getElementById('sbSearchQueryInput');
+  const sbSearchQueryClearBtn = document.getElementById('sbSearchQueryClearBtn');
+  const sbScopeFileBtn = document.getElementById('sbScopeFileBtn');
+  const sbScopeLevelBtn = document.getElementById('sbScopeLevelBtn');
+  const sbScopeAllBtn = document.getElementById('sbScopeAllBtn');
+  const sbSearchStatsBar = document.getElementById('sbSearchStatsBar');
+  const sbStatsMatchCount = document.getElementById('sbStatsMatchCount');
+  const sbStatsProgress = document.getElementById('sbStatsProgress');
+  const sbResetVisitedBtn = document.getElementById('sbResetVisitedBtn');
+  const sbSearchPrevMatchBtn = document.getElementById('sbSearchPrevMatchBtn');
+  const sbSearchNextMatchBtn = document.getElementById('sbSearchNextMatchBtn');
+  const sbSearchResultsList = document.getElementById('sbSearchResultsList');
+  const sidebarResizer = document.getElementById('sidebarResizer');
+
+  let sbActiveTab = 'files'; // 'files' | 'search'
+  let sbSearchScope = 'level'; // 'level' | 'file' | 'all'
+  let sbSearchResults = [];
+  let sbSearching = false;
+  let sbSearchAbort = null;
+  let sbVisitedKeys = new Set();
+  let sbActiveKey = null;
+  let sbSearchDebounce = null;
+
+  function switchSidebarTab(tab, focusInput = true){
+    sbActiveTab = tab;
+    if(sidebar.classList.contains('collapsed')){
+      setSidebarCollapsed(false);
+    }
+    if(tab === 'files'){
+      if(sbTabFilesBtn) sbTabFilesBtn.classList.add('active');
+      if(sbTabSearchBtn) sbTabSearchBtn.classList.remove('active');
+      if(sidebarFilesView) sidebarFilesView.style.display = 'flex';
+      if(sidebarSearchView) sidebarSearchView.style.display = 'none';
+    } else {
+      if(sbTabFilesBtn) sbTabFilesBtn.classList.remove('active');
+      if(sbTabSearchBtn) sbTabSearchBtn.classList.add('active');
+      if(sidebarFilesView) sidebarFilesView.style.display = 'none';
+      if(sidebarSearchView) sidebarSearchView.style.display = 'flex';
+      
+      const curW = sidebar.getBoundingClientRect().width;
+      if(curW < 300){
+        document.documentElement.style.setProperty('--sb-width', '320px');
+      }
+
+      if(focusInput && sbSearchQueryInput){
+        setTimeout(() => {
+          sbSearchQueryInput.focus();
+          sbSearchQueryInput.select();
+        }, 50);
+      }
+    }
+  }
+  window.switchSidebarTab = switchSidebarTab;
+
+  if(sbTabFilesBtn) sbTabFilesBtn.addEventListener('click', () => switchSidebarTab('files'));
+  if(sbTabSearchBtn) sbTabSearchBtn.addEventListener('click', () => switchSidebarTab('search'));
+
+  function setSbSearchScope(scope){
+    sbSearchScope = scope;
+    if(sbScopeFileBtn) sbScopeFileBtn.classList.toggle('active', scope === 'file');
+    if(sbScopeLevelBtn) sbScopeLevelBtn.classList.toggle('active', scope === 'level');
+    if(sbScopeAllBtn) sbScopeAllBtn.classList.toggle('active', scope === 'all');
+    
+    const q = sbSearchQueryInput ? sbSearchQueryInput.value.trim() : '';
+    if(q){
+      performSidebarSearch(q);
+    }
+  }
+
+  if(sbScopeFileBtn) sbScopeFileBtn.addEventListener('click', () => setSbSearchScope('file'));
+  if(sbScopeLevelBtn) sbScopeLevelBtn.addEventListener('click', () => setSbSearchScope('level'));
+  if(sbScopeAllBtn) sbScopeAllBtn.addEventListener('click', () => setSbSearchScope('all'));
+
+  async function performSidebarSearch(q){
+    if(sbSearchDebounce) clearTimeout(sbSearchDebounce);
+    if(!q){
+      sbSearchResults = [];
+      sbSearching = false;
+      sbActiveKey = null;
+      renderSbSearchResults();
+      return;
+    }
+
+    sbSearching = true;
+    if(sbSearchStatsBar) sbSearchStatsBar.style.display = 'flex';
+    if(sbStatsMatchCount) sbStatsMatchCount.textContent = 'Searching...';
+    if(sbStatsProgress) sbStatsProgress.textContent = '';
+    
+    if(sbSearchAbort) sbSearchAbort.abort();
+    sbSearchAbort = new AbortController();
+
+    try {
+      if(sbSearchScope === 'file'){
+        const lowerQ = q.toLowerCase();
+        const hits = [];
+        let curHeading = '';
+        if(typeof lines !== 'undefined' && Array.isArray(lines)){
+          for(let i = 0; i < lines.length; i++){
+            const rawLine = lines[i];
+            const strippedLine = rawLine.trim();
+            if(strippedLine.startsWith('#')){
+              curHeading = strippedLine.replace(/^#+\s*/, '');
+            }
+            const cleanLine = stripMediaContent(rawLine);
+            if(cleanLine.toLowerCase().includes(lowerQ)){
+              hits.push({
+                file: currentFilePath || 'Current Note',
+                line: i,
+                text: cleanLine.trim() || strippedLine,
+                heading: curHeading
+              });
+              if(hits.length >= 150) break;
+            }
+          }
+        }
+        sbSearchResults = hits;
+      } else {
+        let targetParam = currentFilePath || '';
+        if(isFolderDeck && folderDeckInfo && folderDeckInfo.folderPath){
+          targetParam = folderDeckInfo.folderPath;
+        }
+        const scopeParam = (sbSearchScope === 'level') ? 'same_level' : 'workspace';
+        const url = `/api/search?q=${encodeURIComponent(q)}&scope=${scopeParam}&file=${encodeURIComponent(targetParam)}&strip_images=1`;
+        const res = await fetch(url, { signal: sbSearchAbort.signal });
+        if(!res.ok) throw new Error('Search failed');
+        sbSearchResults = await res.json();
+      }
+    } catch(e){
+      if(e.name !== 'AbortError'){
+        sbSearchResults = [];
+      }
+    } finally {
+      sbSearching = false;
+      renderSbSearchResults();
+    }
+  }
+
+  function renderSbSearchResults(){
+    const q = sbSearchQueryInput ? sbSearchQueryInput.value.trim() : '';
+    if(sbSearchQueryClearBtn){
+      sbSearchQueryClearBtn.style.display = q ? 'inline-block' : 'none';
+    }
+
+    if(!q){
+      if(sbSearchStatsBar) sbSearchStatsBar.style.display = 'none';
+      if(sbSearchBadge) sbSearchBadge.style.display = 'none';
+      if(sbSearchResultsList){
+        sbSearchResultsList.innerHTML = `
+          <div class="sb-search-placeholder">
+            <div style="font-size:24px;margin-bottom:8px;opacity:0.6;">🔍</div>
+            <div style="font-weight:600;margin-bottom:4px;color:var(--fg);">Search Content</div>
+            <div style="font-size:11.5px;color:var(--muted);line-height:1.4;">
+              Search clean Markdown content across notes in the same folder level (modular decks) or entire workspace. Images and media files are excluded.
+            </div>
+          </div>`;
+      }
+      return;
+    }
+
+    if(sbSearchStatsBar) sbSearchStatsBar.style.display = 'flex';
+    const total = sbSearchResults.length;
+    
+    let visitedCount = 0;
+    for(const r of sbSearchResults){
+      const k = `${r.file}:${r.line}`;
+      if(sbVisitedKeys.has(k)) visitedCount++;
+    }
+
+    if(sbStatsMatchCount){
+      sbStatsMatchCount.textContent = `${total} match${total === 1 ? '' : 'es'}`;
+    }
+    if(sbStatsProgress){
+      sbStatsProgress.textContent = `${visitedCount} / ${total} viewed`;
+    }
+    if(sbSearchBadge){
+      sbSearchBadge.textContent = `${total}`;
+      sbSearchBadge.style.display = total > 0 ? 'inline-block' : 'none';
+    }
+
+    if(total === 0){
+      if(sbSearchResultsList){
+        sbSearchResultsList.innerHTML = `
+          <div class="sb-search-placeholder">
+            <div style="font-size:20px;margin-bottom:6px;opacity:0.5;">∅</div>
+            <div style="font-weight:600;color:var(--muted);">No matches found</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">No clean markdown text matches for "${escapeHtml(q)}".</div>
+          </div>`;
+      }
+      return;
+    }
+
+    let html = '';
+    for(let i = 0; i < total; i++){
+      const r = sbSearchResults[i];
+      const key = `${r.file}:${r.line}`;
+      const isVisited = sbVisitedKeys.has(key);
+      const isActive = (sbActiveKey === key);
+      const fileName = r.file.split(/[/\\]/).pop() || r.file;
+      const headingHtml = r.heading ? `<div class="sb-card-heading" title="${escapeHtml(r.heading)}">§ ${escapeHtml(r.heading)}</div>` : '';
+      const badgeText = isVisited ? '✓ Viewed' : 'New';
+
+      html += `
+        <div class="sb-result-card ${isVisited ? 'visited' : ''} ${isActive ? 'active' : ''}" data-idx="${i}" data-file="${escapeHtml(r.file)}" data-line="${r.line}">
+          <div class="sb-card-top">
+            <span class="sb-card-file" title="${escapeHtml(r.file)}">📄 ${escapeHtml(fileName)}</span>
+            <span class="sb-card-line">L${r.line + 1}</span>
+            <span class="sb-card-status-badge">${badgeText}</span>
+          </div>
+          ${headingHtml}
+          <div class="sb-card-snippet">${highlightInHtml(escapeHtml(r.text), q, false)}</div>
+        </div>`;
+    }
+
+    if(sbSearchResultsList){
+      sbSearchResultsList.innerHTML = html;
+    }
+  }
+
+  if(sbSearchResultsList){
+    sbSearchResultsList.addEventListener('click', async (e) => {
+      const card = e.target.closest('.sb-result-card');
+      if(!card) return;
+      const file = card.dataset.file;
+      const line = parseInt(card.dataset.line, 10);
+      const key = `${file}:${line}`;
+
+      sbVisitedKeys.add(key);
+      sbActiveKey = key;
+
+      card.classList.add('visited', 'active');
+      const badge = card.querySelector('.sb-card-status-badge');
+      if(badge) badge.textContent = '✓ Viewed';
+
+      const allCards = sbSearchResultsList.querySelectorAll('.sb-result-card');
+      for(const c of allCards){
+        if(c !== card) c.classList.remove('active');
+      }
+
+      let vCount = 0;
+      for(const r of sbSearchResults){
+        if(sbVisitedKeys.has(`${r.file}:${r.line}`)) vCount++;
+      }
+      if(sbStatsProgress) sbStatsProgress.textContent = `${vCount} / ${sbSearchResults.length} viewed`;
+
+      await openFile(file, { pushHistory: true, line: line, interactive: true });
+    });
+  }
+
+  function navigateSbMatch(direction){
+    if(sbSearchResults.length === 0) return;
+    let curIdx = -1;
+    if(sbActiveKey){
+      curIdx = sbSearchResults.findIndex(r => `${r.file}:${r.line}` === sbActiveKey);
+    }
+    let nextIdx = curIdx + direction;
+    if(nextIdx < 0) nextIdx = sbSearchResults.length - 1;
+    if(nextIdx >= sbSearchResults.length) nextIdx = 0;
+
+    const target = sbSearchResults[nextIdx];
+    const key = `${target.file}:${target.line}`;
+    sbVisitedKeys.add(key);
+    sbActiveKey = key;
+
+    const card = sbSearchResultsList ? sbSearchResultsList.querySelector(`.sb-result-card[data-idx="${nextIdx}"]`) : null;
+    if(card){
+      card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      card.click();
+    }
+  }
+
+  if(sbSearchNextMatchBtn) sbSearchNextMatchBtn.addEventListener('click', () => navigateSbMatch(1));
+  if(sbSearchPrevMatchBtn) sbSearchPrevMatchBtn.addEventListener('click', () => navigateSbMatch(-1));
+  if(sbResetVisitedBtn) sbResetVisitedBtn.addEventListener('click', () => {
+    sbVisitedKeys.clear();
+    renderSbSearchResults();
+  });
+
+  if(sbSearchQueryInput){
+    sbSearchQueryInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      if(sbSearchQueryClearBtn) sbSearchQueryClearBtn.style.display = q ? 'inline-block' : 'none';
+      if(sbSearchDebounce) clearTimeout(sbSearchDebounce);
+      sbSearchDebounce = setTimeout(() => {
+        performSidebarSearch(q);
+      }, 300);
+    });
+
+    sbSearchQueryInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        if(e.shiftKey) navigateSbMatch(-1);
+        else if(sbSearchResults.length > 0) navigateSbMatch(1);
+        else performSidebarSearch(sbSearchQueryInput.value.trim());
+      } else if(e.key === 'Escape'){
+        e.preventDefault();
+        sbSearchQueryInput.value = '';
+        if(sbSearchQueryClearBtn) sbSearchQueryClearBtn.style.display = 'none';
+        performSidebarSearch('');
+        sbSearchQueryInput.blur();
+      }
+    });
+  }
+
+  if(sbSearchQueryClearBtn){
+    sbSearchQueryClearBtn.addEventListener('click', () => {
+      if(sbSearchQueryInput){
+        sbSearchQueryInput.value = '';
+        sbSearchQueryInput.focus();
+      }
+      sbSearchQueryClearBtn.style.display = 'none';
+      performSidebarSearch('');
+    });
+  }
+
+  function dockSearchToSidebar(){
+    const q = searchInput ? searchInput.value.trim() : '';
+    if(searchResults) searchResults.style.display = 'none';
+    switchSidebarTab('search', false);
+    if(sbSearchQueryInput) sbSearchQueryInput.value = q;
+    setSbSearchScope(searchScope === 'all' ? 'all' : (searchScope === 'level' ? 'level' : 'file'));
+    performSidebarSearch(q);
+  }
+  window.dockSearchToSidebar = dockSearchToSidebar;
+
+  // Sidebar drag resizer
+  if(sidebarResizer && sidebar){
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 280;
+
+    const savedWidth = localStorage.getItem('mdv_sidebar_width');
+    if(savedWidth){
+      const w = parseInt(savedWidth, 10);
+      if(!isNaN(w) && w >= 200 && w <= 700){
+        document.documentElement.style.setProperty('--sb-width', `${w}px`);
+      }
+    }
+
+    sidebarResizer.addEventListener('mousedown', (e) => {
+      if(sidebar.classList.contains('collapsed')) return;
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = sidebar.getBoundingClientRect().width;
+      sidebar.classList.add('resizing');
+      sidebarResizer.classList.add('resizing');
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if(!isResizing) return;
+      const dx = e.clientX - startX;
+      const newWidth = Math.max(220, Math.min(650, startWidth + dx));
+      document.documentElement.style.setProperty('--sb-width', `${newWidth}px`);
+    });
+
+    document.addEventListener('mouseup', () => {
+      if(!isResizing) return;
+      isResizing = false;
+      sidebar.classList.remove('resizing');
+      sidebarResizer.classList.remove('resizing');
+      document.body.style.cursor = '';
+      const finalWidth = sidebar.getBoundingClientRect().width;
+      localStorage.setItem('mdv_sidebar_width', finalWidth);
     });
   }
 
