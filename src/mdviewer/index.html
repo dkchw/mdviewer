@@ -632,6 +632,7 @@
     display: none;
     flex-direction: column;
     flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -644,8 +645,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 10px 18px;
+    gap: 10px;
+    padding: 8px 16px;
     background: #16161e;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
@@ -678,14 +679,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1 1 360px;
-    max-width: 640px;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
   }
   .fc-fo-search-wrap {
     display: flex;
     align-items: center;
     position: relative;
-    flex: 1 1 auto;
+    flex: 1 1 180px;
+    max-width: 260px;
   }
   .fc-fo-search-icon {
     position: absolute;
@@ -699,9 +701,9 @@
     background: #191b29;
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 28px 6px 26px;
+    padding: 5px 24px 5px 24px;
     color: var(--fg);
-    font-size: 12px;
+    font-size: 11.5px;
     font-family: inherit;
     outline: none;
     transition: border-color .15s ease;
@@ -712,7 +714,7 @@
   }
   .fc-fo-clear-btn {
     position: absolute;
-    right: 6px;
+    right: 5px;
     background: transparent;
     border: none;
     color: var(--muted);
@@ -726,38 +728,72 @@
     background: #191b29;
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 5px 8px;
+    padding: 4px 8px;
     color: var(--fg);
     font-size: 11.5px;
     outline: none;
     cursor: pointer;
   }
-  .fc-fo-layout-toggle {
-    display: flex;
+  .fc-fo-control-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     background: #191b29;
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 2px;
-    gap: 2px;
+    padding: 3px 8px;
   }
-  .fc-fo-layout-toggle button {
+  .fc-fo-control-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .fc-fo-control-group select {
     background: transparent;
     border: none;
-    color: var(--muted);
-    padding: 3px 8px;
-    font-size: 11px;
-    border-radius: 4px;
+    color: var(--fg);
+    font-size: 11.5px;
+    outline: none;
     cursor: pointer;
-    font-weight: 500;
-    transition: all .12s ease;
+    font-weight: 600;
   }
-  .fc-fo-layout-toggle button:hover {
+  .fc-fo-control-group select option {
+    background: #1f2335;
     color: var(--fg);
   }
-  .fc-fo-layout-toggle button.active {
-    background: #242737;
-    color: var(--accent);
-    font-weight: 700;
+  .fc-fo-prefix-wrap {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+  }
+  .fc-fo-input-prefix {
+    background: transparent;
+    border: none;
+    color: #7aa2f7;
+    font-size: 11.5px;
+    font-weight: 600;
+    width: 145px;
+    outline: none;
+    font-family: inherit;
+    padding-right: 18px;
+  }
+  .fc-fo-input-prefix::placeholder {
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .fc-fo-input-number {
+    background: #141620;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg);
+    font-size: 11.5px;
+    padding: 1px 4px;
+    outline: none;
+    text-align: center;
   }
   .fc-fo-header-right {
     display: flex;
@@ -899,41 +935,73 @@
   }
   .fc-fo-card-body {
     display: flex;
-    width: 100%;
-    min-height: 120px;
-  }
-  /* Dual-Column Side-by-Side Mode */
-  .fc-fo-content-list.layout-cols .fc-fo-card-body {
     flex-direction: row;
+    width: 100%;
+    min-height: 90px;
   }
-  .fc-fo-content-list.layout-cols .fc-fo-side {
-    flex: 1 1 50%;
-    width: 50%;
-    padding: 16px 20px;
+  .fc-fo-side {
     display: flex;
     flex-direction: column;
     min-width: 0;
   }
-  .fc-fo-content-list.layout-cols .fc-fo-side.fc-fo-front {
+  .fc-fo-side.fc-fo-front {
+    flex: 0 0 45%;
+    width: 45%;
+    max-width: 45%;
+    padding: 16px 20px;
     border-right: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.012);
   }
-  .fc-fo-content-list.layout-cols .fc-fo-side.fc-fo-back {
+  .fc-fo-side.fc-fo-back {
+    flex: 1 1 55%;
+    width: 55%;
+    padding: 16px 22px;
     background: rgba(0, 0, 0, 0.1);
   }
-  /* Stacked Mode */
-  .fc-fo-content-list.layout-stack .fc-fo-card-body {
-    flex-direction: column;
+  @media (max-width: 768px) {
+    .fc-fo-card-body {
+      flex-direction: column;
+    }
+    .fc-fo-side.fc-fo-front {
+      flex: 1 1 auto;
+      width: 100%;
+      max-width: 100%;
+      border-right: none;
+      border-bottom: 1px dashed var(--border);
+    }
+    .fc-fo-side.fc-fo-back {
+      flex: 1 1 auto;
+      width: 100%;
+    }
   }
-  .fc-fo-content-list.layout-stack .fc-fo-side {
-    width: 100%;
-    padding: 14px 20px;
-    display: flex;
-    flex-direction: column;
+  .fc-fo-line-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    background: #191b29;
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: normal;
   }
-  .fc-fo-content-list.layout-stack .fc-fo-side.fc-fo-front {
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.012);
+  .fc-fo-expand-btn {
+    margin-top: 10px;
+    align-self: flex-start;
+    background: rgba(122, 162, 247, 0.12);
+    border: 1px dashed rgba(122, 162, 247, 0.35);
+    border-radius: 4px;
+    color: #7aa2f7;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .fc-fo-expand-btn:hover {
+    background: rgba(122, 162, 247, 0.22);
+    border-color: #7aa2f7;
   }
   .fc-fo-side-tag {
     font-size: 10.5px;
@@ -4911,8 +4979,8 @@
         <div class="fc-fo-header-center">
           <div class="fc-fo-search-wrap">
             <span class="fc-fo-search-icon">🔍</span>
-            <input type="text" id="fcFoSearchInput" placeholder="Filter cards by title, front, back, or tags..." spellcheck="false" autocomplete="off" />
-            <button id="fcFoSearchClearBtn" class="fc-fo-clear-btn" title="Clear filter">✕</button>
+            <input type="text" id="fcFoSearchInput" placeholder="Filter cards by text, tags..." spellcheck="false" autocomplete="off" />
+            <button id="fcFoSearchClearBtn" class="fc-fo-clear-btn" title="Clear search">✕</button>
           </div>
           <select id="fcFoLevelFilter" class="fc-fo-select" title="Filter by heading level or marked status">
             <option value="all">All Levels</option>
@@ -4922,9 +4990,28 @@
             <option value="3">H3 Only</option>
             <option value="4">H4 Only</option>
           </select>
-          <div class="fc-fo-layout-toggle" title="Switch layout mode">
-            <button type="button" id="fcFoLayoutCols" class="active" title="Side-by-Side Dual Column View">❚❚ Dual</button>
-            <button type="button" id="fcFoLayoutStack" title="Stacked Front-then-Back View">☰ Stacked</button>
+          <div class="fc-fo-control-group" title="Limit how many lines the back card displays (0 = All)">
+            <span class="fc-fo-control-label">Lines:</span>
+            <select id="fcFoBackLineSelect" class="fc-fo-select" title="Number of lines to show on back card">
+              <option value="0">All</option>
+              <option value="1">1 Line</option>
+              <option value="2">2 Lines</option>
+              <option value="3">3 Lines</option>
+              <option value="4">4 Lines</option>
+              <option value="5">5 Lines</option>
+              <option value="8">8 Lines</option>
+              <option value="10">10 Lines</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <input type="number" id="fcFoBackLineInput" class="fc-fo-input-number" min="1" max="100" placeholder="#" style="display:none;width:42px;" title="Custom line limit" />
+          </div>
+          <div class="fc-fo-control-group" title="Filter back card to lines starting with a specific prefix or field (e.g. Answer:, Extra:)">
+            <span class="fc-fo-control-label">Start with:</span>
+            <div class="fc-fo-prefix-wrap">
+              <input type="text" id="fcFoBackPrefixInput" list="fcFoBackFieldDatalist" class="fc-fo-input-prefix" placeholder="Field / Prefix..." spellcheck="false" autocomplete="off" title="Pick an imported Anki field or type line prefix (e.g. **Answer:**, Answer, Extra)" />
+              <datalist id="fcFoBackFieldDatalist"></datalist>
+              <button type="button" id="fcFoBackPrefixClearBtn" class="fc-fo-clear-btn" style="display:none;" title="Clear prefix filter">✕</button>
+            </div>
           </div>
         </div>
         <div class="fc-fo-header-right">
@@ -4932,7 +5019,7 @@
           <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
         </div>
       </div>
-      <div id="fcFoContentList" class="fc-fo-content-list layout-cols">
+      <div id="fcFoContentList" class="fc-fo-content-list">
         <!-- Cards dynamically rendered here -->
       </div>
     </div>
@@ -9618,9 +9705,11 @@
 
   // Full-Page Dual-Side Flashcard Overview State & Controller
   let isFullOverviewOpen = false;
-  let fcFoLayoutMode = 'cols'; // 'cols' (side-by-side) or 'stack'
   let fcFoFilterLevel = 'all';  // 'all', 'marked', '1', '2', '3', '4'
   let fcFoSearchQuery = '';
+  let fcFoBackLineLimit = 0;   // 0 = all lines, 1 = 1 line, etc.
+  let fcFoBackFieldPrefix = ''; // e.g. '**Answer:**', 'Answer', 'Extra', etc.
+  let fcFoExpandedCardSet = new Set(); // Card indices manually expanded
   let fcFoRenderBatchSize = 35;
   let fcFoCurrentRenderedCount = 0;
   let fcFoFilteredList = [];
@@ -9631,18 +9720,41 @@
   const fcFoSearchInput = document.getElementById('fcFoSearchInput');
   const fcFoSearchClearBtn = document.getElementById('fcFoSearchClearBtn');
   const fcFoLevelFilter = document.getElementById('fcFoLevelFilter');
-  const fcFoLayoutCols = document.getElementById('fcFoLayoutCols');
-  const fcFoLayoutStack = document.getElementById('fcFoLayoutStack');
+  const fcFoBackLineSelect = document.getElementById('fcFoBackLineSelect');
+  const fcFoBackLineInput = document.getElementById('fcFoBackLineInput');
+  const fcFoBackPrefixInput = document.getElementById('fcFoBackPrefixInput');
+  const fcFoBackPrefixClearBtn = document.getElementById('fcFoBackPrefixClearBtn');
+  const fcFoBackFieldDatalist = document.getElementById('fcFoBackFieldDatalist');
   const fcFoScrollActiveBtn = document.getElementById('fcFoScrollActiveBtn');
   const fcFoCloseBtn = document.getElementById('fcFoCloseBtn');
   const fcFoContentList = document.getElementById('fcFoContentList');
   const fcFoCountBadge = document.getElementById('fcFoCountBadge');
 
   function openFullOverview() {
+    const hasExistingCards = (flashcardList && flashcardList.length > 0) || (headings && headings.length > 0) || isFolderDeck;
+    if (!isFlashcardMode) {
+      if ((!lines || lines.length === 0) && !hasExistingCards) {
+        if (typeof showAppToast === 'function') {
+          showAppToast('Please open a markdown file or import a deck first', true);
+        }
+        return;
+      }
+      enterFlashcardMode({ silent: true });
+    }
+
     if (!flashcardList || flashcardList.length === 0) {
-      showAppToast('No cards in current outline');
+      flashcardList = collectFlashcards(flashcardFilter || 'outline');
+    }
+    if (!flashcardList || flashcardList.length === 0) {
+      if (headings && headings.length > 0) {
+        flashcardList = headings.slice();
+      }
+    }
+    if (!flashcardList || flashcardList.length === 0) {
+      showAppToast('No cards found in current outline or file');
       return;
     }
+
     isFullOverviewOpen = true;
     if (fcFullOverviewView) fcFullOverviewView.style.display = 'flex';
     if (flashcardMainArea) flashcardMainArea.style.display = 'none';
@@ -9653,6 +9765,7 @@
       toggleFcRightSidebar(false);
     }
 
+    populateBackFieldsDatalist();
     renderFullOverview();
 
     // Scroll to active card in the full overview
@@ -9660,6 +9773,7 @@
       scrollToActiveCardInFullOverview();
     }, 100);
   }
+  window.openFullOverview = openFullOverview;
 
   function closeFullOverview() {
     isFullOverviewOpen = false;
@@ -9669,6 +9783,7 @@
 
     renderCurrentCard();
   }
+  window.closeFullOverview = closeFullOverview;
 
   function toggleFullOverview() {
     if (isFullOverviewOpen) {
@@ -9677,6 +9792,218 @@
       openFullOverview();
     }
   }
+  window.toggleFullOverview = toggleFullOverview;
+
+  function populateBackFieldsDatalist() {
+    if (!fcFoBackFieldDatalist || !flashcardList) return;
+    const detectedFields = new Set();
+    ['Answer', 'Back', 'Extra', 'Meaning', 'Definition', 'Translation', 'Reading', 'Example', 'Notes', 'Tags'].forEach(f => detectedFields.add(f));
+
+    const scanLimit = Math.min(flashcardList.length, 300);
+    for (let i = 0; i < scanLimit; i++) {
+      const card = flashcardList[i];
+      const raw = getCardBackRawText(card) || '';
+      const matches = raw.matchAll(/^(\*\*[A-Za-z0-9 _-]{2,25}:\*\*|^[A-Za-z0-9 _-]{2,20}:)/gm);
+      for (const m of matches) {
+        const cleanField = m[1].replace(/^\*\*|\*\*$/g, '').replace(/:$/, '').trim();
+        if (cleanField && cleanField.length < 30) {
+          detectedFields.add(cleanField);
+        }
+      }
+    }
+
+    fcFoBackFieldDatalist.innerHTML = '';
+    detectedFields.forEach((field) => {
+      const opt = document.createElement('option');
+      opt.value = `**${field}:**`;
+      opt.label = field;
+      fcFoBackFieldDatalist.appendChild(opt);
+    });
+  }
+
+  function processCardBackLines(rawBack, lineLimit, startPrefix) {
+    if (!rawBack || !rawBack.trim()) {
+      return { content: '', totalLines: 0, shownLines: 0, hasMore: false, truncatedCount: 0 };
+    }
+    // Normalize field headers: if a line is solely '**Field:**' with no text on same line, join with following line
+    let normalized = rawBack.replace(/^(\*\*[A-Za-z0-9 _-]+:\*\*)\s*\n\s*([^\n]+)/gm, (m, p1, p2) => p1 + ' ' + p2);
+
+    const allLines = normalized.split(/\r?\n/).filter(l => l.trim().length > 0);
+    let matchingLines = [];
+    const prefix = (startPrefix || '').trim();
+
+    if (prefix) {
+      const pLower = prefix.toLowerCase();
+      const pBare = pLower.replace(/^\*+|\*+$/g, '').replace(/:+$/, '').trim();
+      let inMatchingField = false;
+
+      for (let i = 0; i < allLines.length; i++) {
+        const line = allLines[i];
+        const trimmed = line.trim();
+        const lineLower = trimmed.toLowerCase();
+        const lineBare = lineLower.replace(/^\*+|\*+$/g, '').trim();
+
+        const isDirectPrefix = lineLower.startsWith(pLower);
+        const isFieldMatch = pBare && (
+          lineBare.startsWith(pBare + ':') ||
+          lineBare.startsWith(pBare + ' :') ||
+          lineLower.startsWith('**' + pBare + ':') ||
+          lineLower.startsWith('**' + pBare + ' :') ||
+          lineBare === pBare
+        );
+
+        const isDiffField = /^\*\*([A-Za-z0-9 _-]+):\*\*/.test(trimmed) && !isFieldMatch;
+        const isBlockStart = /^(#{1,6}\s|\*\*|\*|-|\+|\d+\.|\>|---|___|\`\`\`)/.test(trimmed);
+
+        if (isDirectPrefix || isFieldMatch) {
+          matchingLines.push(line);
+          inMatchingField = /^\*\*([A-Za-z0-9 _-]+):\*\*/.test(trimmed) || /^[A-Za-z0-9 _-]+:/.test(trimmed);
+        } else if (inMatchingField) {
+          if (isDiffField || isBlockStart) {
+            inMatchingField = false;
+          } else {
+            matchingLines.push(line);
+          }
+        }
+      }
+
+      // Fallback: search anywhere in line if direct prefix match yielded nothing
+      if (matchingLines.length === 0) {
+        for (let i = 0; i < allLines.length; i++) {
+          const line = allLines[i];
+          if (line.toLowerCase().includes(pLower)) {
+            matchingLines.push(line);
+          }
+        }
+      }
+    } else {
+      matchingLines = allLines.slice();
+    }
+
+    while (matchingLines.length > 0 && !matchingLines[matchingLines.length - 1].trim()) {
+      matchingLines.pop();
+    }
+
+    const totalLines = matchingLines.length;
+    let shownLines = totalLines;
+    let hasMore = false;
+    let truncatedCount = 0;
+
+    if (lineLimit && lineLimit > 0 && totalLines > lineLimit) {
+      shownLines = lineLimit;
+      hasMore = true;
+      truncatedCount = totalLines - lineLimit;
+      matchingLines = matchingLines.slice(0, lineLimit);
+    }
+
+    return {
+      content: matchingLines.join('\n'),
+      totalLines,
+      shownLines,
+      hasMore,
+      truncatedCount
+    };
+  }
+
+  function renderCardBackForOverview(effectiveBack, cardFilePath, lineLimit, fieldPrefix, isExpanded = false) {
+    if (!effectiveBack || !effectiveBack.trim()) {
+      return {
+        renderedBackHtml: `<div style="font-size:12.5px;color:var(--muted);font-style:italic;padding:12px 0;">(No back content)</div>`,
+        lineStatusText: '',
+        hasMore: false,
+        truncatedCount: 0
+      };
+    }
+
+    // 1. Preserve Image Occlusion block without line-chopping SVG
+    let ioMarkup = '';
+    const ioMatch = effectiveBack.match(/<div\b[^>]*\bclass="[^"]*(?:anki-image-occlusion|anki-io-)[^"]*"[\s\S]*?<\/div>\s*<\/div>/i);
+    let textToFilter = effectiveBack;
+    if (ioMatch) {
+      ioMarkup = ioMatch[0].replace(/src=(["'])(.*?)\1/gi, (m, q, u) => {
+        return `src="${resolveMediaUrl(u, cardFilePath)}"`;
+      });
+      textToFilter = effectiveBack.replace(ioMatch[0], '').trim();
+    }
+
+    // 2. Process text lines with line limit & prefix filter
+    const effectiveLimit = isExpanded ? 0 : lineLimit;
+    const processed = processCardBackLines(textToFilter, effectiveLimit, fieldPrefix);
+
+    const statusParts = [];
+    if (fieldPrefix && fieldPrefix.trim()) {
+      statusParts.push(`Prefix: "${fieldPrefix.trim()}"`);
+    }
+    if (processed.hasMore) {
+      statusParts.push(`${processed.shownLines} of ${processed.totalLines} lines`);
+    } else if (isExpanded) {
+      statusParts.push(`All ${processed.totalLines} lines`);
+    } else if (lineLimit > 0 && processed.totalLines > 0) {
+      statusParts.push(`${processed.shownLines} lines`);
+    }
+    const lineStatusText = statusParts.join(' • ');
+
+    // 3. Assemble content
+    let combinedContent = '';
+    if (ioMarkup) {
+      combinedContent += ioMarkup + '\n\n';
+    }
+    if (processed.content) {
+      combinedContent += processed.content;
+    } else if (!ioMarkup && fieldPrefix && fieldPrefix.trim()) {
+      combinedContent += `*(No lines start with "${fieldPrefix.trim()}")*`;
+    }
+
+    const renderedBackHtml = `<div class="fc-enhanced-markdown anki-io-back">${renderEnhancedMarkdown(combinedContent, cardFilePath)}</div>`;
+
+    return {
+      renderedBackHtml,
+      lineStatusText,
+      hasMore: processed.hasMore,
+      truncatedCount: processed.truncatedCount
+    };
+  }
+
+  function toggleExpandCardBack(cardIdx, btnElem) {
+    if (fcFoExpandedCardSet.has(cardIdx)) {
+      fcFoExpandedCardSet.delete(cardIdx);
+    } else {
+      fcFoExpandedCardSet.add(cardIdx);
+    }
+    const cardElem = document.getElementById(`fc-fo-card-${cardIdx}`);
+    if (!cardElem || !flashcardList[cardIdx]) return;
+    const h = flashcardList[cardIdx];
+    const backSide = cardElem.querySelector('.fc-fo-side.fc-fo-back');
+    if (!backSide) return;
+
+    const isExpanded = fcFoExpandedCardSet.has(cardIdx);
+    const rawBack = getCardBackRawText(h) || '';
+    const cardSlug = getCardSlug(h);
+    const cachedAi = currentFileAiCards.get(cardSlug)
+      || currentFileAiCards.get(`H${h.level}::${(h.text || '').trim()}`)
+      || currentFileAiCards.get(`text::${(h.text || '').trim().toLowerCase()}`);
+    const effectiveBack = (rawBack && rawBack.trim()) ? rawBack : (cachedAi ? cachedAi.content : '');
+
+    const { renderedBackHtml, lineStatusText, hasMore, truncatedCount } = renderCardBackForOverview(effectiveBack, h.file_path, fcFoBackLineLimit, fcFoBackFieldPrefix, isExpanded);
+
+    let expandBtnHtml = '';
+    if (hasMore) {
+      expandBtnHtml = `<button type="button" class="fc-fo-expand-btn" onclick="event.stopPropagation(); toggleExpandCardBack(${cardIdx}, this);" title="Show all lines for this card">+${truncatedCount} more lines (Show full)</button>`;
+    } else if (isExpanded && fcFoBackLineLimit > 0) {
+      expandBtnHtml = `<button type="button" class="fc-fo-expand-btn" onclick="event.stopPropagation(); toggleExpandCardBack(${cardIdx}, this);" title="Collapse back to line limit">▲ Collapse to ${fcFoBackLineLimit} lines</button>`;
+    }
+
+    backSide.innerHTML = `
+      <div class="fc-fo-side-tag">
+        <span>🟢 BACK FACE</span>
+        ${lineStatusText ? `<span class="fc-fo-line-badge">${escapeHtml(lineStatusText)}</span>` : ''}
+      </div>
+      <div class="fc-fo-back-content">${renderedBackHtml}</div>
+      ${expandBtnHtml}
+    `;
+    initCardAudioElements(backSide);
+  }
+  window.toggleExpandCardBack = toggleExpandCardBack;
 
   function scrollToActiveCardInFullOverview() {
     if (!fcFoContentList) return;
@@ -9762,8 +10089,8 @@
     batch.forEach((h) => {
       const overallCardIdx = flashcardList.indexOf(h);
       const isCurrentReviewCard = (overallCardIdx === currentCardIndex);
-      const isMarked = isCardMarked(h);
-      const cardKey = getCardKey(h);
+      const isMarked = (typeof isCardMarked === 'function') ? isCardMarked(h) : false;
+      const cardKey = (typeof getCardKey === 'function') ? getCardKey(h) : '';
       const sessionCard = (typeof getSessionCard === 'function') ? getSessionCard(cardKey) : null;
       const dispCount = sessionCard ? (sessionCard.displayCount || 0) : 0;
 
@@ -9825,7 +10152,7 @@
         </div>
       `;
 
-      // Card Body (Dual or Stacked)
+      // Card Body (Side-by-Side: Left = Front, Right = Back)
       const bodyDiv = document.createElement('div');
       bodyDiv.className = 'fc-fo-card-body';
 
@@ -9846,20 +10173,27 @@
         ${frontMediaHtml}
       `;
 
-      // Right: Back Face
+      // Right: Back Face (Controlled by Line Limit & Field Prefix)
       const backSide = document.createElement('div');
       backSide.className = 'fc-fo-side fc-fo-back';
 
-      let renderedBackHtml = '';
-      if (effectiveBack) {
-        renderedBackHtml = `<div class="fc-enhanced-markdown anki-io-back">${renderEnhancedMarkdown(effectiveBack, h.file_path)}</div>`;
-      } else {
-        renderedBackHtml = `<div style="font-size:12.5px;color:var(--muted);font-style:italic;padding:12px 0;">(No back content)</div>`;
+      const isExpanded = fcFoExpandedCardSet.has(overallCardIdx);
+      const { renderedBackHtml, lineStatusText, hasMore, truncatedCount } = renderCardBackForOverview(effectiveBack, h.file_path, fcFoBackLineLimit, fcFoBackFieldPrefix, isExpanded);
+
+      let expandBtnHtml = '';
+      if (hasMore) {
+        expandBtnHtml = `<button type="button" class="fc-fo-expand-btn" onclick="event.stopPropagation(); toggleExpandCardBack(${overallCardIdx}, this);" title="Show all lines for this card">+${truncatedCount} more lines (Show full)</button>`;
+      } else if (isExpanded && fcFoBackLineLimit > 0) {
+        expandBtnHtml = `<button type="button" class="fc-fo-expand-btn" onclick="event.stopPropagation(); toggleExpandCardBack(${overallCardIdx}, this);" title="Collapse back to line limit">▲ Collapse to ${fcFoBackLineLimit} lines</button>`;
       }
 
       backSide.innerHTML = `
-        <div class="fc-fo-side-tag">🟢 BACK FACE</div>
+        <div class="fc-fo-side-tag">
+          <span>🟢 BACK FACE</span>
+          ${lineStatusText ? `<span class="fc-fo-line-badge">${escapeHtml(lineStatusText)}</span>` : ''}
+        </div>
         <div class="fc-fo-back-content">${renderedBackHtml}</div>
+        ${expandBtnHtml}
       `;
 
       bodyDiv.appendChild(frontSide);
@@ -9879,7 +10213,7 @@
   function toggleMarkCardFromFullOverview(cardIdx, btnElem) {
     if (!flashcardList || !flashcardList[cardIdx]) return;
     const targetCard = flashcardList[cardIdx];
-    const key = getCardKey(targetCard);
+    const key = (typeof getCardKey === 'function') ? getCardKey(targetCard) : '';
     if (!key) return;
 
     if (fcMarkedCards.has(key)) {
@@ -9901,6 +10235,7 @@
     }
     updateMarkedUI();
   }
+  window.toggleMarkCardFromFullOverview = toggleMarkCardFromFullOverview;
 
   // Full Overview Event Listeners
   if (fcFullOverviewBtn) {
@@ -9928,22 +10263,47 @@
       renderFullOverview();
     });
   }
-  if (fcFoLayoutCols && fcFoLayoutStack) {
-    fcFoLayoutCols.addEventListener('click', () => {
-      fcFoLayoutCols.classList.add('active');
-      fcFoLayoutStack.classList.remove('active');
-      if (fcFoContentList) {
-        fcFoContentList.classList.remove('layout-stack');
-        fcFoContentList.classList.add('layout-cols');
+  if (fcFoBackLineSelect) {
+    fcFoBackLineSelect.addEventListener('change', () => {
+      const val = fcFoBackLineSelect.value;
+      if (val === 'custom') {
+        if (fcFoBackLineInput) {
+          fcFoBackLineInput.style.display = 'inline-block';
+          fcFoBackLineInput.focus();
+        }
+      } else {
+        if (fcFoBackLineInput) fcFoBackLineInput.style.display = 'none';
+        fcFoBackLineLimit = parseInt(val, 10) || 0;
+        fcFoExpandedCardSet.clear();
+        renderFullOverview();
       }
     });
-    fcFoLayoutStack.addEventListener('click', () => {
-      fcFoLayoutStack.classList.add('active');
-      fcFoLayoutCols.classList.remove('active');
-      if (fcFoContentList) {
-        fcFoContentList.classList.remove('layout-cols');
-        fcFoContentList.classList.add('layout-stack');
+  }
+  if (fcFoBackLineInput) {
+    fcFoBackLineInput.addEventListener('input', () => {
+      const num = parseInt(fcFoBackLineInput.value, 10);
+      fcFoBackLineLimit = (!isNaN(num) && num > 0) ? num : 0;
+      fcFoExpandedCardSet.clear();
+      renderFullOverview();
+    });
+  }
+  if (fcFoBackPrefixInput) {
+    fcFoBackPrefixInput.addEventListener('input', () => {
+      fcFoBackFieldPrefix = fcFoBackPrefixInput.value;
+      if (fcFoBackPrefixClearBtn) {
+        fcFoBackPrefixClearBtn.style.display = fcFoBackFieldPrefix ? 'inline-block' : 'none';
       }
+      fcFoExpandedCardSet.clear();
+      renderFullOverview();
+    });
+  }
+  if (fcFoBackPrefixClearBtn) {
+    fcFoBackPrefixClearBtn.addEventListener('click', () => {
+      if (fcFoBackPrefixInput) fcFoBackPrefixInput.value = '';
+      fcFoBackFieldPrefix = '';
+      fcFoBackPrefixClearBtn.style.display = 'none';
+      fcFoExpandedCardSet.clear();
+      renderFullOverview();
     });
   }
   if (fcFoScrollActiveBtn) {
@@ -11457,6 +11817,14 @@
 
   // Keyboard navigation for Flashcard mode (arrows, space, enter, esc, f, c, s, o, e, [, ])
   document.addEventListener('keydown', (e) => {
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'o' || e.key === 'O')){
+      e.preventDefault();
+      if(typeof toggleFullOverview === 'function') toggleFullOverview();
+      return;
+    }
+
     if(!isFlashcardMode) return;
     if(isCardEditing){
       if(e.key === 'Escape'){
@@ -11509,14 +11877,6 @@
         return;
       }
     }
-    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'o' || e.key === 'O')){
-      e.preventDefault();
-      toggleFullOverview();
-      return;
-    }
-
     if(e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'd' || e.key === 'D')){
       e.preventDefault();
       if(typeof openDrillModal === 'function') openDrillModal('drill');
