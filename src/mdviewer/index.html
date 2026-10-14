@@ -1234,7 +1234,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 24px 32px 80px 32px;
+    padding: 24px 32px 90px 32px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -1260,6 +1260,106 @@
   .fc-fo-card-card.active-card {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent), 0 6px 24px rgba(122, 162, 247, 0.25);
+  }
+  .fc-fo-card-card.focused-card {
+    border-color: #7aa2f7 !important;
+    box-shadow: 0 0 0 2px #7aa2f7, 0 8px 30px rgba(122, 162, 247, 0.4) !important;
+  }
+
+  /* Full Overview Bottom Navigation Control Bar */
+  .fc-fo-bottom-nav {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 24px;
+    background: #14151f;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.45);
+    z-index: 100;
+  }
+  .fc-fo-nav-left, .fc-fo-nav-center, .fc-fo-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .fc-fo-nav-btn {
+    background: #242737;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    padding: 5px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: all .15s ease;
+    user-select: none;
+  }
+  .fc-fo-nav-btn:hover {
+    background: #2c3040;
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .fc-fo-nav-btn.active {
+    background: rgba(122, 162, 247, 0.22);
+    border-color: #7aa2f7;
+    color: #7aa2f7;
+  }
+  .fc-fo-card-indicator {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #c0caf5;
+    padding: 4px 10px;
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    white-space: nowrap;
+    letter-spacing: .02em;
+  }
+  .fc-fo-rerank-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #191b29;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* Full Overview Masked / Quiz Mode */
+  .fc-fo-mask-active .fc-fo-back:not(.revealed) .fc-fo-back-content {
+    filter: blur(8px);
+    user-select: none;
+    pointer-events: none;
+    opacity: 0.35;
+    transition: filter 0.2s ease, opacity 0.2s ease;
+  }
+  .fc-fo-mask-active .fc-fo-back:not(.revealed) {
+    position: relative;
+    cursor: pointer;
+  }
+  .fc-fo-mask-active .fc-fo-back:not(.revealed)::after {
+    content: "🙈 Hidden for review • Click or press Space to reveal";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(26, 27, 38, 0.92);
+    border: 1px dashed #7aa2f7;
+    color: #7aa2f7;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
   .fc-fo-card-header {
     background: #16161e;
@@ -1974,7 +2074,7 @@
   .fc-editor-stats{color:#a9b1d6;}
 
   .fc-toast{
-    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;
+    position:fixed;bottom:58px;left:50%;transform:translateX(-50%);z-index:9999;
     background:#24283b;color:var(--fg);border:1px solid var(--accent);
     padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;
     box-shadow:0 8px 24px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px;
@@ -5467,9 +5567,16 @@
         <button id="fcFilterAll" data-filter="all" title="All headings">All</button>
         <button id="fcFilterAi" data-filter="ai" title="Study all cards that have AI supplements across all outline levels">✨ AI Cards <span id="fcFilterAiCount" class="badge" style="background:rgba(122,162,247,0.25);padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px;">0</span></button>
       </div>
-      <div class="sep"></div>
-      <button id="fcShuffleBtn" title="Shuffle flashcards (S)">🔀 Shuffle</button>
-      <div class="sep"></div>
+      <div style="display:inline-flex;align-items:center;gap:4px;">
+        <button id="fcShuffleBtn" title="Shuffle flashcards (S)">🔀 Shuffle</button>
+        <select id="fcRerankSelect" class="fc-fo-select" style="background:#191b29;color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;height:24px;" title="Study Order & Rerank Mode">
+          <option value="begin_first">1. Begin First</option>
+          <option value="end_first">2. End First</option>
+          <option value="mid_end_begin">3. Mid → End → Begin</option>
+          <option value="mid_begin_end">4. Mid → Begin → End</option>
+          <option value="shuffle">5. Randomize 🔀</option>
+        </select>
+      </div>
       <span class="fc-label">Text Size:</span>
       <div class="fc-zoom-group" id="fcZoomGroup" title="Flashcard text size (- or +)">
         <button id="fcZoomOut" title="Decrease text size (- or Ctrl+-)">A−</button>
@@ -5859,6 +5966,17 @@
     <div class="fc-fo-header-left">
       <span class="fc-fo-title">📑 Full Cards Overview</span>
       <span id="fcFoCountBadge" class="fc-fo-badge">0 cards</span>
+      <div class="fc-fo-rerank-wrap" title="Change study order and rerank cards">
+        <span style="font-size:11px;font-weight:700;color:var(--muted);">Order:</span>
+        <select id="fcFoRerankSelect" class="fc-fo-select" style="padding:2px 6px;font-size:11px;" title="Rerank cards for study">
+          <option value="begin_first">1. Begin First (Normal)</option>
+          <option value="end_first">2. End First (Reverse)</option>
+          <option value="mid_end_begin">3. Middle → End → Begin</option>
+          <option value="mid_begin_end">4. Middle → Begin → End</option>
+          <option value="shuffle">5. Complete Randomize 🔀</option>
+        </select>
+        <button type="button" id="fcFoShuffleQuickBtn" class="fc-fo-btn" style="padding:2px 7px;font-size:11px;" title="Quick complete randomize (S)">🔀</button>
+      </div>
     </div>
     <div class="fc-fo-header-center">
       <div class="fc-fo-search-wrap">
@@ -5899,12 +6017,71 @@
       </div>
     </div>
     <div class="fc-fo-header-right">
+      <button type="button" id="fcFoMaskBackBtn" class="fc-fo-btn" title="Toggle hiding card backs for self-testing quiz mode (Space to reveal)">🙈 Hide Backs</button>
+      <button type="button" id="fcFoExpandAllBtn" class="fc-fo-btn" title="Expand or collapse all card backs">↕ Expand All</button>
+      <div class="fc-zoom-group" style="display:inline-flex;" title="Full Overview text size">
+        <button type="button" id="fcFoZoomOut" title="Smaller font">A−</button>
+        <span id="fcFoZoomLevel" style="font-size:11px;padding:0 6px;color:var(--muted);user-select:none;">100%</span>
+        <button type="button" id="fcFoZoomIn" title="Larger font">A+</button>
+      </div>
       <button type="button" id="fcFoScrollActiveBtn" class="fc-fo-btn" title="Scroll to currently active review card">🎯 Active Card</button>
       <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
     </div>
   </div>
   <div id="fcFoContentList" class="fc-fo-content-list">
     <!-- Cards dynamically rendered here -->
+  </div>
+  <!-- Full Overview Bottom Control Bar (Controllable like normal flashcard) -->
+  <div id="fcFoBottomNav" class="fc-fo-bottom-nav">
+    <div class="fc-fo-nav-left">
+      <button type="button" id="fcFoPrevBtn" class="fc-fo-nav-btn" title="Previous card (← Left Arrow / A)">
+        ◀ Prev Card
+      </button>
+      <span id="fcFoCardIndicator" class="fc-fo-card-indicator" title="Current focused card in overview (Click to Jump)">
+        Card 1 of 0
+      </span>
+      <button type="button" id="fcFoNextBtn" class="fc-fo-nav-btn" title="Next card (→ Right Arrow / D)">
+        Next Card ▶
+      </button>
+      <button type="button" id="fcFoJumpBtn" class="fc-fo-nav-btn" title="Jump directly to card number (J / G)">
+        🎯 Jump
+      </button>
+    </div>
+
+    <div class="fc-fo-nav-center">
+      <button type="button" id="fcFoFlipBtn" class="fc-fo-nav-btn" title="Reveal / Flip card back (Space / W)">
+        👁️ Flip / Reveal
+      </button>
+      <button type="button" id="fcFoMarkBtn" class="fc-fo-nav-btn" title="Mark card for continuous repetition (M)">
+        ⭐ Mark
+      </button>
+      <button type="button" id="fcFoDrillBtn" class="fc-fo-nav-btn" title="Drill / Repeat card interval (D)">
+        🔁 Drill
+      </button>
+      <button type="button" id="fcFoAudioBtn" class="fc-fo-nav-btn" title="Play card audio (R)">
+        🔊 Audio
+      </button>
+      <button type="button" id="fcFoEditBtn" class="fc-fo-nav-btn" title="Edit this card content (Ctrl+E)">
+        ✏️ Edit
+      </button>
+      <button type="button" id="fcFoStudyBtn" class="fc-fo-nav-btn active" title="Switch to single card review mode on this card (Enter)">
+        ▶ Study Card
+      </button>
+    </div>
+
+    <div class="fc-fo-nav-right">
+      <div class="fc-fo-rerank-wrap">
+        <span style="font-size:11px;font-weight:700;color:var(--muted);">Order:</span>
+        <select id="fcFoBottomRerankSelect" class="fc-fo-select" style="padding:2px 6px;font-size:11px;" title="Rerank cards for study">
+          <option value="begin_first">Begin First</option>
+          <option value="end_first">End First</option>
+          <option value="mid_end_begin">Mid → End → Begin</option>
+          <option value="mid_begin_end">Mid → Begin → End</option>
+          <option value="shuffle">Randomize 🔀</option>
+        </select>
+        <button type="button" id="fcFoBottomShuffleBtn" class="fc-fo-nav-btn" style="padding:2px 6px;" title="Quick shuffle (S)">🔀</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -10666,39 +10843,51 @@
   }
 
   function collectFlashcards(mode = 'outline'){
+    let result = [];
     if (isFolderDeck) {
       if (!folderDeckAllCards || folderDeckAllCards.length === 0) return [];
-      if (mode === 'h1') return folderDeckAllCards.filter(h => h.level === 1);
-      if (mode === 'h2') return folderDeckAllCards.filter(h => h.level === 2);
-      if (mode === 'h3') return folderDeckAllCards.filter(h => h.level === 3);
-      if (mode === 'ai') return folderDeckAllCards.filter(h => currentFileAiCards && currentFileAiCards.has(getCardSlug(h)));
-      return folderDeckAllCards.slice();
-    }
-    if(!headings || headings.length === 0) return [];
-    if(mode === 'h1') return headings.filter(h => h.level === 1);
-    if(mode === 'h2') return headings.filter(h => h.level === 2);
-    if(mode === 'h3') return headings.filter(h => h.level === 3);
-    if(mode === 'ai') return headings.filter(h => currentFileAiCards && currentFileAiCards.has(getCardSlug(h)));
-    if(mode === 'all') return headings.slice();
-    
-    // 'outline': All headings visible according to current outline collapsed state!
-    const list = [];
-    for(const h of headings){
-      let hidden = false;
-      let curr = h;
-      while(curr && curr.parent !== -1){
-        const p = headings[curr.parent];
-        if(p && p.collapsed){
-          hidden = true;
-          break;
+      if (mode === 'h1') result = folderDeckAllCards.filter(h => h.level === 1);
+      else if (mode === 'h2') result = folderDeckAllCards.filter(h => h.level === 2);
+      else if (mode === 'h3') result = folderDeckAllCards.filter(h => h.level === 3);
+      else if (mode === 'ai') result = folderDeckAllCards.filter(h => currentFileAiCards && currentFileAiCards.has(getCardSlug(h)));
+      else result = folderDeckAllCards.slice();
+    } else {
+      if(!headings || headings.length === 0) return [];
+      if(mode === 'h1') result = headings.filter(h => h.level === 1);
+      else if(mode === 'h2') result = headings.filter(h => h.level === 2);
+      else if(mode === 'h3') result = headings.filter(h => h.level === 3);
+      else if(mode === 'ai') result = headings.filter(h => currentFileAiCards && currentFileAiCards.has(getCardSlug(h)));
+      else if(mode === 'all') result = headings.slice();
+      else {
+        // 'outline': All headings visible according to current outline collapsed state!
+        const list = [];
+        for(const h of headings){
+          let hidden = false;
+          let curr = h;
+          while(curr && curr.parent !== -1){
+            const p = headings[curr.parent];
+            if(p && p.collapsed){
+              hidden = true;
+              break;
+            }
+            curr = p;
+          }
+          if(!hidden){
+            list.push(h);
+          }
         }
-        curr = p;
-      }
-      if(!hidden){
-        list.push(h);
+        result = list;
       }
     }
-    return list;
+    result.forEach((h, idx) => {
+      if (typeof h._origIndex !== 'number') {
+        h._origIndex = idx;
+      }
+    });
+    if (typeof currentCardOrder !== 'undefined' && currentCardOrder && currentCardOrder !== 'begin_first' && typeof rerankCards === 'function') {
+      result = rerankCards(result, currentCardOrder);
+    }
+    return result;
   }
 
   function stripMediaContent(str) {
@@ -10948,6 +11137,88 @@
     }
   }
 
+  // Study Order & Rerank State
+  let currentCardOrder = localStorage.getItem('mdviewer-card-order') || 'begin_first';
+
+  function rerankCards(cards, orderMode) {
+    if (!cards || cards.length <= 1) return cards ? cards.slice() : [];
+    cards.forEach((c, idx) => {
+      if (typeof c._origIndex !== 'number') c._origIndex = idx;
+    });
+
+    const base = cards.slice().sort((a, b) => (a._origIndex ?? 0) - (b._origIndex ?? 0));
+    const N = base.length;
+
+    switch (orderMode) {
+      case 'begin_first':
+      case 'normal':
+        return base;
+
+      case 'end_first':
+      case 'reverse':
+        return base.slice().reverse();
+
+      case 'mid_end_begin': {
+        const mid = Math.floor(N / 2);
+        return base.slice(mid).concat(base.slice(0, mid));
+      }
+
+      case 'mid_begin_end': {
+        const midCeil = Math.ceil(N / 2);
+        return base.slice(0, midCeil).reverse().concat(base.slice(midCeil));
+      }
+
+      case 'shuffle':
+      case 'random': {
+        const s = cards.slice();
+        for (let i = s.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [s[i], s[j]] = [s[j], s[i]];
+        }
+        return s;
+      }
+
+      default:
+        return base;
+    }
+  }
+  window.rerankCards = rerankCards;
+
+  function applyCardOrder(orderMode) {
+    if (!flashcardList || flashcardList.length === 0) return;
+    currentCardOrder = orderMode;
+    try { localStorage.setItem('mdviewer-card-order', orderMode); } catch (e) {}
+
+    ['fcFoRerankSelect', 'fcFoBottomRerankSelect', 'fcRerankSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = orderMode;
+    });
+
+    flashcardList = rerankCards(flashcardList, orderMode);
+
+    if (typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen) {
+      fcFoExpandedCardSet.clear();
+      renderFullOverview();
+      setFcFoFocusedCard(0, true);
+    } else {
+      currentCardIndex = 0;
+      renderCurrentCard();
+      renderCardOverview();
+    }
+
+    const orderNames = {
+      begin_first: 'Begin First (Normal 1 → N)',
+      end_first: 'End First (Reverse N → 1)',
+      mid_end_begin: 'Middle → End → Begin',
+      mid_begin_end: 'Middle → Begin → End',
+      shuffle: 'Complete Randomize 🔀'
+    };
+    if (typeof showAppToast === 'function') {
+      showAppToast(`Study Order: ${orderNames[orderMode] || orderMode}`);
+    }
+  }
+  window.applyCardOrder = applyCardOrder;
+
   // Full-Page Dual-Side Flashcard Overview State & Controller
   let isFullOverviewOpen = false;
   let fcFoFilterLevel = 'all';  // 'all', 'marked', '1', '2', '3', '4'
@@ -10959,6 +11230,9 @@
   let fcFoCurrentRenderedCount = 0;
   let fcFoFilteredList = [];
   let fcFoScrollListenerAttached = false;
+  let fcFoFocusedCardIndex = 0;
+  let isFcMaskActive = false;
+  let fcFoZoomLevelVal = 100;
 
   const fcFullOverviewBtn = document.getElementById('fcFullOverviewBtn');
   const fcFullOverviewView = document.getElementById('fcFullOverviewView');
@@ -11009,6 +11283,18 @@
       return;
     }
 
+    flashcardList.forEach((h, idx) => {
+      if (typeof h._origIndex !== 'number') h._origIndex = idx;
+    });
+    if (currentCardOrder && currentCardOrder !== 'begin_first') {
+      flashcardList = rerankCards(flashcardList, currentCardOrder);
+    }
+
+    ['fcFoRerankSelect', 'fcFoBottomRerankSelect', 'fcRerankSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = currentCardOrder;
+    });
+
     isFullOverviewOpen = true;
     if (fcFullOverviewView) fcFullOverviewView.style.display = 'flex';
     if (fcFullOverviewBtn) fcFullOverviewBtn.classList.add('active');
@@ -11021,9 +11307,9 @@
     populateBackFieldsDatalist();
     renderFullOverview();
 
-    // Scroll to active card in the full overview
+    // Focus active card in the full overview
     setTimeout(() => {
-      scrollToActiveCardInFullOverview();
+      setFcFoFocusedCard(currentCardIndex >= 0 ? currentCardIndex : 0, true);
     }, 80);
   }
   window.openFullOverview = openFullOverview;
@@ -11282,6 +11568,201 @@
     }
   }
 
+  function playCardAudioFromOverview(cardIdx) {
+    if (!flashcardList || !flashcardList[cardIdx]) return;
+    const cardElem = document.getElementById(`fc-fo-card-${cardIdx}`);
+    if (cardElem) {
+      const aud = cardElem.querySelector('audio');
+      if (aud) {
+        if (!aud.paused && !aud.ended) {
+          aud.pause();
+        } else {
+          aud.currentTime = 0;
+          aud.play().catch(e => console.log('Audio error:', e));
+        }
+        return;
+      }
+    }
+    const h = flashcardList[cardIdx];
+    const rawBack = getCardBackRawText(h) || '';
+    const soundMatch = rawBack.match(/\[sound:([^\]]+)\]/i) || (h.text || '').match(/\[sound:([^\]]+)\]/i);
+    if (soundMatch && typeof resolveMediaUrl === 'function') {
+      const audioUrl = resolveMediaUrl(soundMatch[1], h.file_path);
+      const a = new Audio(audioUrl);
+      a.play().catch(e => console.log('Audio play error:', e));
+    } else {
+      if (typeof showAppToast === 'function') showAppToast('No audio found for this card');
+    }
+  }
+  window.playCardAudioFromOverview = playCardAudioFromOverview;
+
+  function setFcFoFocusedCard(targetIdx, shouldScroll = true) {
+    if (!flashcardList || flashcardList.length === 0) return;
+    const count = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList.length : flashcardList.length;
+    if (targetIdx < 0) targetIdx = 0;
+    if (targetIdx >= count) targetIdx = count - 1;
+    fcFoFocusedCardIndex = targetIdx;
+
+    const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[targetIdx] : flashcardList[targetIdx];
+    const overallIdx = flashcardList.indexOf(targetCard);
+
+    if (fcFoFilteredList && fcFoFilteredList.length > 0 && targetIdx >= fcFoCurrentRenderedCount) {
+      while (fcFoCurrentRenderedCount <= targetIdx && fcFoCurrentRenderedCount < fcFoFilteredList.length) {
+        renderNextFullOverviewBatch();
+      }
+    }
+
+    document.querySelectorAll('.fc-fo-card-card.focused-card').forEach(el => el.classList.remove('focused-card'));
+
+    const cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
+    if (cardElem) {
+      cardElem.classList.add('focused-card');
+      if (shouldScroll && fcFoContentList) {
+        const containerRect = fcFoContentList.getBoundingClientRect();
+        const elemRect = cardElem.getBoundingClientRect();
+        const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 30;
+        fcFoContentList.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      }
+    }
+
+    const indicator = document.getElementById('fcFoCardIndicator');
+    if (indicator) {
+      indicator.textContent = `Card ${targetIdx + 1} of ${count}`;
+    }
+
+    const prevBtn = document.getElementById('fcFoPrevBtn');
+    const nextBtn = document.getElementById('fcFoNextBtn');
+    if (prevBtn) prevBtn.disabled = (targetIdx <= 0);
+    if (nextBtn) nextBtn.disabled = (targetIdx >= count - 1);
+
+    const markBtn = document.getElementById('fcFoMarkBtn');
+    if (markBtn && targetCard) {
+      const isMarked = (typeof isCardMarked === 'function') && isCardMarked(targetCard);
+      markBtn.classList.toggle('active', isMarked);
+      markBtn.textContent = isMarked ? '⭐ Marked' : '⭐ Mark';
+    }
+  }
+  window.setFcFoFocusedCard = setFcFoFocusedCard;
+
+  function foPrevCard() {
+    setFcFoFocusedCard(fcFoFocusedCardIndex - 1, true);
+  }
+  window.foPrevCard = foPrevCard;
+
+  function foNextCard() {
+    setFcFoFocusedCard(fcFoFocusedCardIndex + 1, true);
+  }
+  window.foNextCard = foNextCard;
+
+  function foRevealOrFlipCard() {
+    const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (!targetCard) return;
+    const overallIdx = flashcardList.indexOf(targetCard);
+    const cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
+    if (!cardElem) return;
+
+    const backSide = cardElem.querySelector('.fc-fo-back');
+    if (isFcMaskActive && backSide) {
+      backSide.classList.toggle('revealed');
+    } else {
+      toggleExpandCardBack(overallIdx);
+    }
+  }
+  window.foRevealOrFlipCard = foRevealOrFlipCard;
+
+  function foStudyCard() {
+    const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (!targetCard) return;
+    const overallIdx = flashcardList.indexOf(targetCard);
+    closeFullOverview();
+    goToCard(overallIdx);
+  }
+  window.foStudyCard = foStudyCard;
+
+  function foMarkCard() {
+    const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (!targetCard) return;
+    const overallIdx = flashcardList.indexOf(targetCard);
+    const cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
+    const markBtn = cardElem ? cardElem.querySelector('.fc-fo-mark-btn') : null;
+    toggleMarkCardFromFullOverview(overallIdx, markBtn);
+    const bottomMark = document.getElementById('fcFoMarkBtn');
+    if (bottomMark) {
+      const isMarked = (typeof isCardMarked === 'function') && isCardMarked(targetCard);
+      bottomMark.classList.toggle('active', isMarked);
+      bottomMark.textContent = isMarked ? '⭐ Marked' : '⭐ Mark';
+    }
+  }
+  window.foMarkCard = foMarkCard;
+
+  function foDrillCard() {
+    const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (!targetCard) return;
+    const overallIdx = flashcardList.indexOf(targetCard);
+    currentCardIndex = overallIdx;
+    if (typeof repeatCurrentCard === 'function') {
+      repeatCurrentCard();
+    } else if (typeof openDrillModal === 'function') {
+      openDrillModal();
+    }
+  }
+  window.foDrillCard = foDrillCard;
+
+  function foPromptJump() {
+    const total = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList.length : (flashcardList ? flashcardList.length : 0);
+    const resp = prompt(`Jump to Card (1 - ${total}):`, `${fcFoFocusedCardIndex + 1}`);
+    if (resp !== null) {
+      const num = parseInt(resp.trim(), 10);
+      if (!isNaN(num) && num >= 1 && num <= total) {
+        setFcFoFocusedCard(num - 1, true);
+      }
+    }
+  }
+  window.foPromptJump = foPromptJump;
+
+  function foToggleMaskBacks() {
+    isFcMaskActive = !isFcMaskActive;
+    const maskBtn = document.getElementById('fcFoMaskBackBtn');
+    if (maskBtn) {
+      maskBtn.classList.toggle('active', isFcMaskActive);
+      maskBtn.textContent = isFcMaskActive ? '👁️ Show Backs' : '🙈 Hide Backs';
+    }
+    if (fcFoContentList) {
+      fcFoContentList.classList.toggle('fc-fo-mask-active', isFcMaskActive);
+    }
+    if (typeof showAppToast === 'function') {
+      showAppToast(isFcMaskActive ? '🙈 Mask active: card backs hidden for quiz review' : '👁️ Mask removed: card backs visible');
+    }
+  }
+  window.foToggleMaskBacks = foToggleMaskBacks;
+
+  function foToggleExpandAll() {
+    const total = flashcardList ? flashcardList.length : 0;
+    const isAllExpanded = fcFoExpandedCardSet.size >= (fcFoFilteredList.length || 1);
+    if (isAllExpanded) {
+      fcFoExpandedCardSet.clear();
+    } else {
+      for (let i = 0; i < total; i++) {
+        fcFoExpandedCardSet.add(i);
+      }
+    }
+    const expandBtn = document.getElementById('fcFoExpandAllBtn');
+    if (expandBtn) expandBtn.textContent = isAllExpanded ? '↕ Expand All' : '▲ Collapse All';
+    renderFullOverview();
+  }
+  window.foToggleExpandAll = foToggleExpandAll;
+
+  function updateFoZoom(delta) {
+    if (delta === 0) fcFoZoomLevelVal = 100;
+    else fcFoZoomLevelVal = Math.max(60, Math.min(180, fcFoZoomLevelVal + delta));
+    const lbl = document.getElementById('fcFoZoomLevel');
+    if (lbl) lbl.textContent = `${fcFoZoomLevelVal}%`;
+    if (fcFoContentList) {
+      fcFoContentList.style.fontSize = `${(fcFoZoomLevelVal / 100) * 13}px`;
+    }
+  }
+  window.updateFoZoom = updateFoZoom;
+
   function filterCardsForFullOverview() {
     if (!flashcardList) return [];
     const q = (fcFoSearchQuery || '').trim().toLowerCase();
@@ -11394,19 +11875,30 @@
         cleanFrontTitle = (cleanFrontTitle ? cleanFrontTitle + ' ' : '') + `Card ${overallCardIdx + 1}`;
       }
 
+      const filterIdx = startIdx + batch.indexOf(h);
+      const isFocused = (filterIdx === fcFoFocusedCardIndex);
       const cardCard = document.createElement('div');
-      cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''}`;
+      cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''} ${isFocused ? 'focused-card' : ''}`;
       cardCard.dataset.cardIndex = overallCardIdx;
+      cardCard.dataset.filterIndex = filterIdx;
       cardCard.id = `fc-fo-card-${overallCardIdx}`;
+      cardCard.addEventListener('click', () => {
+        setFcFoFocusedCard(filterIdx, false);
+      });
 
       // Card Header
       const crumbText = isFolderDeck ? ('📁 ' + (h.breadcrumb || (h.file_name ? `${h.file_name} > H${h.level}` : getBreadcrumb(h)))) : getBreadcrumb(h);
+      const origNumText = (typeof h._origIndex === 'number' && h._origIndex !== overallCardIdx)
+        ? ` <span style="font-size:10.5px;color:var(--muted);font-weight:normal;" title="Original natural position">(orig #${h._origIndex + 1})</span>`
+        : '';
+      const hasAudio = (rawBack && (rawBack.includes('[sound:') || rawBack.includes('<audio') || /\.(mp3|wav|ogg|m4a|opus|flac|aac)/i.test(rawBack)))
+        || (h.text && (h.text.includes('[sound:') || /\.(mp3|wav|ogg|m4a|opus|flac|aac)/i.test(h.text)));
 
       const headerDiv = document.createElement('div');
       headerDiv.className = 'fc-fo-card-header';
       headerDiv.innerHTML = `
         <div class="fc-fo-card-meta">
-          <span class="fc-fo-card-num">#${overallCardIdx + 1}</span>
+          <span class="fc-fo-card-num">#${overallCardIdx + 1}${origNumText}</span>
           <span class="fc-fo-card-badge" style="color:var(--h${h.level});">H${h.level}</span>
           <span class="fc-fo-card-crumb" title="${escapeHtml(crumbText)}">${escapeHtml(crumbText)}</span>
         </div>
@@ -11414,6 +11906,10 @@
           <button type="button" class="fc-fo-action-btn fc-fo-study-btn" onclick="event.stopPropagation(); goToCard(${overallCardIdx});" title="Study this card in single-card mode (Enter / Space)">
             ▶ Review Card
           </button>
+          <button type="button" class="fc-fo-action-btn fc-fo-edit-btn" onclick="event.stopPropagation(); openCardEditor(${overallCardIdx});" title="Edit Card Content (Ctrl+E)">
+            ✏️ Edit
+          </button>
+          ${hasAudio ? `<button type="button" class="fc-fo-action-btn fc-fo-audio-btn" onclick="event.stopPropagation(); playCardAudioFromOverview(${overallCardIdx});" title="Play card audio (R)">🔊 Audio</button>` : ''}
           <button type="button" class="fc-fo-action-btn fc-fo-mark-btn ${isMarked ? 'is-marked' : ''}" onclick="event.stopPropagation(); toggleMarkCardFromFullOverview(${overallCardIdx}, this);" title="Toggle marked repetition">
             ${isMarked ? `⭐ Marked (${dispCount})` : '⭐ Mark'}
           </button>
@@ -11463,6 +11959,12 @@
         <div class="fc-fo-back-content">${renderedBackHtml}</div>
         ${expandBtnHtml}
       `;
+
+      backSide.addEventListener('click', () => {
+        if (isFcMaskActive) {
+          backSide.classList.toggle('revealed');
+        }
+      });
 
       bodyDiv.appendChild(frontSide);
       bodyDiv.appendChild(backSide);
@@ -11580,14 +12082,77 @@
     });
   }
 
+  // Full Overview Controls & Bottom Nav Event Listeners
+  const fcFoPrevBtn = document.getElementById('fcFoPrevBtn');
+  const fcFoNextBtn = document.getElementById('fcFoNextBtn');
+  const fcFoCardIndicator = document.getElementById('fcFoCardIndicator');
+  const fcFoJumpBtn = document.getElementById('fcFoJumpBtn');
+  const fcFoFlipBtn = document.getElementById('fcFoFlipBtn');
+  const fcFoMarkBtn = document.getElementById('fcFoMarkBtn');
+  const fcFoDrillBtn = document.getElementById('fcFoDrillBtn');
+  const fcFoAudioBtn = document.getElementById('fcFoAudioBtn');
+  const fcFoEditBtn = document.getElementById('fcFoEditBtn');
+  const fcFoStudyBtn = document.getElementById('fcFoStudyBtn');
+  const fcFoMaskBackBtn = document.getElementById('fcFoMaskBackBtn');
+  const fcFoExpandAllBtn = document.getElementById('fcFoExpandAllBtn');
+  const fcFoZoomOut = document.getElementById('fcFoZoomOut');
+  const fcFoZoomLevel = document.getElementById('fcFoZoomLevel');
+  const fcFoZoomIn = document.getElementById('fcFoZoomIn');
+  const fcFoRerankSelect = document.getElementById('fcFoRerankSelect');
+  const fcFoBottomRerankSelect = document.getElementById('fcFoBottomRerankSelect');
+  const fcRerankSelect = document.getElementById('fcRerankSelect');
+  const fcFoShuffleQuickBtn = document.getElementById('fcFoShuffleQuickBtn');
+  const fcFoBottomShuffleBtn = document.getElementById('fcFoBottomShuffleBtn');
+
+  if (fcFoPrevBtn) fcFoPrevBtn.addEventListener('click', () => foPrevCard());
+  if (fcFoNextBtn) fcFoNextBtn.addEventListener('click', () => foNextCard());
+  if (fcFoCardIndicator) fcFoCardIndicator.addEventListener('click', () => foPromptJump());
+  if (fcFoJumpBtn) fcFoJumpBtn.addEventListener('click', () => foPromptJump());
+  if (fcFoFlipBtn) fcFoFlipBtn.addEventListener('click', () => foRevealOrFlipCard());
+  if (fcFoMarkBtn) fcFoMarkBtn.addEventListener('click', () => foMarkCard());
+  if (fcFoDrillBtn) fcFoDrillBtn.addEventListener('click', () => foDrillCard());
+  if (fcFoAudioBtn) fcFoAudioBtn.addEventListener('click', () => {
+    const target = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (target) playCardAudioFromOverview(flashcardList.indexOf(target));
+  });
+  if (fcFoEditBtn) fcFoEditBtn.addEventListener('click', () => {
+    const target = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+    if (target) openCardEditor(flashcardList.indexOf(target));
+  });
+  if (fcFoStudyBtn) fcFoStudyBtn.addEventListener('click', () => foStudyCard());
+  if (fcFoMaskBackBtn) fcFoMaskBackBtn.addEventListener('click', () => foToggleMaskBacks());
+  if (fcFoExpandAllBtn) fcFoExpandAllBtn.addEventListener('click', () => foToggleExpandAll());
+  if (fcFoZoomOut) fcFoZoomOut.addEventListener('click', () => updateFoZoom(-10));
+  if (fcFoZoomLevel) fcFoZoomLevel.addEventListener('click', () => updateFoZoom(0));
+  if (fcFoZoomIn) fcFoZoomIn.addEventListener('click', () => updateFoZoom(10));
+
+  if (fcFoRerankSelect) fcFoRerankSelect.addEventListener('change', (e) => applyCardOrder(e.target.value));
+  if (fcFoBottomRerankSelect) fcFoBottomRerankSelect.addEventListener('change', (e) => applyCardOrder(e.target.value));
+  if (fcRerankSelect) fcRerankSelect.addEventListener('change', (e) => applyCardOrder(e.target.value));
+  if (fcFoShuffleQuickBtn) fcFoShuffleQuickBtn.addEventListener('click', () => applyCardOrder('shuffle'));
+  if (fcFoBottomShuffleBtn) fcFoBottomShuffleBtn.addEventListener('click', () => applyCardOrder('shuffle'));
+
   function showFcToast(msg, isError = false){
     showAppToast(msg, isError);
   }
 
-  function openCardEditor(){
+  let cardEditorOpenedFromOverview = false;
+
+  function openCardEditor(targetIdx = null){
     if(!flashcardList || flashcardList.length === 0) return;
-    const h = flashcardList[currentCardIndex];
+    const idx = (typeof targetIdx === 'number' && targetIdx >= 0 && targetIdx < flashcardList.length)
+      ? targetIdx
+      : currentCardIndex;
+    currentCardIndex = idx;
+    const h = flashcardList[idx];
     if(!h) return;
+
+    if (typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen) {
+      cardEditorOpenedFromOverview = true;
+      closeFullOverview();
+    } else {
+      cardEditorOpenedFromOverview = false;
+    }
 
     isCardEditing = true;
     const startLine = h.line + 1;
@@ -11621,11 +12186,22 @@
       fcEditorTextarea.focus();
     }
   }
+  window.openCardEditor = openCardEditor;
 
   function closeCardEditor(){
     isCardEditing = false;
     if(fcCardEditor) fcCardEditor.style.display = 'none';
+    if (cardEditorOpenedFromOverview) {
+      cardEditorOpenedFromOverview = false;
+      openFullOverview();
+      setTimeout(() => {
+        if (typeof setFcFoFocusedCard === 'function') {
+          setFcFoFocusedCard(currentCardIndex, false);
+        }
+      }, 50);
+    }
   }
+  window.closeCardEditor = closeCardEditor;
 
   function toggleCardEditor(){
     if(isCardEditing) closeCardEditor();
@@ -11912,6 +12488,12 @@
     goToPage(0, false);
 
     closeCardEditor();
+    if (typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen) {
+      renderFullOverview();
+      if (typeof setFcFoFocusedCard === 'function') {
+        setFcFoFocusedCard(currentCardIndex, false);
+      }
+    }
     showFcToast('✓ Card content saved successfully');
   }
 
@@ -12554,14 +13136,7 @@
     }
     isFlippingAnim = false;
     currentBackPageIndex = 0;
-    for(let i = flashcardList.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [flashcardList[i], flashcardList[j]] = [flashcardList[j], flashcardList[i]];
-    }
-    currentCardIndex = 0;
-    renderCurrentCard();
-    renderCardOverview();
-    if(typeof syncUrlState === 'function') syncUrlState('replace');
+    applyCardOrder('shuffle');
   }
 
   function setFlashcardFilter(filterName){
@@ -13099,6 +13674,48 @@
       if(e.key === 'Escape'){
         e.preventDefault();
         closeFullOverview();
+        return;
+      }
+      if(e.key === 'ArrowLeft' || e.key === 'Left' || e.key === '[' || e.key === 'a' || e.key === 'A'){
+        e.preventDefault();
+        foPrevCard();
+        return;
+      }
+      if(e.key === 'ArrowRight' || e.key === 'Right' || e.key === ']' || e.key === 'd' || e.key === 'D'){
+        e.preventDefault();
+        foNextCard();
+        return;
+      }
+      if(e.key === ' ' || e.key === 'w' || e.key === 'W'){
+        e.preventDefault();
+        foRevealOrFlipCard();
+        return;
+      }
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        foStudyCard();
+        return;
+      }
+      if(e.key === 'm' || e.key === 'M'){
+        e.preventDefault();
+        foMarkCard();
+        return;
+      }
+      if(e.key === 'r' || e.key === 'R'){
+        e.preventDefault();
+        const target = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+        if (target) playCardAudioFromOverview(flashcardList.indexOf(target));
+        return;
+      }
+      if(e.key === 'j' || e.key === 'J' || e.key === 'g' || e.key === 'G'){
+        e.preventDefault();
+        foPromptJump();
+        return;
+      }
+      if(e.key === 's' || e.key === 'S'){
+        e.preventDefault();
+        applyCardOrder('shuffle');
+        return;
       }
       return;
     }
@@ -22657,6 +23274,22 @@
     window.getDrillIntervals = () => fcDrillIntervals;
     window.getActiveDrills = () => fcActiveDrills;
     window.isFullOverviewOpen = () => isFullOverviewOpen;
+    window.rerankCards = rerankCards;
+    window.applyCardOrder = applyCardOrder;
+    window.setFcFoFocusedCard = setFcFoFocusedCard;
+    window.foPrevCard = foPrevCard;
+    window.foNextCard = foNextCard;
+    window.foRevealOrFlipCard = foRevealOrFlipCard;
+    window.foStudyCard = foStudyCard;
+    window.foMarkCard = foMarkCard;
+    window.foDrillCard = foDrillCard;
+    window.foPromptJump = foPromptJump;
+    window.foToggleMaskBacks = foToggleMaskBacks;
+    window.foToggleExpandAll = foToggleExpandAll;
+    window.updateFoZoom = updateFoZoom;
+    window.getFcFoFocusedCardIndex = () => fcFoFocusedCardIndex;
+    window.getCurrentCardOrder = () => currentCardOrder;
+    window.isFcMaskActive = () => isFcMaskActive;
 
     await loadAiPrompts();
     await loadAiSettings();
