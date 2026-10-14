@@ -1238,7 +1238,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    scroll-behavior: smooth;
+    scroll-behavior: auto !important;
   }
   .fc-fo-card-card {
     flex: 0 0 auto;
@@ -1251,7 +1251,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: border-color .15s ease, box-shadow .15s ease;
+    transition: border-color .12s ease, box-shadow .12s ease;
+    will-change: transform, box-shadow;
+    transform: translateZ(0);
   }
   .fc-fo-card-card:hover {
     border-color: rgba(122, 162, 247, 0.45);
@@ -1263,7 +1265,8 @@
   }
   .fc-fo-card-card.focused-card {
     border-color: #7aa2f7 !important;
-    box-shadow: 0 0 0 2px #7aa2f7, 0 8px 30px rgba(122, 162, 247, 0.4) !important;
+    box-shadow: 0 0 0 2px #7aa2f7, 0 8px 30px rgba(122, 162, 247, 0.45) !important;
+    animation: fcFoCardSnap 0.09s cubic-bezier(0.1, 0.95, 0.2, 1) both;
   }
   .fc-fo-card-card.is-marked {
     border-color: rgba(224, 175, 104, 0.45);
@@ -1271,7 +1274,16 @@
   }
   .fc-fo-card-card.is-marked.focused-card {
     border-color: #e0af68 !important;
-    box-shadow: 0 0 0 2px #e0af68, 0 8px 30px rgba(224, 175, 104, 0.4) !important;
+    box-shadow: 0 0 0 2px #e0af68, 0 8px 30px rgba(224, 175, 104, 0.45) !important;
+    animation: fcFoCardSnap 0.09s cubic-bezier(0.1, 0.95, 0.2, 1) both;
+  }
+  @keyframes fcFoCardSnap {
+    0% {
+      transform: scale(0.995) translateZ(0);
+    }
+    100% {
+      transform: scale(1) translateZ(0);
+    }
   }
   #fcFoMarkBtn.active {
     background: rgba(224, 175, 104, 0.28) !important;
@@ -10778,7 +10790,33 @@
   window.triggerCardSwitchAnimation = triggerCardSwitchAnimation;
 
   let foScrollAnimId = null;
-  function smoothScrollElementTo(container, targetY, durationMs){
+  let lastFoNavTime = 0;
+
+  function getAdaptiveFoScrollDuration() {
+    const now = performance.now();
+    const interval = lastFoNavTime > 0 ? (now - lastFoNavTime) : 1000;
+    lastFoNavTime = now;
+
+    const basePageDur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fc-page-duration')) || 120;
+
+    // Adapt duration sharply to click speed so each card firmly STOPS, holds, and settles:
+    if (interval < 140) {
+      // Hyperspeed rapid clicking / holding (<140ms): 2-3 frames at 90Hz (22ms). Stops cleanly on card before next click!
+      return 22;
+    } else if (interval < 240) {
+      // Very fast navigation (140-240ms): ~3-4 frames (~35ms). Leaves >150ms stationary settling time on each card!
+      return 35;
+    } else if (interval < 400) {
+      // Fast navigation (240-400ms): ~5 frames (~55ms). Leaves >200ms stationary settling time on each card!
+      return 55;
+    } else {
+      // Cruising speed (>400ms): smooth ~100ms glide
+      return Math.min(105, basePageDur);
+    }
+  }
+  window.getAdaptiveFoScrollDuration = getAdaptiveFoScrollDuration;
+
+  function smoothScrollElementTo(container, targetY, durationMs, onDone){
     if(!container) return;
     if(foScrollAnimId){
       cancelAnimationFrame(foScrollAnimId);
@@ -10786,21 +10824,24 @@
     }
     const startY = container.scrollTop;
     const diff = targetY - startY;
-    if(Math.abs(diff) < 2 || durationMs <= 16 || !fcAnimation){
+    if(Math.abs(diff) < 2 || durationMs <= 10 || !fcAnimation){
       container.scrollTop = targetY;
+      if (typeof onDone === 'function') onDone();
       return;
     }
     const startTime = performance.now();
     function step(now){
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / durationMs);
-      const ease = 1 - Math.pow(1 - progress, 3);
+      // Quartic-out ease (1 - (1-p)^4): extraordinarily fast initial launch with instant, crisp braking directly on target
+      const ease = 1 - Math.pow(1 - progress, 4);
       container.scrollTop = startY + diff * ease;
       if(progress < 1){
         foScrollAnimId = requestAnimationFrame(step);
       } else {
         container.scrollTop = targetY;
         foScrollAnimId = null;
+        if (typeof onDone === 'function') onDone();
       }
     }
     foScrollAnimId = requestAnimationFrame(step);
@@ -11840,19 +11881,9 @@
     const activeCard = flashcardList[currentCardIndex];
     if (!activeCard) return;
 
-    const filteredIdx = fcFoFilteredList.indexOf(activeCard);
-    if (filteredIdx >= 0 && filteredIdx >= fcFoCurrentRenderedCount) {
-      while (fcFoCurrentRenderedCount <= filteredIdx && fcFoCurrentRenderedCount < fcFoFilteredList.length) {
-        renderNextFullOverviewBatch();
-      }
-    }
-
-    const activeElem = document.getElementById(`fc-fo-card-${currentCardIndex}`);
-    if (activeElem) {
-      const containerRect = fcFoContentList.getBoundingClientRect();
-      const elemRect = activeElem.getBoundingClientRect();
-      const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 20;
-      fcFoContentList.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    const filteredIdx = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList.indexOf(activeCard) : currentCardIndex;
+    if (filteredIdx >= 0) {
+      setFcFoFocusedCard(filteredIdx, true);
     }
   }
 
@@ -11904,16 +11935,14 @@
 
     const cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
     if (cardElem) {
+      void cardElem.offsetWidth;
       cardElem.classList.add('focused-card');
       if (shouldScroll && fcFoContentList) {
         const containerRect = fcFoContentList.getBoundingClientRect();
         const elemRect = cardElem.getBoundingClientRect();
-        const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 30;
+        const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 24;
         recordNavCadence();
-        const now = performance.now();
-        const isRapid = (now - lastNavTimestamp < 320);
-        const pageDur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fc-page-duration')) || 120;
-        const scrollDuration = isRapid ? Math.min(60, pageDur * 0.5) : pageDur;
+        const scrollDuration = getAdaptiveFoScrollDuration();
         smoothScrollElementTo(fcFoContentList, Math.max(0, targetTop), scrollDuration);
       }
     }
@@ -14080,12 +14109,12 @@
         closeFullOverview();
         return;
       }
-      if(e.key === 'ArrowLeft' || e.key === 'Left' || e.key === '[' || e.key === 'a' || e.key === 'A'){
+      if(e.key === 'ArrowLeft' || e.key === 'Left' || e.key === 'ArrowUp' || e.key === 'Up' || e.key === '[' || e.key === 'a' || e.key === 'A'){
         e.preventDefault();
         foPrevCard();
         return;
       }
-      if(e.key === 'ArrowRight' || e.key === 'Right' || e.key === ']' || e.key === 'd' || e.key === 'D'){
+      if(e.key === 'ArrowRight' || e.key === 'Right' || e.key === 'ArrowDown' || e.key === 'Down' || e.key === ']' || e.key === 'd' || e.key === 'D'){
         e.preventDefault();
         foNextCard();
         return;
