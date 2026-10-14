@@ -1637,6 +1637,30 @@
     opacity: 0 !important;
   }
 
+  /* High-Refresh Rate Tokens & Adaptive Motion (60Hz - 90Hz - 144Hz+) */
+  :root {
+    --fc-hz: 90;
+    --fc-frame-ms: 11.11ms;
+    --fc-flip-duration: 160ms;
+    --fc-switch-duration: 110ms;
+    --fc-page-duration: 120ms;
+    --fc-slide-distance: 22px;
+  }
+
+  /* Rapid Navigation Cadence Overrides: automatically activated when user moves quickly */
+  #flashcardView.fc-cadence-fast {
+    --fc-flip-duration: 80ms;
+    --fc-switch-duration: 65ms;
+    --fc-page-duration: 70ms;
+    --fc-slide-distance: 12px;
+  }
+  #flashcardView.fc-cadence-hyperspeed {
+    --fc-flip-duration: 40ms;
+    --fc-switch-duration: 35ms;
+    --fc-page-duration: 40ms;
+    --fc-slide-distance: 6px;
+  }
+
   /* When Animation is Disabled: completely instant transitions */
   #flashcardView.fc-no-anim .flashcard,
   #flashcardView.fc-no-anim .flashcard *{
@@ -1651,18 +1675,51 @@
   .flashcard{
     width:100%;max-width:min(1080px, 94vw);height:min(580px, calc(100vh - 170px));max-height:84vh;min-height:420px;position:relative;
     cursor:pointer;user-select:none;
+    will-change: transform, opacity;
+    transform: translateZ(0);
   }
 
-  /* During 3D Flip: GPU hardware-accelerated rotation */
+  /* Directional Card Switch Animations (Next / Prev) */
+  .flashcard.slide-in-next {
+    animation: fcSlideInNext var(--fc-switch-duration, 110ms) cubic-bezier(0.12, 0.95, 0.25, 1) forwards;
+  }
+  .flashcard.slide-in-prev {
+    animation: fcSlideInPrev var(--fc-switch-duration, 110ms) cubic-bezier(0.12, 0.95, 0.25, 1) forwards;
+  }
+
+  @keyframes fcSlideInNext {
+    0% {
+      transform: translate3d(var(--fc-slide-distance, 22px), 0, 0);
+      opacity: 0.84;
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fcSlideInPrev {
+    0% {
+      transform: translate3d(calc(-1 * var(--fc-slide-distance, 22px)), 0, 0);
+      opacity: 0.84;
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+      opacity: 1;
+    }
+  }
+
+  /* During 3D Flip: GPU hardware-accelerated rotation tuned to refresh rate */
   .flashcard.is-flipping{
     transform-style:preserve-3d;
-    transition:transform 0.32s ease-in-out;
+    transition:transform var(--fc-flip-duration, 160ms) cubic-bezier(0.16, 1, 0.3, 1) !important;
     will-change:transform;
   }
   .flashcard.is-flipping .fc-face{
     position:absolute;inset:0;
     backface-visibility:hidden;-webkit-backface-visibility:hidden;
     will-change:transform;
+    transform: translateZ(0);
   }
   .flashcard.is-flipping .fc-front{
     transform:rotateY(0deg);
@@ -5586,7 +5643,19 @@
       <div class="sep"></div>
       <button id="fcColToggleBtn" title="Toggle 2-Column Page Mode vs 1-Column Scroll (C)">❚❚ 2-Col Page</button>
       <button id="fcFullscreenBtn" title="Toggle Fullscreen (F)">⛶ Fullscreen</button>
-      <button id="fcAnimToggleBtn" title="Toggle flashcard animation (turn off for instant flip)">🎬 Animation: On</button>
+      <div class="fc-anim-group" style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.03);padding:1px 4px;border:1px solid var(--border);border-radius:4px;">
+        <button id="fcAnimToggleBtn" style="border:none;background:transparent;padding:2px 5px;" title="Toggle flashcard animation (turn off for instant flip)">🎬 Anim: On</button>
+        <select id="fcHzSelect" style="background:#191b29;color:var(--fg);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:1px 4px;font-size:11px;font-weight:600;height:22px;cursor:pointer;" title="Monitor Refresh Rate / Motion Timing. Auto-detects 60Hz-240Hz (e.g. 90Hz, 120Hz, 144Hz) with rapid-switch cadence acceleration">
+          <option value="auto">⚡ Auto (90Hz)</option>
+          <option value="60">60Hz</option>
+          <option value="75">75Hz</option>
+          <option value="90">90Hz (Smooth)</option>
+          <option value="120">120Hz</option>
+          <option value="144">144Hz (Ultra)</option>
+          <option value="240">240Hz (Max)</option>
+        </select>
+        <span id="fcHzBadge" class="badge" style="background:rgba(122,162,247,0.22);color:#7aa2f7;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;" title="Current Display Rate. Click to re-detect">90Hz</span>
+      </div>
       <button id="fcAudioAutoplayBtn" title="Toggle Audio Auto-play on card flip or reveal (Shift+A)">🔊 Audio: On</button>
       <div class="sep"></div>
       <div class="sep"></div>
@@ -6025,6 +6094,7 @@
         <button type="button" id="fcFoZoomIn" title="Larger font">A+</button>
       </div>
       <button type="button" id="fcFoScrollActiveBtn" class="fc-fo-btn" title="Scroll to currently active review card">🎯 Active Card</button>
+      <span id="fcFoHzBadge" class="badge" style="background:rgba(122,162,247,0.18);color:#7aa2f7;border:1px solid rgba(122,162,247,0.3);padding:2px 6px;border-radius:10px;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;gap:3px;cursor:pointer;" title="Monitor Refresh Rate. Click to re-detect display Hz">⚡ 90Hz</span>
       <button type="button" id="fcFoCloseBtn" class="fc-fo-btn fc-fo-close-btn" title="Back to Review (Esc / Shift+O)">✕ Close Overview</button>
     </div>
   </div>
@@ -10230,8 +10300,9 @@
       if(onDone) onDone();
       return;
     }
-    // Optimal animation duration: ~180ms in standard mode, ~220ms in large/fullscreen mode
-    const animDuration = duration != null ? duration : (Math.abs(distance) > 900 ? 220 : 180);
+    // High-refresh rate calibrated page glide duration
+    const basePageDur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fc-page-duration')) || 120;
+    const animDuration = duration != null ? duration : (Math.abs(distance) > 900 ? Math.round(basePageDur * 1.3) : basePageDur);
     let startTime = null;
     function step(now){
       if(startTime === null) startTime = now;
@@ -10487,7 +10558,7 @@
       flashcardView.classList.add('fc-no-anim');
       if(fcAnimToggleBtn){
         fcAnimToggleBtn.classList.add('active');
-        fcAnimToggleBtn.textContent = '⚡ Animation: Off';
+        fcAnimToggleBtn.textContent = '⚡ Anim: Off';
         fcAnimToggleBtn.title = 'Flashcard animation is OFF (Instant flip). Click to turn on.';
       }
       if(fcFrontAnimBtn){
@@ -10504,7 +10575,7 @@
       flashcardView.classList.remove('fc-no-anim');
       if(fcAnimToggleBtn){
         fcAnimToggleBtn.classList.remove('active');
-        fcAnimToggleBtn.textContent = '🎬 Animation: On';
+        fcAnimToggleBtn.textContent = '🎬 Anim: On';
         fcAnimToggleBtn.title = 'Flashcard animation is ON (3D flip). Click to turn off.';
       }
       if(fcFrontAnimBtn){
@@ -10519,6 +10590,207 @@
       }
     }
   }
+
+  // --- High Refresh Rate (60Hz - 240Hz, 90Hz Native) & Rapid Cadence Motion Engine ---
+  let detectedDisplayHz = 90; // Default sensible high-refresh rate
+  let activeHzSetting = localStorage.getItem('mdv_fc_hz') || 'auto';
+  let cardSwitchAnimTimer = null;
+  let navCadenceTimer = null;
+  let lastNavTimestamp = 0;
+
+  let activeDetectionId = 0;
+
+  function detectDisplayRefreshRate(callback){
+    const detectionId = ++activeDetectionId;
+    let frameTimes = [];
+    let lastTime = 0;
+    let count = 0;
+    const maxFrames = 36;
+
+    function step(time){
+      if(activeDetectionId !== detectionId) return;
+      if(lastTime > 0){
+        const delta = time - lastTime;
+        if(delta >= 3 && delta <= 50){
+          frameTimes.push(delta);
+        }
+      }
+      lastTime = time;
+      count++;
+      if(count < maxFrames){
+        requestAnimationFrame(step);
+      } else {
+        if(activeDetectionId !== detectionId) return;
+        let finalHz = 90;
+        if(frameTimes.length >= 12){
+          frameTimes.sort((a, b) => a - b);
+          const start = Math.floor(frameTimes.length * 0.2);
+          const end = Math.ceil(frameTimes.length * 0.8);
+          const trimmed = frameTimes.slice(start, end);
+          const avgDelta = trimmed.reduce((acc, v) => acc + v, 0) / trimmed.length;
+          const measuredHz = Math.round(1000 / avgDelta);
+
+          if(measuredHz >= 210) finalHz = 240;
+          else if(measuredHz >= 155) finalHz = 165;
+          else if(measuredHz >= 132) finalHz = 144;
+          else if(measuredHz >= 105) finalHz = 120;
+          else if(measuredHz >= 82) finalHz = 90;
+          else if(measuredHz >= 68) finalHz = 75;
+          else finalHz = 60;
+        }
+        detectedDisplayHz = finalHz;
+        if(typeof callback === 'function'){
+          callback(finalHz);
+        }
+      }
+    }
+    requestAnimationFrame(step);
+  }
+  window.detectDisplayRefreshRate = detectDisplayRefreshRate;
+
+  function updateHzConfig(hz, isAuto = false){
+    activeDetectionId++;
+    const targetHz = parseInt(hz, 10) || 90;
+    let frameMs, flipDuration, switchDuration, pageDuration, slideDistance;
+
+    switch(targetHz){
+      case 240:
+        frameMs = '4.17ms'; flipDuration = '90ms'; switchDuration = '65ms'; pageDuration = '70ms'; slideDistance = '16px'; break;
+      case 165:
+      case 144:
+        frameMs = '6.94ms'; flipDuration = '120ms'; switchDuration = '85ms'; pageDuration = '90ms'; slideDistance = '18px'; break;
+      case 120:
+        frameMs = '8.33ms'; flipDuration = '140ms'; switchDuration = '95ms'; pageDuration = '105ms'; slideDistance = '20px'; break;
+      case 75:
+        frameMs = '13.33ms'; flipDuration = '180ms'; switchDuration = '125ms'; pageDuration = '135ms'; slideDistance = '23px'; break;
+      case 60:
+        frameMs = '16.67ms'; flipDuration = '200ms'; switchDuration = '140ms'; pageDuration = '150ms'; slideDistance = '24px'; break;
+      case 90:
+      default:
+        frameMs = '11.11ms'; flipDuration = '160ms'; switchDuration = '110ms'; pageDuration = '120ms'; slideDistance = '22px'; break;
+    }
+
+    const root = document.documentElement;
+    root.style.setProperty('--fc-hz', String(targetHz));
+    root.style.setProperty('--fc-frame-ms', frameMs);
+    root.style.setProperty('--fc-flip-duration', flipDuration);
+    root.style.setProperty('--fc-switch-duration', switchDuration);
+    root.style.setProperty('--fc-page-duration', pageDuration);
+    root.style.setProperty('--fc-slide-distance', slideDistance);
+
+    const fcHzSelect = document.getElementById('fcHzSelect');
+    const fcHzBadge = document.getElementById('fcHzBadge');
+    const fcFoHzBadge = document.getElementById('fcFoHzBadge');
+
+    if(fcHzBadge){
+      fcHzBadge.textContent = `${targetHz}Hz`;
+      fcHzBadge.title = isAuto
+        ? `Auto-fitted to screen: ${targetHz}Hz (${frameMs}/frame). Click to re-detect`
+        : `Manual refresh setting: ${targetHz}Hz (${frameMs}/frame). Click to re-detect`;
+    }
+    if(fcFoHzBadge){
+      fcFoHzBadge.textContent = `⚡ ${targetHz}Hz`;
+      fcFoHzBadge.title = isAuto
+        ? `Auto-fitted to screen: ${targetHz}Hz (${frameMs}/frame). Click to re-detect`
+        : `Refresh rate: ${targetHz}Hz (${frameMs}/frame). Click to re-detect`;
+    }
+    if(fcHzSelect){
+      if(isAuto){
+        const autoOpt = fcHzSelect.querySelector('option[value="auto"]');
+        if(autoOpt) autoOpt.textContent = `⚡ Auto (${targetHz}Hz)`;
+        fcHzSelect.value = 'auto';
+      } else {
+        fcHzSelect.value = String(targetHz);
+      }
+    }
+
+    try {
+      localStorage.setItem('mdv_fc_hz', isAuto ? 'auto' : String(targetHz));
+    } catch(e){}
+  }
+  window.updateHzConfig = updateHzConfig;
+  window.getScreenRefreshRate = () => detectedDisplayHz;
+
+  function initHzConfig(){
+    const saved = localStorage.getItem('mdv_fc_hz');
+    if(!saved || saved === 'auto'){
+      detectDisplayRefreshRate(hz => updateHzConfig(hz, true));
+    } else {
+      updateHzConfig(parseInt(saved, 10) || 90, false);
+    }
+  }
+  window.initHzConfig = initHzConfig;
+
+  function recordNavCadence(){
+    const now = performance.now();
+    if(lastNavTimestamp > 0){
+      const elapsed = now - lastNavTimestamp;
+      if(flashcardView){
+        if(elapsed < 180){
+          flashcardView.classList.remove('fc-cadence-fast');
+          flashcardView.classList.add('fc-cadence-hyperspeed');
+        } else if(elapsed < 380){
+          flashcardView.classList.remove('fc-cadence-hyperspeed');
+          flashcardView.classList.add('fc-cadence-fast');
+        }
+      }
+    }
+    lastNavTimestamp = now;
+    clearTimeout(navCadenceTimer);
+    navCadenceTimer = setTimeout(() => {
+      if(flashcardView){
+        flashcardView.classList.remove('fc-cadence-fast', 'fc-cadence-hyperspeed');
+      }
+    }, 450);
+  }
+
+  function triggerCardSwitchAnimation(direction){
+    if(!fcAnimation || !fcCard) return;
+    recordNavCadence();
+    const animClass = direction === 'next' ? 'slide-in-next' : 'slide-in-prev';
+    fcCard.classList.remove('slide-in-next', 'slide-in-prev');
+    void fcCard.offsetWidth; // Force reflow so transition kicks off cleanly
+    fcCard.classList.add(animClass);
+
+    const dur = parseFloat(getComputedStyle(fcCard).getPropertyValue('--fc-switch-duration')) || 110;
+    clearTimeout(cardSwitchAnimTimer);
+    cardSwitchAnimTimer = setTimeout(() => {
+      if(fcCard){
+        fcCard.classList.remove('slide-in-next', 'slide-in-prev');
+      }
+    }, dur + 25);
+  }
+  window.triggerCardSwitchAnimation = triggerCardSwitchAnimation;
+
+  let foScrollAnimId = null;
+  function smoothScrollElementTo(container, targetY, durationMs){
+    if(!container) return;
+    if(foScrollAnimId){
+      cancelAnimationFrame(foScrollAnimId);
+      foScrollAnimId = null;
+    }
+    const startY = container.scrollTop;
+    const diff = targetY - startY;
+    if(Math.abs(diff) < 2 || durationMs <= 16 || !fcAnimation){
+      container.scrollTop = targetY;
+      return;
+    }
+    const startTime = performance.now();
+    function step(now){
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      container.scrollTop = startY + diff * ease;
+      if(progress < 1){
+        foScrollAnimId = requestAnimationFrame(step);
+      } else {
+        container.scrollTop = targetY;
+        foScrollAnimId = null;
+      }
+    }
+    foScrollAnimId = requestAnimationFrame(step);
+  }
+  window.smoothScrollElementTo = smoothScrollElementTo;
 
   function toggleFcAudioAutoplay(){
     isFcAudioAutoplay = !isFcAudioAutoplay;
@@ -11621,7 +11893,12 @@
         const containerRect = fcFoContentList.getBoundingClientRect();
         const elemRect = cardElem.getBoundingClientRect();
         const targetTop = fcFoContentList.scrollTop + (elemRect.top - containerRect.top) - 30;
-        fcFoContentList.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+        recordNavCadence();
+        const now = performance.now();
+        const isRapid = (now - lastNavTimestamp < 320);
+        const pageDur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fc-page-duration')) || 120;
+        const scrollDuration = isRapid ? Math.min(60, pageDur * 0.5) : pageDur;
+        smoothScrollElementTo(fcFoContentList, Math.max(0, targetTop), scrollDuration);
       }
     }
 
@@ -12950,8 +13227,11 @@
       goToPage(0, false);
     }
 
-    // Step 2: Start smooth 3D rotation to target orientation
-    fcCard.style.transition = 'transform 0.32s ease-in-out';
+    // Step 2: Start smooth 3D rotation to target orientation tuned to monitor refresh rate
+    recordNavCadence();
+    const flipDur = parseFloat(getComputedStyle(fcCard).getPropertyValue('--fc-flip-duration')) || 160;
+    const frameMs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fc-frame-ms')) || 11.11;
+    fcCard.style.transition = `transform ${flipDur}ms cubic-bezier(0.16, 1, 0.3, 1)`;
     fcCard.style.transform = willBeFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
 
     // Step 3: When 3D rotation ends, switch cleanly to flat resting state for razor-sharp text
@@ -12992,7 +13272,7 @@
         setTimeout(() => playCurrentCardAudioAtIndex(0), 60);
       }
       if(typeof syncUrlState === 'function') syncUrlState('replace');
-    }, 340);
+    }, Math.max(30, Math.round(flipDur + frameMs)));
   }
 
   function nextFlashcard(){
@@ -13095,6 +13375,7 @@
     if(flashcardView) flashcardView.scrollTop = 0;
     window.scrollTo(0, 0);
     renderCurrentCard();
+    triggerCardSwitchAnimation('next');
     if(typeof syncUrlState === 'function') syncUrlState('replace');
   }
 
@@ -13121,6 +13402,7 @@
     if(flashcardView) flashcardView.scrollTop = 0;
     window.scrollTo(0, 0);
     renderCurrentCard();
+    triggerCardSwitchAnimation('prev');
     if(typeof syncUrlState === 'function') syncUrlState('replace');
   }
 
@@ -13181,6 +13463,7 @@
     updateFullscreenUI();
     updateColumnState();
     updateFcAnimationUI();
+    initHzConfig();
     updateFcAudioAutoplayUI();
     updateFcSidebarToggleState();
     if(options.filter) setFlashcardFilter(options.filter);
@@ -13276,6 +13559,37 @@
   if(fcColToggleBtn) fcColToggleBtn.addEventListener('click', toggleTwoColumn);
   if(fcFullscreenBtn) fcFullscreenBtn.addEventListener('click', toggleFullscreen);
   if(fcAnimToggleBtn) fcAnimToggleBtn.addEventListener('click', toggleFcAnimation);
+
+  const fcHzSelect = document.getElementById('fcHzSelect');
+  const fcHzBadge = document.getElementById('fcHzBadge');
+  const fcFoHzBadge = document.getElementById('fcFoHzBadge');
+
+  if(fcHzSelect) {
+    fcHzSelect.addEventListener('change', () => {
+      fcHzSelect.blur();
+      const val = fcHzSelect.value;
+      if (val === 'auto') {
+        detectDisplayRefreshRate(hz => {
+          updateHzConfig(hz, true);
+          if (typeof showToast === 'function') showToast(`⚡ Auto-fitted to display: ${hz}Hz`, 2000);
+        });
+      } else {
+        const hz = parseInt(val, 10) || 90;
+        updateHzConfig(hz, false);
+        if (typeof showToast === 'function') showToast(`⚡ Motion profile set to ${hz}Hz`, 2000);
+      }
+    });
+  }
+
+  function handleHzBadgeClick() {
+    detectDisplayRefreshRate(hz => {
+      updateHzConfig(hz, true);
+      if (typeof showToast === 'function') showToast(`⚡ Re-detected display refresh rate: ${hz}Hz!`, 2500);
+    });
+  }
+
+  if(fcHzBadge) fcHzBadge.addEventListener('click', handleHzBadgeClick);
+  if(fcFoHzBadge) fcFoHzBadge.addEventListener('click', handleHzBadgeClick);
   if(fcAudioAutoplayBtn) fcAudioAutoplayBtn.addEventListener('click', toggleFcAudioAutoplay);
   if(fcFrontAudioBtn) fcFrontAudioBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -23253,6 +23567,7 @@
     applyZoom();
     applyFcZoom();
     updateFcAnimationUI();
+    initHzConfig();
     updateDrillUI();
     window.openFile = openFile;
     window.loadFolderDeck = loadFolderDeck;
