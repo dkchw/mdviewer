@@ -1265,6 +1265,20 @@
     border-color: #7aa2f7 !important;
     box-shadow: 0 0 0 2px #7aa2f7, 0 8px 30px rgba(122, 162, 247, 0.4) !important;
   }
+  .fc-fo-card-card.is-marked {
+    border-color: rgba(224, 175, 104, 0.45);
+    box-shadow: 0 4px 18px rgba(224, 175, 104, 0.12);
+  }
+  .fc-fo-card-card.is-marked.focused-card {
+    border-color: #e0af68 !important;
+    box-shadow: 0 0 0 2px #e0af68, 0 8px 30px rgba(224, 175, 104, 0.4) !important;
+  }
+  #fcFoMarkBtn.active {
+    background: rgba(224, 175, 104, 0.28) !important;
+    border-color: #e0af68 !important;
+    color: #e0af68 !important;
+    font-weight: 700;
+  }
 
   /* Full Overview Bottom Navigation Control Bar */
   .fc-fo-bottom-nav {
@@ -6086,6 +6100,7 @@
       </div>
     </div>
     <div class="fc-fo-header-right">
+      <button type="button" id="fcFoMarkedHeaderBtn" class="fc-fo-btn" style="background:rgba(224,175,104,0.15);color:#e0af68;border:1px solid rgba(224,175,104,0.35);font-weight:600;" title="Toggle Marked Cards filter in Full Overview (M)">⭐ Marked: <span id="fcFoMarkedCount">0</span></button>
       <button type="button" id="fcFoMaskBackBtn" class="fc-fo-btn" title="Toggle hiding card backs for self-testing quiz mode (Space to reveal)">🙈 Hide Backs</button>
       <button type="button" id="fcFoExpandAllBtn" class="fc-fo-btn" title="Expand or collapse all card backs">↕ Expand All</button>
       <div class="fc-zoom-group" style="display:inline-flex;" title="Full Overview text size">
@@ -11578,6 +11593,7 @@
 
     populateBackFieldsDatalist();
     renderFullOverview();
+    updateFoMarkedHeaderUI();
 
     // Focus active card in the full overview
     setTimeout(() => {
@@ -12046,6 +12062,9 @@
     const lvl = fcFoFilterLevel;
 
     return flashcardList.filter((h) => {
+      // Omit active repeat loop clones so each card is displayed uniquely
+      if (h._isMarkedRepeat || h._isRepeatCard) return false;
+
       // Level filter
       if (lvl === 'marked') {
         if (!isCardMarked(h)) return false;
@@ -12073,8 +12092,8 @@
     fcFoContentList.innerHTML = '';
 
     if (fcFoCountBadge) {
-      const total = flashcardList ? flashcardList.length : 0;
-      fcFoCountBadge.textContent = `${fcFoFilteredList.length} of ${total} cards`;
+      const canonicalTotal = flashcardList ? flashcardList.filter(c => !c._isMarkedRepeat && !c._isRepeatCard).length : 0;
+      fcFoCountBadge.textContent = `${fcFoFilteredList.length} of ${canonicalTotal} cards`;
     }
 
     if (fcFoFilteredList.length === 0) {
@@ -12155,7 +12174,7 @@
       const filterIdx = startIdx + batch.indexOf(h);
       const isFocused = (filterIdx === fcFoFocusedCardIndex);
       const cardCard = document.createElement('div');
-      cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''} ${isFocused ? 'focused-card' : ''}`;
+      cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''} ${isFocused ? 'focused-card' : ''} ${isMarked ? 'is-marked' : ''}`;
       cardCard.dataset.cardIndex = overallCardIdx;
       cardCard.dataset.filterIndex = filterIdx;
       cardCard.id = `fc-fo-card-${overallCardIdx}`;
@@ -12177,6 +12196,7 @@
         <div class="fc-fo-card-meta">
           <span class="fc-fo-card-num">#${overallCardIdx + 1}${origNumText}</span>
           <span class="fc-fo-card-badge" style="color:var(--h${h.level});">H${h.level}</span>
+          <span class="fc-fo-card-mark-tag" style="display:${isMarked ? 'inline-flex' : 'none'};align-items:center;gap:3px;background:rgba(224,175,104,0.18);color:#e0af68;border:1px solid rgba(224,175,104,0.35);padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;">⭐ Marked</span>
           <span class="fc-fo-card-crumb" title="${escapeHtml(crumbText)}">${escapeHtml(crumbText)}</span>
         </div>
         <div class="fc-fo-card-actions">
@@ -12187,8 +12207,8 @@
             ✏️ Edit
           </button>
           ${hasAudio ? `<button type="button" class="fc-fo-action-btn fc-fo-audio-btn" onclick="event.stopPropagation(); playCardAudioFromOverview(${overallCardIdx});" title="Play card audio (R)">🔊 Audio</button>` : ''}
-          <button type="button" class="fc-fo-action-btn fc-fo-mark-btn ${isMarked ? 'is-marked' : ''}" onclick="event.stopPropagation(); toggleMarkCardFromFullOverview(${overallCardIdx}, this);" title="Toggle marked repetition">
-            ${isMarked ? `⭐ Marked (${dispCount})` : '⭐ Mark'}
+          <button type="button" class="fc-fo-action-btn fc-fo-mark-btn ${isMarked ? 'is-marked' : ''}" onclick="event.stopPropagation(); toggleMarkCardFromFullOverview(${overallCardIdx}, this);" title="Toggle marked repetition (M / K)">
+            ${isMarked ? '⭐ Marked' : '⭐ Mark'}
           </button>
         </div>
       `;
@@ -12257,30 +12277,79 @@
     fcFoCurrentRenderedCount = endIdx;
   }
 
+  function updateFoMarkedHeaderUI() {
+    const foHeaderCount = document.getElementById('fcFoMarkedCount');
+    const count = (typeof fcMarkedCards !== 'undefined' && fcMarkedCards) ? fcMarkedCards.size : 0;
+    if (foHeaderCount) foHeaderCount.textContent = String(count);
+    const foHeaderBtn = document.getElementById('fcFoMarkedHeaderBtn');
+    if (foHeaderBtn) {
+      const isFilterActive = (fcFoFilterLevel === 'marked');
+      foHeaderBtn.classList.toggle('active', isFilterActive || count > 0);
+      if (isFilterActive) {
+        foHeaderBtn.style.background = 'rgba(224, 175, 104, 0.35)';
+        foHeaderBtn.style.borderColor = '#e0af68';
+        foHeaderBtn.style.color = '#fff';
+      } else if (count > 0) {
+        foHeaderBtn.style.background = 'rgba(224, 175, 104, 0.18)';
+        foHeaderBtn.style.borderColor = 'rgba(224, 175, 104, 0.45)';
+        foHeaderBtn.style.color = '#e0af68';
+      } else {
+        foHeaderBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+        foHeaderBtn.style.borderColor = 'var(--border)';
+        foHeaderBtn.style.color = 'var(--muted)';
+      }
+    }
+  }
+  window.updateFoMarkedHeaderUI = updateFoMarkedHeaderUI;
+
   function toggleMarkCardFromFullOverview(cardIdx, btnElem) {
     if (!flashcardList || !flashcardList[cardIdx]) return;
     const targetCard = flashcardList[cardIdx];
     const key = (typeof getCardKey === 'function') ? getCardKey(targetCard) : '';
     if (!key) return;
 
-    if (fcMarkedCards.has(key)) {
-      fcMarkedCards.delete(key);
-      flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === key));
-      if (btnElem) {
-        btnElem.className = 'fc-fo-action-btn fc-fo-mark-btn';
-        btnElem.textContent = '⭐ Mark';
+    const willBeMarked = !fcMarkedCards.has(key);
+
+    if (willBeMarked) {
+      if (typeof markCard === 'function') {
+        markCard(targetCard, key);
       }
-      showAppToast(`⭐ Unmarked "${targetCard.text || 'Card'}"`);
     } else {
-      fcMarkedCards.add(key);
-      if (typeof recordSessionCardMark === 'function') recordSessionCardMark(targetCard);
-      if (btnElem) {
-        btnElem.className = 'fc-fo-action-btn fc-fo-mark-btn is-marked';
-        btnElem.textContent = '⭐ Marked (1)';
+      if (typeof unmarkCardByKey === 'function') {
+        unmarkCardByKey(key);
       }
-      showAppToast(`⭐ Marked "${targetCard.text || 'Card'}" for continuous repetition`);
     }
-    updateMarkedUI();
+
+    // Update DOM element for this specific card
+    const cardElem = document.getElementById(`fc-fo-card-${cardIdx}`);
+    if (cardElem) {
+      cardElem.classList.toggle('is-marked', willBeMarked);
+      const markTag = cardElem.querySelector('.fc-fo-card-mark-tag');
+      if (markTag) markTag.style.display = willBeMarked ? 'inline-flex' : 'none';
+      const actionBtn = btnElem || cardElem.querySelector('.fc-fo-mark-btn');
+      if (actionBtn) {
+        actionBtn.className = `fc-fo-action-btn fc-fo-mark-btn ${willBeMarked ? 'is-marked' : ''}`;
+        actionBtn.textContent = willBeMarked ? '⭐ Marked' : '⭐ Mark';
+      }
+    }
+
+    // Update Bottom Nav Bar Mark Button if this card is currently focused
+    const bottomMark = document.getElementById('fcFoMarkBtn');
+    if (bottomMark) {
+      const curFocusedCard = (fcFoFilteredList && fcFoFilteredList[fcFoFocusedCardIndex])
+        || (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
+      if (curFocusedCard === targetCard) {
+        bottomMark.classList.toggle('active', willBeMarked);
+        bottomMark.textContent = willBeMarked ? '⭐ Marked' : '⭐ Mark';
+      }
+    }
+
+    updateFoMarkedHeaderUI();
+
+    // If currently filtered by 'marked', refresh overview so newly unmarked cards disappear cleanly
+    if (fcFoFilterLevel === 'marked') {
+      renderFullOverview();
+    }
   }
   window.toggleMarkCardFromFullOverview = toggleMarkCardFromFullOverview;
 
@@ -12290,6 +12359,26 @@
   }
   if (fcFoCloseBtn) {
     fcFoCloseBtn.addEventListener('click', () => closeFullOverview());
+  }
+  const fcFoMarkedHeaderBtn = document.getElementById('fcFoMarkedHeaderBtn');
+  if (fcFoMarkedHeaderBtn) {
+    fcFoMarkedHeaderBtn.addEventListener('click', () => {
+      if (fcFoLevelFilter) {
+        if (fcFoLevelFilter.value === 'marked') {
+          fcFoLevelFilter.value = 'all';
+          fcFoFilterLevel = 'all';
+        } else {
+          fcFoLevelFilter.value = 'marked';
+          fcFoFilterLevel = 'marked';
+        }
+        renderFullOverview();
+        updateFoMarkedHeaderUI();
+        const msg = fcFoFilterLevel === 'marked'
+          ? `⭐ Showing ${fcMarkedCards.size} marked card${fcMarkedCards.size === 1 ? '' : 's'} in Full Overview`
+          : 'Showing all cards in Full Overview';
+        if (typeof showToast === 'function') showToast(msg, 2000);
+      }
+    });
   }
   if (fcFoSearchInput) {
     fcFoSearchInput.addEventListener('input', () => {
@@ -12307,6 +12396,7 @@
   if (fcFoLevelFilter) {
     fcFoLevelFilter.addEventListener('change', () => {
       fcFoFilterLevel = fcFoLevelFilter.value;
+      updateFoMarkedHeaderUI();
       renderFullOverview();
     });
   }
@@ -14010,7 +14100,7 @@
         foStudyCard();
         return;
       }
-      if(e.key === 'm' || e.key === 'M'){
+      if(e.key === 'm' || e.key === 'M' || e.key === 'k' || e.key === 'K'){
         e.preventDefault();
         foMarkCard();
         return;
@@ -19191,6 +19281,7 @@
     const count = fcMarkedCards.size;
     if (toolbarCount) toolbarCount.textContent = String(count);
     if (searchMarkCount) searchMarkCount.textContent = String(count);
+    if (typeof updateFoMarkedHeaderUI === 'function') updateFoMarkedHeaderUI();
     if (toolbarBtn) {
       if (count > 0) {
         toolbarBtn.style.background = 'rgba(224, 175, 104, 0.25)';
