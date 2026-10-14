@@ -11611,6 +11611,7 @@
       return;
     }
 
+    flashcardList = flashcardList.filter(c => !c._isMarkedRepeat && !c._isRepeatCard);
     flashcardList.forEach((h, idx) => {
       if (typeof h._origIndex !== 'number') h._origIndex = idx;
     });
@@ -12005,9 +12006,12 @@
     const targetCard = (fcFoFilteredList && fcFoFilteredList.length > 0) ? fcFoFilteredList[fcFoFocusedCardIndex] : (flashcardList ? flashcardList[fcFoFocusedCardIndex] : null);
     if (!targetCard) return;
     const overallIdx = flashcardList.indexOf(targetCard);
-    const cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
+    const key = (typeof getCardKey === 'function') ? getCardKey(targetCard) : '';
+    const cardElem = (key ? document.querySelector(`[data-card-key="${CSS.escape(key)}"]`) : null)
+      || (overallIdx >= 0 ? document.getElementById(`fc-fo-card-${overallIdx}`) : null)
+      || document.querySelector('.fc-fo-card-card.focused-card');
     const markBtn = cardElem ? cardElem.querySelector('.fc-fo-mark-btn') : null;
-    toggleMarkCardFromFullOverview(overallIdx, markBtn);
+    toggleMarkCardFromFullOverview(targetCard, markBtn);
     const bottomMark = document.getElementById('fcFoMarkBtn');
     if (bottomMark) {
       const isMarked = (typeof isCardMarked === 'function') && isCardMarked(targetCard);
@@ -12205,6 +12209,7 @@
       const cardCard = document.createElement('div');
       cardCard.className = `fc-fo-card-card ${isCurrentReviewCard ? 'active-card' : ''} ${isFocused ? 'focused-card' : ''} ${isMarked ? 'is-marked' : ''}`;
       cardCard.dataset.cardIndex = overallCardIdx;
+      cardCard.dataset.cardKey = cardKey;
       cardCard.dataset.filterIndex = filterIdx;
       cardCard.id = `fc-fo-card-${overallCardIdx}`;
       cardCard.addEventListener('click', () => {
@@ -12331,9 +12336,27 @@
   }
   window.updateFoMarkedHeaderUI = updateFoMarkedHeaderUI;
 
-  function toggleMarkCardFromFullOverview(cardIdx, btnElem) {
-    if (!flashcardList || !flashcardList[cardIdx]) return;
-    const targetCard = flashcardList[cardIdx];
+  function toggleMarkCardFromFullOverview(cardOrIdx, btnElem) {
+    if (!flashcardList || flashcardList.length === 0) return;
+    let targetCard = null;
+
+    if (btnElem) {
+      const parentCard = btnElem.closest('.fc-fo-card-card');
+      const cardKey = parentCard?.dataset?.cardKey;
+      if (cardKey) {
+        targetCard = flashcardList.find(c => getCardKey(c) === cardKey);
+      }
+    }
+    if (!targetCard && typeof cardOrIdx === 'object' && cardOrIdx !== null) {
+      targetCard = cardOrIdx;
+    } else if (!targetCard && typeof cardOrIdx === 'number' && cardOrIdx >= 0) {
+      targetCard = flashcardList[cardOrIdx];
+    }
+    if (!targetCard) {
+      targetCard = (fcFoFilteredList && fcFoFilteredList[fcFoFocusedCardIndex]) || flashcardList[fcFoFocusedCardIndex];
+    }
+    if (!targetCard) return;
+
     const key = (typeof getCardKey === 'function') ? getCardKey(targetCard) : '';
     if (!key) return;
 
@@ -12349,15 +12372,31 @@
       }
     }
 
-    // Update DOM element for this specific card
-    const cardElem = document.getElementById(`fc-fo-card-${cardIdx}`);
+    // Resolve cardElem robustly
+    let cardElem = btnElem ? btnElem.closest('.fc-fo-card-card') : null;
+    if (!cardElem && key) {
+      cardElem = document.querySelector(`[data-card-key="${CSS.escape(key)}"]`);
+    }
+    if (!cardElem) {
+      const curFocused = (fcFoFilteredList && fcFoFilteredList[fcFoFocusedCardIndex]) || flashcardList[fcFoFocusedCardIndex];
+      if (curFocused === targetCard) {
+        cardElem = document.querySelector('.fc-fo-card-card.focused-card');
+      }
+    }
+    if (!cardElem) {
+      const overallIdx = flashcardList.indexOf(targetCard);
+      if (overallIdx >= 0) {
+        cardElem = document.getElementById(`fc-fo-card-${overallIdx}`);
+      }
+    }
+
     if (cardElem) {
       cardElem.classList.toggle('is-marked', willBeMarked);
       const markTag = cardElem.querySelector('.fc-fo-card-mark-tag');
       if (markTag) markTag.style.display = willBeMarked ? 'inline-flex' : 'none';
-      const actionBtn = btnElem || cardElem.querySelector('.fc-fo-mark-btn');
+      const actionBtn = cardElem.querySelector('.fc-fo-mark-btn');
       if (actionBtn) {
-        actionBtn.className = `fc-fo-action-btn fc-fo-mark-btn ${willBeMarked ? 'is-marked' : ''}`;
+        actionBtn.classList.toggle('is-marked', willBeMarked);
         actionBtn.textContent = willBeMarked ? '⭐ Marked' : '⭐ Mark';
       }
     }
@@ -19497,25 +19536,29 @@
       currentStudySession.markedCards.set(key, { ...cardInfo });
     }
 
-    let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
-    if (targetIdx >= flashcardList.length) {
-      targetIdx = targetIdx % Math.max(1, flashcardList.length);
+    if (!isFullOverviewOpen) {
+      let targetIdx = currentCardIndex + 1 + fcMarkRepeatInterval;
+      if (targetIdx >= flashcardList.length) {
+        targetIdx = targetIdx % Math.max(1, flashcardList.length);
+      }
+      const repeatItem = {
+        ...h,
+        card_content: cardContent,
+        _isRepeatCard: false,
+        _isMarkedRepeat: true,
+        _markCardKey: key,
+        _markRepeatInterval: fcMarkRepeatInterval,
+        _markProcessed: false,
+        _sessionViewCounted: false
+      };
+      flashcardList.splice(targetIdx, 0, repeatItem);
     }
-    const repeatItem = {
-      ...h,
-      card_content: cardContent,
-      _isRepeatCard: false,
-      _isMarkedRepeat: true,
-      _markCardKey: key,
-      _markRepeatInterval: fcMarkRepeatInterval,
-      _markProcessed: false,
-      _sessionViewCounted: false
-    };
-    flashcardList.splice(targetIdx, 0, repeatItem);
 
     updateMarkedUI();
-    renderCurrentCard();
-    renderCardOverview();
+    if (!isFullOverviewOpen) {
+      renderCurrentCard();
+      renderCardOverview();
+    }
     showToast(`⭐ Card marked! Repeating every ${fcMarkRepeatInterval} cards (graduates after ${fcMarkDisplayLimit} displays).`, 3000);
   }
   window.markCard = markCard;
@@ -19526,14 +19569,18 @@
     fcMarkedCards.delete(key);
 
     // Remove any queued repeat instances for this card
-    flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === key));
-    if (currentCardIndex >= flashcardList.length) {
-      currentCardIndex = Math.max(0, flashcardList.length - 1);
+    if (!isFullOverviewOpen) {
+      flashcardList = flashcardList.filter(c => !(c._isMarkedRepeat && c._markCardKey === key));
+      if (currentCardIndex >= flashcardList.length) {
+        currentCardIndex = Math.max(0, flashcardList.length - 1);
+      }
     }
 
     updateMarkedUI();
-    renderCurrentCard();
-    renderCardOverview();
+    if (!isFullOverviewOpen) {
+      renderCurrentCard();
+      renderCardOverview();
+    }
     showToast(`✓ Unmarked "${info?.title || 'Card'}". Repetitions stopped.`, 2500);
   }
   window.unmarkCardByKey = unmarkCardByKey;
