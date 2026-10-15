@@ -7991,16 +7991,18 @@
   }
 
   // ---- file loading ----
-  function loadText(text, name){
+  function loadText(text, name, targetLine = null){
     dropzone.classList.add('hidden');
     fname.textContent = (name || '').split('/').pop() || name || '';
     fname.title = name || '';
     parse(text);
-    scroller.scrollTop = 0;
+    if(targetLine == null || targetLine < 0){
+      scroller.scrollTop = 0;
+    }
     if(activeSearchQuery && searchScope === 'file'){
-      runFileSearch(activeSearchQuery, false);
+      runFileSearch(activeSearchQuery, false, targetLine);
     } else {
-      activeTargetLine = -1;
+      activeTargetLine = (targetLine != null && targetLine >= 0) ? targetLine : -1;
       fileMatches = [];
       fileMatchIdx = -1;
       updateSearchUI();
@@ -8203,25 +8205,27 @@
   let levelAbort = null;
   let searchDebounce = null;
   let searchAbort = null;
+  let searchDropdownOpen = false;
 
-  function setSearchScope(scope){
-    if(searchScope === scope) return;
-    searchScope = scope;
-    if(scopeFileBtn) scopeFileBtn.classList.toggle('active', scope === 'file');
-    if(scopeLevelBtn) scopeLevelBtn.classList.toggle('active', scope === 'level');
-    if(scopeAllBtn) scopeAllBtn.classList.toggle('active', scope === 'all');
-    if(scope === 'file'){
-      searchInput.placeholder = 'Find in file (Ctrl+F)...';
-    } else if(scope === 'level'){
-      searchInput.placeholder = 'Search same level markdown (Ctrl+Alt+F)...';
-    } else {
-      searchInput.placeholder = 'Search workspace (Ctrl+Shift+F)...';
+  function setSearchScope(scope, navigate = true, targetLine = null){
+    if(searchScope !== scope){
+      searchScope = scope;
+      if(scopeFileBtn) scopeFileBtn.classList.toggle('active', scope === 'file');
+      if(scopeLevelBtn) scopeLevelBtn.classList.toggle('active', scope === 'level');
+      if(scopeAllBtn) scopeAllBtn.classList.toggle('active', scope === 'all');
+      if(scope === 'file'){
+        searchInput.placeholder = 'Find in file (Ctrl+F)...';
+      } else if(scope === 'level'){
+        searchInput.placeholder = 'Search same level markdown (Ctrl+Alt+F)...';
+      } else {
+        searchInput.placeholder = 'Search workspace (Ctrl+Shift+F)...';
+      }
     }
     
     const q = searchInput.value.trim();
     if(q){
       if(scope === 'file'){
-        runFileSearch(q, true);
+        runFileSearch(q, navigate, targetLine);
       } else if(scope === 'level'){
         performLevelSearch(q);
       } else {
@@ -8232,13 +8236,23 @@
     }
   }
 
-  if(scopeFileBtn) scopeFileBtn.addEventListener('click', () => setSearchScope('file'));
-  if(scopeLevelBtn) scopeLevelBtn.addEventListener('click', () => setSearchScope('level'));
-  if(scopeAllBtn) scopeAllBtn.addEventListener('click', () => setSearchScope('all'));
+  if(scopeFileBtn) scopeFileBtn.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    setSearchScope('file');
+  });
+  if(scopeLevelBtn) scopeLevelBtn.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    setSearchScope('level');
+  });
+  if(scopeAllBtn) scopeAllBtn.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    setSearchScope('all');
+  });
 
   const scopeHeadingBtn = document.getElementById('scopeHeadingBtn');
   if(scopeHeadingBtn){
     scopeHeadingBtn.addEventListener('click', () => {
+      ensureOutlineModeForSearch();
       const cycle = ['all', 'any', 'h1', 'h2', 'h3'];
       const curIdx = cycle.indexOf(topHeadingFilter);
       const nextH = cycle[(curIdx + 1) % cycle.length];
@@ -8263,7 +8277,7 @@
     }
   }
 
-  function runFileSearch(q, navigate = true){
+  function runFileSearch(q, navigate = true, targetLine = null){
     fileMatches = [];
     activeSearchQuery = q;
     const parsed = parseSearchQuery(q, topHeadingFilter);
@@ -8327,16 +8341,27 @@
     }
 
     if(fileMatches.length > 0){
-      if(fileMatchIdx < 0 || fileMatchIdx >= fileMatches.length){
+      if(targetLine != null && targetLine >= 0){
+        const mIdx = fileMatches.findIndex(m => m.line === targetLine);
+        if(mIdx !== -1){
+          fileMatchIdx = mIdx;
+          activeTargetLine = targetLine;
+        } else {
+          fileMatchIdx = 0;
+          activeTargetLine = fileMatches[0].line;
+        }
+      } else if(fileMatchIdx < 0 || fileMatchIdx >= fileMatches.length){
         fileMatchIdx = 0;
+        activeTargetLine = fileMatches[fileMatchIdx].line;
+      } else {
+        activeTargetLine = fileMatches[fileMatchIdx].line;
       }
-      activeTargetLine = fileMatches[fileMatchIdx].line;
       if(navigate){
         scrollToLine(activeTargetLine, true);
       }
     } else {
       fileMatchIdx = -1;
-      activeTargetLine = -1;
+      activeTargetLine = (targetLine != null && targetLine >= 0) ? targetLine : -1;
     }
     updateSearchUI();
     render();
@@ -8422,7 +8447,10 @@
     }
   }
 
-  function updateSearchUI(){
+  function updateSearchUI(showResults = null){
+    if(showResults !== null){
+      searchDropdownOpen = showResults;
+    }
     const q = searchInput.value.trim();
     if(searchClearBtn) searchClearBtn.style.display = q ? 'inline-block' : 'none';
     
@@ -8451,6 +8479,12 @@
     }
     
     if(!q && topHeadingFilter === 'all'){
+      searchDropdownOpen = false;
+      searchResults.style.display = 'none';
+      return;
+    }
+
+    if(!searchDropdownOpen){
       searchResults.style.display = 'none';
       return;
     }
@@ -8524,7 +8558,25 @@
     searchResults.innerHTML = html;
   }
 
+  function ensureOutlineModeForSearch(){
+    if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen && typeof closeFullOverview === 'function'){
+      closeFullOverview();
+    }
+    if(isFlashcardMode){
+      if(typeof setAppMode === 'function'){
+        setAppMode('outline');
+      } else if(typeof exitFlashcardMode === 'function'){
+        exitFlashcardMode();
+      }
+    } else if(typeof currentAppMode !== 'undefined' && currentAppMode !== 'outline'){
+      if(typeof setAppMode === 'function'){
+        setAppMode('outline');
+      }
+    }
+  }
+
   function clearSearch(){
+    searchDropdownOpen = false;
     searchInput.value = '';
     activeSearchQuery = '';
     fileMatches = [];
@@ -8535,15 +8587,23 @@
     wsResults = [];
     wsSearching = false;
     searchResults.style.display = 'none';
-    updateSearchUI();
+    updateSearchUI(false);
     render();
   }
 
   if(searchClearBtn) searchClearBtn.addEventListener('click', clearSearch);
-  if(searchPrevBtn) searchPrevBtn.addEventListener('click', prevMatch);
-  if(searchNextBtn) searchNextBtn.addEventListener('click', nextMatch);
+  if(searchPrevBtn) searchPrevBtn.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    prevMatch();
+  });
+  if(searchNextBtn) searchNextBtn.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    nextMatch();
+  });
 
   searchInput.addEventListener('input', (e) => {
+    ensureOutlineModeForSearch();
+    searchDropdownOpen = true;
     const q = e.target.value.trim();
     activeSearchQuery = q;
     if(searchScope === 'file'){
@@ -8572,14 +8632,32 @@
   });
 
   searchInput.addEventListener('focus', () => {
+    ensureOutlineModeForSearch();
+    searchDropdownOpen = true;
     if(searchInput.value.trim()){
-      updateSearchUI();
+      updateSearchUI(true);
     }
   });
+
+  searchInput.addEventListener('click', () => {
+    ensureOutlineModeForSearch();
+    searchDropdownOpen = true;
+    if(searchInput.value.trim()){
+      updateSearchUI(true);
+    }
+  });
+
+  const searchBoxEl = document.getElementById('searchBox');
+  if(searchBoxEl){
+    searchBoxEl.addEventListener('click', () => {
+      ensureOutlineModeForSearch();
+    });
+  }
 
   searchInput.addEventListener('keydown', (e) => {
     if(e.key === 'Enter'){
       e.preventDefault();
+      ensureOutlineModeForSearch();
       if(e.shiftKey) prevMatch();
       else if(searchScope === 'file') nextMatch();
       else if(searchScope === 'level') performLevelSearch(searchInput.value.trim());
@@ -8593,6 +8671,7 @@
 
   document.addEventListener('click', (e) => {
     if(!document.getElementById('searchBox').contains(e.target)){
+      searchDropdownOpen = false;
       searchResults.style.display = 'none';
     }
   });
@@ -8618,10 +8697,12 @@
     if(fileRes){
       const idx = parseInt(fileRes.dataset.fileIdx, 10);
       if(!isNaN(idx) && fileMatches[idx]){
+        ensureOutlineModeForSearch();
         fileMatchIdx = idx;
         activeTargetLine = fileMatches[idx].line;
         scrollToLine(activeTargetLine, true);
-        updateSearchUI();
+        updateSearchUI(false);
+        searchResults.style.display = 'none';
       }
       return;
     }
@@ -8630,9 +8711,11 @@
     if(levelRes){
       const file = levelRes.dataset.file;
       const line = parseInt(levelRes.dataset.line, 10);
+      ensureOutlineModeForSearch();
+      await openFile(file, { pushHistory: true, line: line, interactive: true, mode: 'outline' });
+      setSearchScope('file', false, line);
+      updateSearchUI(false);
       searchResults.style.display = 'none';
-      await openFile(file, { pushHistory: true, line: line, interactive: true });
-      setSearchScope('file');
       return;
     }
 
@@ -8640,9 +8723,11 @@
     if(wsRes){
       const file = wsRes.dataset.file;
       const line = parseInt(wsRes.dataset.line, 10);
+      ensureOutlineModeForSearch();
+      await openFile(file, { pushHistory: true, line: line, interactive: true, mode: 'outline' });
+      setSearchScope('file', false, line);
+      updateSearchUI(false);
       searchResults.style.display = 'none';
-      await openFile(file, { pushHistory: true, line: line, interactive: true });
-      setSearchScope('file');
     }
   });
 
@@ -8659,10 +8744,8 @@
         }
         return;
       }
-      if(isFlashcardMode && !e.altKey){
-        openFcRightSidebarAndFocusSearch();
-        return;
-      }
+      ensureOutlineModeForSearch();
+      searchDropdownOpen = true;
       if(e.altKey){
         setSearchScope('level');
       } else {
@@ -8670,12 +8753,13 @@
       }
       searchInput.focus();
       searchInput.select();
-      if(searchInput.value.trim()) updateSearchUI();
+      if(searchInput.value.trim()) updateSearchUI(true);
     } else if((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e'){
       e.preventDefault();
       if(typeof switchSidebarTab === 'function') switchSidebarTab('files');
     } else if(e.key === 'F3'){
       e.preventDefault();
+      ensureOutlineModeForSearch();
       if(e.shiftKey) prevMatch();
       else nextMatch();
     }
@@ -9167,7 +9251,8 @@
       }
       if(sbStatsProgress) sbStatsProgress.textContent = `${vCount} / ${sbSearchResults.length} viewed`;
 
-      await openFile(file, { pushHistory: true, line: line, interactive: true });
+      ensureOutlineModeForSearch();
+      await openFile(file, { pushHistory: true, line: line, interactive: true, mode: 'outline' });
     });
   }
 
@@ -14435,6 +14520,70 @@
     window.openFile = openFile;
     if(!filePath) return;
     try {
+      const isSameFile = (filePath === currentFilePath && lines && lines.length > 0 && !options.forceReload);
+      if(isSameFile){
+        if(options.mode === 'flashcard' || (!options.mode && isFlashcardMode && options.keepFlashcard)){
+          if(!isFlashcardMode){
+            enterFlashcardMode({
+              filter: options.filter,
+              card: options.card,
+              flipped: options.flipped,
+              page: options.page
+            });
+          } else {
+            if(options.filter) setFlashcardFilter(options.filter);
+            flashcardList = collectFlashcards(flashcardFilter);
+            if(options.card != null && options.card >= 0){
+              currentCardIndex = Math.min(Math.max(0, options.card), Math.max(0, flashcardList.length - 1));
+            }
+            renderCurrentCard();
+            renderCardOverview();
+            if(options.flipped) fcCard.classList.add('flipped');
+            if(options.page != null && options.page > 0){
+              setTimeout(() => goToPage(options.page, false), 60);
+            }
+            syncUrlState(options.pushHistory ? 'push' : 'replace');
+          }
+        } else {
+          if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen && typeof closeFullOverview === 'function'){
+            closeFullOverview();
+          }
+          if(isFlashcardMode && typeof exitFlashcardMode === 'function'){
+            exitFlashcardMode();
+          }
+          if(options.mode && typeof setAppMode === 'function' && options.mode !== 'flashcard' && options.mode !== currentAppMode){
+            setAppMode(options.mode);
+          } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (!options.mode || options.mode === 'outline')){
+            setAppMode('outline');
+          }
+
+          if(options.line != null && options.line >= 0){
+            activeTargetLine = options.line;
+            if(activeSearchQuery && searchScope === 'file' && fileMatches.length > 0){
+              const mIdx = fileMatches.findIndex(m => m.line === options.line);
+              if(mIdx !== -1) fileMatchIdx = mIdx;
+            }
+            scrollToLine(options.line, true);
+            updateSearchUI();
+          } else {
+            let savedScroll = options.scroll;
+            if(savedScroll == null){
+              try {
+                const val = sessionStorage.getItem('mdv_scroll_' + filePath);
+                if(val != null) savedScroll = parseInt(val, 10);
+              } catch(e) {}
+            }
+            if(savedScroll != null && savedScroll > 0){
+              scroller.scrollTop = savedScroll;
+              render();
+            }
+          }
+          syncUrlState(options.pushHistory ? 'push' : 'replace');
+        }
+        await setActiveTreeRow(filePath);
+        return;
+      }
+
       currentFilePath = filePath;
       await setActiveTreeRow(filePath);
 
@@ -14456,7 +14605,7 @@
         if(!res.ok) throw new Error('File not found: ' + filePath);
         const text = await res.text();
 
-        loadText(text, filePath);
+        loadText(text, filePath, options.line);
 
         const docTextarea = document.getElementById('docTextarea');
         if (docTextarea) {
@@ -14469,8 +14618,9 @@
           }
         }
       }
+
       if(typeof loadCurrentFileAiCards === 'function'){
-        await loadCurrentFileAiCards(filePath);
+        loadCurrentFileAiCards(filePath).catch(console.error);
       }
 
       if (typeof renderBatchProgressUI === 'function') {
@@ -14498,7 +14648,7 @@
       } catch(e) {}
 
       // Handle view mode and scroll / card restoration
-      if(options.mode === 'flashcard' || (!options.mode && isFlashcardMode)){
+      if(options.mode === 'flashcard' || (!options.mode && isFlashcardMode && options.keepFlashcard)){
         if(!isFlashcardMode){
           enterFlashcardMode({
             filter: options.filter,
@@ -14521,11 +14671,16 @@
           syncUrlState(options.pushHistory ? 'push' : 'replace');
         }
       } else {
+        if(typeof isFullOverviewOpen !== 'undefined' && isFullOverviewOpen && typeof closeFullOverview === 'function'){
+          closeFullOverview();
+        }
         if(isFlashcardMode){
           exitFlashcardMode();
         }
         if(options.mode && typeof setAppMode === 'function' && options.mode !== 'flashcard' && options.mode !== currentAppMode){
           setAppMode(options.mode);
+        } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (!options.mode || options.mode === 'outline')){
+          setAppMode('outline');
         } else if(typeof currentAppMode !== 'undefined' && (currentAppMode === 'reading' || currentAppMode === 'document')){
           await renderCurrentDocument();
           const docBody = document.getElementById('docBody');
@@ -14538,7 +14693,8 @@
           }
         }
         if(options.line != null && options.line >= 0){
-          setTimeout(() => scrollToLine(options.line, true), 50);
+          activeTargetLine = options.line;
+          scrollToLine(options.line, true);
         } else {
           let savedScroll = options.scroll;
           if(savedScroll == null){
@@ -14548,10 +14704,8 @@
             } catch(e) {}
           }
           if(savedScroll != null && savedScroll > 0){
-            setTimeout(() => {
-              scroller.scrollTop = savedScroll;
-              render();
-            }, 50);
+            scroller.scrollTop = savedScroll;
+            render();
           }
         }
         syncUrlState(options.pushHistory ? 'push' : 'replace');
