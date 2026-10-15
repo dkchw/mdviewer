@@ -14553,29 +14553,31 @@
           }
           if(options.mode && typeof setAppMode === 'function' && options.mode !== 'flashcard' && options.mode !== currentAppMode){
             setAppMode(options.mode);
-          } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (!options.mode || options.mode === 'outline')){
+          } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (options.mode === 'outline' || currentAppMode === 'flashcards')){
             setAppMode('outline');
           }
 
-          if(options.line != null && options.line >= 0){
-            activeTargetLine = options.line;
-            if(activeSearchQuery && searchScope === 'file' && fileMatches.length > 0){
-              const mIdx = fileMatches.findIndex(m => m.line === options.line);
-              if(mIdx !== -1) fileMatchIdx = mIdx;
-            }
-            scrollToLine(options.line, true);
-            updateSearchUI();
-          } else {
-            let savedScroll = options.scroll;
-            if(savedScroll == null){
-              try {
-                const val = sessionStorage.getItem('mdv_scroll_' + filePath);
-                if(val != null) savedScroll = parseInt(val, 10);
-              } catch(e) {}
-            }
-            if(savedScroll != null && savedScroll > 0){
-              scroller.scrollTop = savedScroll;
-              render();
+          if(currentAppMode === 'outline'){
+            if(options.line != null && options.line >= 0){
+              activeTargetLine = options.line;
+              if(activeSearchQuery && searchScope === 'file' && fileMatches.length > 0){
+                const mIdx = fileMatches.findIndex(m => m.line === options.line);
+                if(mIdx !== -1) fileMatchIdx = mIdx;
+              }
+              scrollToLine(options.line, true);
+              updateSearchUI();
+            } else {
+              let savedScroll = options.scroll;
+              if(savedScroll == null){
+                try {
+                  const val = sessionStorage.getItem('mdv_scroll_' + filePath);
+                  if(val != null) savedScroll = parseInt(val, 10);
+                } catch(e) {}
+              }
+              if(savedScroll != null && savedScroll > 0){
+                scroller.scrollTop = savedScroll;
+                render();
+              }
             }
           }
           syncUrlState(options.pushHistory ? 'push' : 'replace');
@@ -14679,33 +14681,37 @@
         }
         if(options.mode && typeof setAppMode === 'function' && options.mode !== 'flashcard' && options.mode !== currentAppMode){
           setAppMode(options.mode);
-        } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (!options.mode || options.mode === 'outline')){
+        } else if(typeof setAppMode === 'function' && currentAppMode !== 'outline' && (options.mode === 'outline' || currentAppMode === 'flashcards')){
           setAppMode('outline');
         } else if(typeof currentAppMode !== 'undefined' && (currentAppMode === 'reading' || currentAppMode === 'document')){
           await renderCurrentDocument();
           const docBody = document.getElementById('docBody');
           if(docBody && options.line == null && options.scroll == null){
             docBody.scrollTop = 0;
+          } else if(docBody && options.scroll != null){
+            docBody.scrollTop = options.scroll;
           }
         } else if(typeof currentAppMode !== 'undefined' && currentAppMode === 'live'){
           if(typeof renderLivePreview === 'function'){
             renderLivePreview();
           }
         }
-        if(options.line != null && options.line >= 0){
-          activeTargetLine = options.line;
-          scrollToLine(options.line, true);
-        } else {
-          let savedScroll = options.scroll;
-          if(savedScroll == null){
-            try {
-              const val = sessionStorage.getItem('mdv_scroll_' + filePath);
-              if(val != null) savedScroll = parseInt(val, 10);
-            } catch(e) {}
-          }
-          if(savedScroll != null && savedScroll > 0){
-            scroller.scrollTop = savedScroll;
-            render();
+        if(currentAppMode === 'outline'){
+          if(options.line != null && options.line >= 0){
+            activeTargetLine = options.line;
+            scrollToLine(options.line, true);
+          } else {
+            let savedScroll = options.scroll;
+            if(savedScroll == null){
+              try {
+                const val = sessionStorage.getItem('mdv_scroll_' + filePath);
+                if(val != null) savedScroll = parseInt(val, 10);
+              } catch(e) {}
+            }
+            if(savedScroll != null && savedScroll > 0){
+              scroller.scrollTop = savedScroll;
+              render();
+            }
           }
         }
         syncUrlState(options.pushHistory ? 'push' : 'replace');
