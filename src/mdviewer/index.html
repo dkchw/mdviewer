@@ -4422,6 +4422,21 @@
   .doc-toc-item.lvl-2 { padding-left: 18px; font-weight: 600; color: #bb9af7; }
   .doc-toc-item.lvl-3 { padding-left: 28px; color: #7dcfff; }
   .doc-toc-item.lvl-4 { padding-left: 38px; color: #9ece6a; }
+  .doc-toc-item.lvl-5 { padding-left: 48px; color: #e0af68; }
+  .doc-toc-item.lvl-6 { padding-left: 58px; color: #f7768e; }
+  .doc-toc-item.active {
+    background: rgba(122,162,247,0.22);
+    color: #7aa2f7;
+    font-weight: 600;
+  }
+  @keyframes docHeadingFlash {
+    0% { background: rgba(122,162,247,0.35); box-shadow: 0 0 12px rgba(122,162,247,0.4); }
+    100% { background: transparent; box-shadow: none; }
+  }
+  .doc-heading-target {
+    animation: docHeadingFlash 1.4s ease-out;
+    border-radius: 4px;
+  }
 
   .doc-content-wrap {
     flex: 1 1 auto;
@@ -21340,6 +21355,26 @@
     if (docBtn) docBtn.addEventListener('click', () => setAppMode('reading'));
   }
 
+  function cleanDocHeadingText(text) {
+    if (!text) return '';
+    return text
+      .replace(/^#+\s*/, '')
+      .replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[*_~`]/g, '')
+      .trim();
+  }
+
+  function slugifyDocHeading(text) {
+    if (!text) return '';
+    return cleanDocHeadingText(text)
+      .toLowerCase()
+      .replace(/[^\w\s\u00C0-\u024F\u1EA0-\u1EF9-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   async function renderCurrentDocument(targetFile = null) {
     let filePath = targetFile || currentFilePath;
     const docBody = document.getElementById('docBody');
@@ -21400,6 +21435,23 @@
         docBody.innerHTML = data.html || '';
       }
 
+      // Index and assign IDs & slugs to all rendered headings in docBody for reliable navigation
+      const domHeadings = Array.from(docBody.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+      const usedHeadingIds = new Set();
+      domHeadings.forEach((hEl, idx) => {
+        hEl.dataset.headingIdx = String(idx);
+        let baseSlug = slugifyDocHeading(hEl.textContent) || ('section-' + (idx + 1));
+        let finalId = hEl.id || baseSlug;
+        if (usedHeadingIds.has(finalId)) {
+          let count = 2;
+          while (usedHeadingIds.has(`${baseSlug}-${count}`)) count++;
+          finalId = `${baseSlug}-${count}`;
+        }
+        usedHeadingIds.add(finalId);
+        if (!hEl.id) hEl.id = finalId;
+        hEl.dataset.slug = finalId;
+      });
+
       const rawText = docBody.innerText || '';
       const words = rawText.trim() ? rawText.trim().split(/\s+/).length : 0;
       if (docWordCount) docWordCount.textContent = `${words.toLocaleString()} words`;
@@ -21414,16 +21466,22 @@
         if (currentDocToc.length === 0) {
           docTocList.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px;">No headings in note</div>';
         } else {
-          currentDocToc.forEach((h) => {
+          currentDocToc.forEach((h, idx) => {
             const item = document.createElement('a');
-            item.className = `doc-toc-item lvl-${h.level}`;
-            item.textContent = h.text;
+            item.className = `doc-toc-item lvl-${h.level || 1}`;
+            item.textContent = cleanDocHeadingText(h.text);
+            item.title = h.text;
             item.href = 'javascript:void(0)';
-            item.addEventListener('click', () => {
-              scrollToDocHeading(h.text);
+            item.dataset.tocIdx = String(idx);
+            item.addEventListener('click', (e) => {
+              e.preventDefault();
+              scrollToDocHeading(idx, h);
             });
             docTocList.appendChild(item);
           });
+          if (typeof updateActiveDocTocItem === 'function') {
+            updateActiveDocTocItem();
+          }
         }
       }
 
@@ -21858,24 +21916,165 @@
     });
   }
 
-  function scrollToDocHeading(headingText) {
+  let docScrollSpyTimer = null;
+  function updateActiveDocTocItem() {
     const docBody = document.getElementById('docBody');
-    if (!docBody) return;
-    const headings = docBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    for (const h of headings) {
-      if (h.textContent.trim() === headingText.trim()) {
-        if (isDoublePageMode) {
-          const stride = getDoublePageStride();
-          const targetSpread = Math.floor(h.offsetLeft / stride);
-          docBody.scrollTo({ left: targetSpread * stride, behavior: 'smooth' });
-        } else {
-          h.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        setTimeout(updateDoublePageLayout, 220);
+    const docBodyContainer = document.getElementById('docBodyContainer');
+    const docTocList = document.getElementById('docTocList');
+    if (!docBody || !docBodyContainer || !docTocList) return;
+
+    const headings = Array.from(docBody.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    if (headings.length === 0) return;
+
+    const cRect = docBodyContainer.getBoundingClientRect();
+    let activeIdx = 0;
+
+    for (let i = 0; i < headings.length; i++) {
+      const hRect = headings[i].getBoundingClientRect();
+      if (hRect.top - cRect.top <= 80) {
+        activeIdx = i;
+      } else {
         break;
       }
     }
+
+    const tocItems = docTocList.querySelectorAll('.doc-toc-item');
+    tocItems.forEach((item, i) => {
+      item.classList.toggle('active', i === activeIdx);
+    });
   }
+
+  function scrollToDocHeading(target, hInfo = null) {
+    const docBody = document.getElementById('docBody');
+    const docBodyContainer = document.getElementById('docBodyContainer');
+    if (!docBody || !docBodyContainer) return false;
+
+    const headings = Array.from(docBody.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    if (headings.length === 0) return false;
+
+    let targetEl = null;
+    let targetIdx = -1;
+
+    // A. Target is already a DOM element
+    if (target && target.nodeType === 1) {
+      targetEl = target;
+      targetIdx = headings.indexOf(targetEl);
+    }
+    // B. Target is a numeric index
+    else if (typeof target === 'number' && target >= 0 && target < headings.length) {
+      targetEl = headings[target];
+      targetIdx = target;
+    }
+    // C. Search by line number if hInfo.line is present
+    if (!targetEl && hInfo && typeof hInfo === 'object' && hInfo.line != null) {
+      const lineTarget = hInfo.line;
+      targetIdx = headings.findIndex(h => {
+        const dl = parseInt(h.getAttribute('data-line'), 10);
+        return dl === lineTarget + 1 || dl === lineTarget;
+      });
+      if (targetIdx !== -1) targetEl = headings[targetIdx];
+    }
+    // D. Search by ID, slug, or href string
+    if (!targetEl && typeof target === 'string') {
+      let rawQuery = target.trim();
+      if (rawQuery.startsWith('#')) rawQuery = rawQuery.slice(1);
+      rawQuery = decodeURIComponent(rawQuery).trim();
+
+      // D1. Exact ID match
+      if (rawQuery) {
+        try {
+          targetEl = docBody.querySelector('#' + CSS.escape(rawQuery));
+        } catch(e) {}
+      }
+
+      // D2. By dataset.slug or case-insensitive ID
+      if (!targetEl) {
+        const slugQuery = slugifyDocHeading(rawQuery);
+        targetIdx = headings.findIndex(h => {
+          return (h.id && h.id.toLowerCase() === rawQuery.toLowerCase()) ||
+                 (h.dataset.slug && h.dataset.slug === slugQuery) ||
+                 slugifyDocHeading(h.textContent) === slugQuery;
+        });
+        if (targetIdx !== -1) targetEl = headings[targetIdx];
+      } else {
+        targetIdx = headings.indexOf(targetEl);
+      }
+
+      // D3. By cleaned text content (exact match after stripping markdown)
+      if (!targetEl) {
+        const cleanTarget = cleanDocHeadingText(rawQuery).toLowerCase();
+        targetIdx = headings.findIndex(h => {
+          const hClean = cleanDocHeadingText(h.textContent).toLowerCase();
+          return hClean === cleanTarget;
+        });
+        if (targetIdx !== -1) targetEl = headings[targetIdx];
+      }
+
+      // D4. Substring text match
+      if (!targetEl) {
+        const cleanTarget = cleanDocHeadingText(rawQuery).toLowerCase();
+        if (cleanTarget.length >= 3) {
+          targetIdx = headings.findIndex(h => {
+            const hClean = cleanDocHeadingText(h.textContent).toLowerCase();
+            return hClean.includes(cleanTarget) || cleanTarget.includes(hClean);
+          });
+          if (targetIdx !== -1) targetEl = headings[targetIdx];
+        }
+      }
+    }
+
+    // E. Search by hInfo text
+    if (!targetEl && hInfo && typeof hInfo === 'object' && hInfo.text) {
+      const cleanTarget = cleanDocHeadingText(hInfo.text).toLowerCase();
+      targetIdx = headings.findIndex(h => cleanDocHeadingText(h.textContent).toLowerCase() === cleanTarget);
+      if (targetIdx !== -1) targetEl = headings[targetIdx];
+    }
+
+    if (!targetEl) return false;
+
+    // Highlight active item in TOC list and scroll it into view
+    if (targetIdx !== -1) {
+      const tocItems = document.querySelectorAll('#docTocList .doc-toc-item');
+      tocItems.forEach((item, i) => {
+        item.classList.toggle('active', i === targetIdx);
+        if (i === targetIdx) {
+          item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      });
+    }
+
+    // Pulse highlight target heading in document for visual feedback
+    targetEl.classList.remove('doc-heading-target');
+    void targetEl.offsetWidth; // trigger reflow
+    targetEl.classList.add('doc-heading-target');
+    setTimeout(() => {
+      targetEl.classList.remove('doc-heading-target');
+    }, 1500);
+
+    // Scroll to heading
+    if (isDoublePageMode) {
+      const stride = getDoublePageStride();
+      const targetSpread = Math.floor(targetEl.offsetLeft / stride);
+      docBody.scrollTo({ left: targetSpread * stride, behavior: 'smooth' });
+      if (typeof updateDoublePageLayout === 'function') {
+        setTimeout(updateDoublePageLayout, 220);
+      }
+    } else {
+      const cRect = docBodyContainer.getBoundingClientRect();
+      const hRect = targetEl.getBoundingClientRect();
+      const currentScroll = docBodyContainer.scrollTop;
+      const targetScroll = currentScroll + (hRect.top - cRect.top) - 16;
+      docBodyContainer.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    }
+
+    return true;
+  }
+
+  window.scrollToDocHeading = scrollToDocHeading;
+  window.updateActiveDocTocItem = updateActiveDocTocItem;
 
 
   // ==========================================
@@ -23048,6 +23247,34 @@
     if (docBody) {
       docBody.addEventListener('scroll', () => {
         if (isDoublePageMode) updateDoublePageLayout();
+      }, { passive: true });
+
+      // Intercept in-document Table of Contents and anchor links: [Text](#heading-slug)
+      docBody.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (!link) return;
+        const href = link.getAttribute('href');
+        if (!href) return;
+
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          if (href === '#' || href === '#top') {
+            if (docBodyContainer) docBodyContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          if (typeof scrollToDocHeading === 'function') {
+            scrollToDocHeading(href);
+          }
+        }
+      });
+    }
+
+    if (docBodyContainer) {
+      docBodyContainer.addEventListener('scroll', () => {
+        if (typeof updateActiveDocTocItem === 'function') {
+          if (docScrollSpyTimer) cancelAnimationFrame(docScrollSpyTimer);
+          docScrollSpyTimer = requestAnimationFrame(updateActiveDocTocItem);
+        }
       }, { passive: true });
     }
 
